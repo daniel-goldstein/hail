@@ -3118,6 +3118,16 @@ class NDArrayExpression(Expression):
         assert isinstance(self._type, tndarray)
         return ndarray_map
 
+    @typecheck_method(path=str)
+    def write(self, path):
+        """Write out the NDArray as binary to the given path.
+
+        Parameters
+        ----------
+        path : :obj: `str`
+        """
+        Env.backend().execute(NDArrayWrite(self._ir, hl.str(path)._ir))
+
 
 class NDArrayNumericExpression(NDArrayExpression):
     """Expression of type :class:`.tndarray` with a numeric element type.
