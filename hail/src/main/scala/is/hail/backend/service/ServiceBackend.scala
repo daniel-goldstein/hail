@@ -10,9 +10,9 @@ import is.hail.annotations._
 import is.hail.asm4s._
 import is.hail.backend.{Backend, BackendContext, BroadcastValue, HailTaskContext}
 import is.hail.expr.JSONAnnotationImpex
-import is.hail.expr.ir.lowering.{DArrayLowering, LoweringPipeline, TableStage, TableStageDependency}
-import is.hail.expr.ir.{Compile, ExecuteContext, IR, IRParser, Literal, MakeArray, MakeTuple, ShuffleRead, ShuffleWrite, SortField, ToStream}
-import is.hail.io.fs.GoogleStorageFS
+import is.hail.expr.ir.lowering.{DArrayLowering, LowerDistributedSort, LoweringPipeline, TableStage, TableStageDependency}
+import is.hail.expr.ir.{Compile, ExecuteContext, IR, IRParser, Literal, MakeArray, MakeTuple, OwningTempFileManager, ShuffleRead, ShuffleWrite, SortField, ToStream}
+import is.hail.io.fs.{FS, GoogleStorageFS, SeekableDataInputStream}
 import is.hail.linalg.BlockMatrix
 import is.hail.rvd.RVDPartitioner
 import is.hail.services._
@@ -33,7 +33,6 @@ import org.newsclub.net.unix.{AFUNIXServerSocket, AFUNIXSocketAddress}
 
 import scala.annotation.switch
 import scala.reflect.ClassTag
-
 
 class ServiceBackendContext(
   val username: String,
@@ -68,10 +67,10 @@ class ServiceBackend() extends Backend {
     assert(previous == null)
   }
 
-  def userContext[T](username: String, timer: ExecutionTimer)(f: (ExecuteContext) => T): T = {
+  def userContext[T](username: String, sessionID: String, timer: ExecutionTimer)(f: (ExecuteContext) => T): T = {
     val user = users.get(username)
     assert(user != null, username)
-    ExecuteContext.scoped(user.tmpdir, "file:///tmp", this, user.fs, timer, null)(f)
+    ExecuteContext.scoped(user.tmpdir, "file:///tmp", this, user.fs.asCacheable(sessionID), timer, null)(f)
   }
 
   def defaultParallelism: Int = 10
@@ -103,8 +102,8 @@ class ServiceBackend() extends Backend {
 
     log.info(s"parallelizeAndComputeWithIndex: token $token: writing context offsets")
 
-    using(fs.createNoCompression(s"$root/context.offsets")) { os =>
-      var o = 0L
+    using(fs.createNoCompression(s"$root/contexts")) { os =>
+      var o = 12L * n
       var i = 0
       while (i < n) {
         val len = collection(i).length
@@ -113,11 +112,7 @@ class ServiceBackend() extends Backend {
         i += 1
         o += len
       }
-    }
-
-    log.info(s"parallelizeAndComputeWithIndex: token $token: writing contexts")
-
-    using(fs.createNoCompression(s"$root/contexts")) { os =>
+      log.info(s"parallelizeAndComputeWithIndex: token $token: writing contexts")
       collection.foreach { context =>
         os.write(context)
       }
@@ -128,6 +123,7 @@ class ServiceBackend() extends Backend {
     while (i < n) {
       jobs(i) = JObject(
           "always_run" -> JBool(false),
+          "env" -> HailContext.get.flags.toJSONEnv,
           "job_id" -> JInt(i),
           "parent_ids" -> JArray(List()),
           "process" -> JObject(
@@ -158,6 +154,7 @@ class ServiceBackend() extends Backend {
     log.info(s"parallelizeAndComputeWithIndex: token $token: reading results")
 
     val r = new Array[Array[Byte]](n)
+
     i = 0  // reusing
     while (i < n) {
       r(i) = using(fs.openNoCompression(s"$root/result.$i")) { is =>
@@ -170,18 +167,18 @@ class ServiceBackend() extends Backend {
 
   def stop(): Unit = ()
 
-  def valueType(username: String, s: String): String = {
+  def valueType(username: String, sessionID: String, s: String): String = {
     ExecutionTimer.logTime("ServiceBackend.valueType") { timer =>
-      userContext(username, timer) { ctx =>
+      userContext(username, sessionID, timer) { ctx =>
         val x = IRParser.parse_value_ir(ctx, s)
         x.typ.toString
       }
     }
   }
 
-  def tableType(username: String, s: String): String = {
+  def tableType(username: String, sessionID: String, s: String): String = {
     ExecutionTimer.logTime("ServiceBackend.tableType") { timer =>
-      userContext(username, timer) { ctx =>
+      userContext(username, sessionID, timer) { ctx =>
         val x = IRParser.parse_table_ir(ctx, s)
         val t = x.typ
         val jv = JObject("global" -> JString(t.globalType.toString),
@@ -192,9 +189,9 @@ class ServiceBackend() extends Backend {
     }
   }
 
-  def matrixTableType(username: String, s: String): String = {
+  def matrixTableType(username: String, sessionID: String, s: String): String = {
     ExecutionTimer.logTime("ServiceBackend.matrixTableType") { timer =>
-      userContext(username, timer) { ctx =>
+      userContext(username, sessionID, timer) { ctx =>
         val x = IRParser.parse_matrix_ir(ctx, s)
         val t = x.typ
         val jv = JObject("global" -> JString(t.globalType.toString),
@@ -208,9 +205,9 @@ class ServiceBackend() extends Backend {
     }
   }
 
-  def blockMatrixType(username: String, s: String): String = {
+  def blockMatrixType(username: String, sessionID: String, s: String): String = {
     ExecutionTimer.logTime("ServiceBackend.blockMatrixType") { timer =>
-      userContext(username, timer) { ctx =>
+      userContext(username, sessionID, timer) { ctx =>
         val x = IRParser.parse_blockmatrix_ir(ctx, s)
         val t = x.typ
         val jv = JObject("element_type" -> JString(t.elementType.toString),
@@ -222,7 +219,7 @@ class ServiceBackend() extends Backend {
     }
   }
 
-  def referenceGenome(username: String, name: String): String = {
+  def referenceGenome(username: String, sessionID: String, name: String): String = {
     ReferenceGenome.getReference(name).toJSONString
   }
 
@@ -253,7 +250,7 @@ class ServiceBackend() extends Backend {
 
   def execute(username: String, sessionID: String, billingProject: String, bucket: String, code: String, token: String): String = {
     ExecutionTimer.logTime("ServiceBackend.execute") { timer =>
-      userContext(username, timer) { ctx =>
+      userContext(username, sessionID, timer) { ctx =>
         log.info(s"executing: ${token}")
         ctx.backendContext = new ServiceBackendContext(username, sessionID, billingProject, bucket)
 
@@ -368,7 +365,7 @@ class ServiceBackend() extends Backend {
     path: String
   ): String = {
     ExecutionTimer.logTime("ServiceBackend.loadReferencesFromDataset") { timer =>
-      userContext(username, timer) { ctx =>
+      userContext(username, sessionID, timer) { ctx =>
         ReferenceGenome.fromHailDataset(ctx.fs, path)
       }
     }
@@ -480,9 +477,10 @@ class ServiceBackendSocketAPI(backend: ServiceBackend, socket: Socket) extends T
 
         case VALUE_TYPE =>
           val username = readString()
+          val sessionId = readString()
           val s = readString()
           try {
-            val result = backend.valueType(username, s)
+            val result = backend.valueType(username, sessionId, s)
             writeBool(true)
             writeString(result)
           } catch {
@@ -493,9 +491,10 @@ class ServiceBackendSocketAPI(backend: ServiceBackend, socket: Socket) extends T
 
         case TABLE_TYPE =>
           val username = readString()
+          val sessionId = readString()
           val s = readString()
           try {
-            val result = backend.tableType(username, s)
+            val result = backend.tableType(username, sessionId, s)
             writeBool(true)
             writeString(result)
           } catch {
@@ -506,9 +505,10 @@ class ServiceBackendSocketAPI(backend: ServiceBackend, socket: Socket) extends T
 
         case MATRIX_TABLE_TYPE =>
           val username = readString()
+          val sessionId = readString()
           val s = readString()
           try {
-            val result = backend.matrixTableType(username, s)
+            val result = backend.matrixTableType(username, sessionId, s)
             writeBool(true)
             writeString(result)
           } catch {
@@ -519,9 +519,10 @@ class ServiceBackendSocketAPI(backend: ServiceBackend, socket: Socket) extends T
 
         case BLOCK_MATRIX_TYPE =>
           val username = readString()
+          val sessionId = readString()
           val s = readString()
           try {
-            val result = backend.blockMatrixType(username, s)
+            val result = backend.blockMatrixType(username, sessionId, s)
             writeBool(true)
             writeString(result)
           } catch {
@@ -532,9 +533,10 @@ class ServiceBackendSocketAPI(backend: ServiceBackend, socket: Socket) extends T
 
         case REFERENCE_GENOME =>
           val username = readString()
+          val sessionId = readString()
           val name = readString()
           try {
-            val result = backend.referenceGenome(username, name)
+            val result = backend.referenceGenome(username, sessionId, name)
             writeBool(true)
             writeString(result)
           } catch {
