@@ -197,7 +197,7 @@ tag worker.log
 @type record_transformer
 enable_ruby
 <record>
-    severity \${{ record["levelname"] }}
+    severity \${{ record["severity"] }}
     timestamp \${{ record["asctime"] }}
 </record>
 </filter>

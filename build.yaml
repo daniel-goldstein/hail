@@ -2364,7 +2364,7 @@ steps:
      hailctl config set batch/bucket hail-test-dmk9z
      python3 -m pytest \
              --log-date-format="%Y-%m-%dT%H:%M:%S" \
-             --log-format="%(asctime)s %(levelname)s %(name)s %(filename)s:%(lineno)d:%(funcName)s %(message)s" \
+             --log-format="%(asctime)s %(severity)s %(name)s %(filename)s:%(lineno)d:%(funcName)s %(message)s" \
              --log-cli-level=INFO \
              -s \
              -vv \
@@ -2432,7 +2432,7 @@ steps:
      hailctl config set batch/bucket hail-test-dmk9z
      python3 -m pytest \
              --log-date-format="%Y-%m-%dT%H:%M:%S" \
-             --log-format="%(asctime)s %(levelname)s %(name)s %(filename)s:%(lineno)d:%(funcName)s %(message)s" \
+             --log-format="%(asctime)s %(severity)s %(name)s %(filename)s:%(lineno)d:%(funcName)s %(message)s" \
              --log-cli-level=INFO \
              -s \
              -vv \
@@ -2500,7 +2500,7 @@ steps:
      hailctl config set batch/bucket hail-test-dmk9z
      python3 -m pytest \
              --log-date-format="%Y-%m-%dT%H:%M:%S" \
-             --log-format="%(asctime)s %(levelname)s %(name)s %(filename)s:%(lineno)d:%(funcName)s %(message)s" \
+             --log-format="%(asctime)s %(severity)s %(name)s %(filename)s:%(lineno)d:%(funcName)s %(message)s" \
              --log-cli-level=INFO \
              -s \
              -vv \
@@ -2568,7 +2568,7 @@ steps:
      hailctl config set batch/bucket hail-test-dmk9z
      python3 -m pytest \
              --log-date-format="%Y-%m-%dT%H:%M:%S" \
-             --log-format="%(asctime)s %(levelname)s %(name)s %(filename)s:%(lineno)d:%(funcName)s %(message)s" \
+             --log-format="%(asctime)s %(severity)s %(name)s %(filename)s:%(lineno)d:%(funcName)s %(message)s" \
              --log-cli-level=INFO \
              -s \
              -vv \
@@ -2636,7 +2636,7 @@ steps:
      hailctl config set batch/bucket hail-test-dmk9z
      python3 -m pytest \
              --log-date-format="%Y-%m-%dT%H:%M:%S" \
-             --log-format="%(asctime)s %(levelname)s %(name)s %(filename)s:%(lineno)d:%(funcName)s %(message)s" \
+             --log-format="%(asctime)s %(severity)s %(name)s %(filename)s:%(lineno)d:%(funcName)s %(message)s" \
              --log-cli-level=INFO \
              -s \
              -vv \
@@ -3389,7 +3389,7 @@ steps:
    image:
      valueFrom: service_base_image.image
    script: |
-     python3 -m pytest --log-date-format="%Y-%m-%dT%H:%M:%S" --log-format="%(asctime)s %(levelname)s %(name)s %(filename)s:%(lineno)d:%(funcName)s %(message)s" --log-cli-level=INFO -s -vv --instafail /io/test/
+     python3 -m pytest --log-date-format="%Y-%m-%dT%H:%M:%S" --log-format="%(asctime)s %(severity)s %(name)s %(filename)s:%(lineno)d:%(funcName)s %(message)s" --log-cli-level=INFO -s -vv --instafail /io/test/
    inputs:
     - from: /repo/address/test
       to: /io/
@@ -3466,7 +3466,7 @@ steps:
    image:
      valueFrom: batch_image.image
    script: |
-     python3 -m pytest --log-date-format="%Y-%m-%dT%H:%M:%S" --log-format="%(asctime)s %(levelname)s %(name)s %(filename)s:%(lineno)d:%(funcName)s %(message)s" --log-cli-level=INFO -s -vv --instafail -k "test_invariants" /io/test/
+     python3 -m pytest --log-date-format="%Y-%m-%dT%H:%M:%S" --log-format="%(asctime)s %(severity)s %(name)s %(filename)s:%(lineno)d:%(funcName)s %(message)s" --log-cli-level=INFO -s -vv --instafail -k "test_invariants" /io/test/
    inputs:
     - from: /repo/batch/test
       to: /io/
