@@ -4,7 +4,7 @@ set -e
 gcloud -q auth activate-service-account \
   --key-file=/secrets/gcr-pull.json
 
-gcloud -q auth configure-docker
+gcloud -q auth configure-docker gcr.io
 
 DEFAULT_NAMESPACE=$(jq -r '.default_namespace' < /deploy-config/deploy-config.json)
 case $DEFAULT_NAMESPACE in
