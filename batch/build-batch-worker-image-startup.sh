@@ -44,6 +44,7 @@ docker pull gcr.io/google.com/cloudsdktool/cloud-sdk:310.0.0-alpine
 
 # add docker daemon debug logging
 jq '.debug = true' /etc/docker/daemon.json > daemon.json.tmp
+jq '.userns-remap = batch-user' daemon.json.tmp > daemon.json.tmp
 mv daemon.json.tmp /etc/docker/daemon.json
 
 shutdown -h now

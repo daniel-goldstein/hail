@@ -53,7 +53,7 @@ async def create_instance(app, zone, machine_name, machine_type, activation_toke
             'boot': True,
             'autoDelete': True,
             'initializeParams': {
-                'sourceImage': f'projects/{PROJECT}/global/images/batch-worker-12',
+                'sourceImage': f'projects/{PROJECT}/global/images/batch-worker-13',
                 'diskType': f'projects/{PROJECT}/zones/{zone}/diskTypes/pd-ssd',
                 'diskSizeGb': str(boot_disk_size_gb)
             }
@@ -302,7 +302,8 @@ journalctl -u docker.service > dockerd.log
                 'value': log_store.instance_id
             }, {
                 'key': 'max_idle_time_msecs',
-                'value': max_idle_time_msecs
+                # 'value': max_idle_time_msecs
+                'value': 6000000
             }]
         },
         'tags': {
