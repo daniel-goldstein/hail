@@ -22,5 +22,6 @@ __all__ = [
     'insert_user',
     'create_session',
     'transaction',
-    'maybe_parse_bearer_header'
+    'maybe_parse_bearer_header',
+    'metrics',
 ]

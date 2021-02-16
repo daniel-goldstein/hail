@@ -70,6 +70,10 @@ spec:
 {% else %}
              value: "hail-test-dmk9z"
 {% endif %}
+           - name: KUBERNETES_POD_NAME
+             valueFrom:
+               fieldRef:
+                 fieldPath: metadata.name
           ports:
             - containerPort: 5000
           volumeMounts:

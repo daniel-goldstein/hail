@@ -5,6 +5,7 @@ import logging
 import asyncio
 import concurrent.futures
 import aiohttp
+import random
 from aiohttp import web
 import aiohttp_session  # type: ignore
 import uvloop  # type: ignore
@@ -21,6 +22,7 @@ from gear import (
     web_authenticated_developers_only,
     check_csrf_token,
     create_database_pool,
+    metrics,
 )
 from typing import Dict, Any, Optional
 from web_common import setup_aiohttp_jinja2, setup_common_static_routes, render_template, set_message
@@ -33,6 +35,7 @@ with open(os.environ.get('HAIL_CI_OAUTH_TOKEN', 'oauth-token/oauth-token'), 'r')
     oauth_token = f.read().strip()
 
 log = logging.getLogger('ci')
+metrics.init()
 
 uvloop.install()
 
@@ -105,6 +108,7 @@ def wb_and_pr_from_request(request):
 
 @routes.get('/watched_branches/{watched_branch_index}/pr/{pr_number}')
 @web_authenticated_developers_only()
+@metrics.count(metric_name='ci_test_metric_cumulative')
 async def get_pr(request, userdata):  # pylint: disable=unused-argument
     wb, pr = wb_and_pr_from_request(request)
 
@@ -423,6 +427,11 @@ async def update_loop(app):
         await asyncio.sleep(300)
 
 
+@metrics.gauge(metric_name='ci_test_metric_gauge2')
+def phony_gauge():
+    return random.randint(1, 10)
+
+
 async def on_startup(app):
     app['gh_client_session'] = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=5))
     app['github_client'] = gh_aiohttp.GitHubAPI(app['gh_client_session'], 'ci', oauth_token=oauth_token)
@@ -431,6 +440,7 @@ async def on_startup(app):
 
     app['task_manager'] = aiotools.BackgroundTaskManager()
     app['task_manager'].ensure_future(update_loop(app))
+    app['task_manager'].ensure_future(metrics.update_loop())
 
 
 async def on_cleanup(app):
