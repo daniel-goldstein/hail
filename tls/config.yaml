@@ -30,9 +30,6 @@ principals:
 - name: site
   domain: site
   kind: nginx
-- name: scorecard
-  domain: scorecard
-  kind: json
 - name: image-fetcher
   domain: image-fetcher
   kind: curl

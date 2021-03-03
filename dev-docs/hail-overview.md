@@ -106,7 +106,6 @@ Services (see below for descriptions):
 * $HAIL/query
 * $HAIL/router
 * $HAIL/router-resolver
-* $HAIL/scorecard
 * $HAIL/site
 
 Libraries for services:
@@ -141,7 +140,7 @@ This section is not complete.
   heap called a region value.  Annotation also sometimes refer to just
   the JVM object representation.  Explicitly managed off-(Java-)heap
   values are also referred to as "unsafe".
-  
+
 * is.hail.asm4s: The Hail Query optimizer generates JVM bytecode to
   implement queries.  asm4s is a high-level Scala interface for
   generating JVM bytecode.
@@ -200,7 +199,7 @@ templating.
 
 Some services rely on 3rd party services.  Those include:
 
-* ci and scorecard depend on GitHub
+* ci depends on GitHub
 
 * batch, ci and notebook depend on K8s
 
@@ -239,7 +238,8 @@ There is a collection of libraries to facilitate service development:
 * batch and batch-driver: the Hail Batch service
 
 * ci: We've implemented our own continuous integration and continuous
-  deployed (CI/CD) system.
+  deployed (CI/CD) system. A developer status board can be found at
+  https://ci.hail.is/me.
 
 * gateway: gateway is an nginx reverse proxy that terminates TLS
   connections and forwards requests to services in K8s.  It is
@@ -268,9 +268,6 @@ There is a collection of libraries to facilitate service development:
 
 * router-resolver: router-resolver verifies whether or not a request
   is allowed to be forwarded to its destination namespace.
-
-* scorecard: scorecard implements the developer status board found at
-  https://scorecard.hail.is/.
 
 * site: site implements the main Hail website https://hail.is/
   including the landing page and Hail Query and Hail Batch

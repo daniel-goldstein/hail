@@ -1,7 +1,6 @@
 {{ domain }}
 ci.{{ domain }}
 notebook.{{ domain }}
-scorecard.{{ domain }}
 www.{{ domain }}
 batch.{{ domain }}
 batch-driver.{{ domain }}

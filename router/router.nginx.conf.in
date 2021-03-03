@@ -15,18 +15,6 @@ server {
 }
 
 server {
-    server_name scorecard.*;
-
-    location / {
-        proxy_pass https://scorecard/;
-        include /etc/nginx/proxy.conf;
-    }
-
-    listen 443 ssl;
-    listen [::]:443 ssl;
-}
-
-server {
     server_name amundsen-frontend.*;
 
     location / {

@@ -30,20 +30,6 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: scorecard
-  labels:
-    app: scorecard
-spec:
-  ports:
-  - port: 443
-    protocol: TCP
-    targetPort: 5000
-  selector:
-    app: scorecard
----
-apiVersion: v1
-kind: Service
-metadata:
   name: benchmark
   labels:
     app: benchmark

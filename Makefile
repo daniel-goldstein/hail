@@ -14,7 +14,7 @@ check-hail:
 
 .PHONY: check-services
 check-services: check-auth check-batch check-ci check-gear check-memory \
-  check-notebook check-query check-router-resolver check-scorecard check-web-common \
+  check-notebook check-query check-router-resolver check-web-common \
   check-atgu
 
 .PHONY: check-auth
@@ -52,10 +52,6 @@ check-query:
 .PHONY: check-router-resolver
 check-router-resolver:
 	$(MAKE) -C router-resolver check
-
-.PHONY: check-scorecard
-check-scorecard:
-	$(MAKE) -C scorecard check
 
 .PHONY: check-web-common
 check-web-common:
