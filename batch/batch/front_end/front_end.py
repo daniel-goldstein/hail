@@ -254,7 +254,7 @@ LIMIT 50;
 
 
 @routes.get('/api/v1alpha/batches/{batch_id}/jobs')
-@monitor_endpoint
+@monitor_endpoint()
 @rest_billing_project_users_only
 async def get_jobs(request, userdata, batch_id):  # pylint: disable=unused-argument
     db = request.app['db']
@@ -428,7 +428,7 @@ async def _get_full_job_status(app, record):
 
 
 @routes.get('/api/v1alpha/batches/{batch_id}/jobs/{job_id}/log')
-@monitor_endpoint
+@monitor_endpoint()
 @rest_billing_project_users_only
 async def get_job_log(request, userdata, batch_id):  # pylint: disable=unused-argument
     job_id = int(request.match_info['job_id'])
@@ -545,7 +545,7 @@ LIMIT 51;
 
 
 @routes.get('/api/v1alpha/batches')
-@monitor_endpoint
+@monitor_endpoint()
 @rest_authenticated_users_only
 async def get_batches(request, userdata):  # pylint: disable=unused-argument
     user = userdata['username']
@@ -573,7 +573,7 @@ def check_service_account_permissions(user, sa):
 
 
 @routes.post('/api/v1alpha/batches/{batch_id}/jobs/create')
-@monitor_endpoint
+@monitor_endpoint()
 @rest_authenticated_users_only
 async def create_jobs(request, userdata):
     app = request.app
@@ -895,7 +895,7 @@ VALUES (%s, %s, %s);
 
 
 @routes.post('/api/v1alpha/batches/create')
-@monitor_endpoint
+@monitor_endpoint()
 @rest_authenticated_users_only
 async def create_batch(request, userdata):
     app = request.app
@@ -1018,14 +1018,14 @@ WHERE id = %s AND NOT deleted;
 
 
 @routes.get('/api/v1alpha/batches/{batch_id}')
-@monitor_endpoint
+@monitor_endpoint()
 @rest_billing_project_users_only
 async def get_batch(request, userdata, batch_id):  # pylint: disable=unused-argument
     return web.json_response(await _get_batch(request.app, batch_id))
 
 
 @routes.patch('/api/v1alpha/batches/{batch_id}/cancel')
-@monitor_endpoint
+@monitor_endpoint()
 @rest_billing_project_users_only
 async def cancel_batch(request, userdata, batch_id):  # pylint: disable=unused-argument
     await _handle_api_error(_cancel_batch, request.app, batch_id)
@@ -1033,7 +1033,7 @@ async def cancel_batch(request, userdata, batch_id):  # pylint: disable=unused-a
 
 
 @routes.patch('/api/v1alpha/batches/{batch_id}/close')
-@monitor_endpoint
+@monitor_endpoint()
 @rest_authenticated_users_only
 async def close_batch(request, userdata):
     batch_id = int(request.match_info['batch_id'])
@@ -1074,7 +1074,7 @@ WHERE user = %s AND id = %s AND NOT deleted;
 
 
 @routes.delete('/api/v1alpha/batches/{batch_id}')
-@monitor_endpoint
+@monitor_endpoint()
 @rest_billing_project_users_only
 async def delete_batch(request, userdata, batch_id):  # pylint: disable=unused-argument
     await _delete_batch(request.app, batch_id)
@@ -1082,7 +1082,7 @@ async def delete_batch(request, userdata, batch_id):  # pylint: disable=unused-a
 
 
 @routes.get('/batches/{batch_id}')
-@monitor_endpoint
+@monitor_endpoint()
 @web_billing_project_users_only()
 async def ui_batch(request, userdata, batch_id):
     app = request.app
@@ -1105,7 +1105,7 @@ async def ui_batch(request, userdata, batch_id):
 
 
 @routes.post('/batches/{batch_id}/cancel')
-@monitor_endpoint
+@monitor_endpoint()
 @check_csrf_token
 @web_billing_project_users_only(redirect=False)
 async def ui_cancel_batch(request, userdata, batch_id):  # pylint: disable=unused-argument
@@ -1118,7 +1118,7 @@ async def ui_cancel_batch(request, userdata, batch_id):  # pylint: disable=unuse
 
 
 @routes.post('/batches/{batch_id}/delete')
-@monitor_endpoint
+@monitor_endpoint()
 @check_csrf_token
 @web_billing_project_users_only(redirect=False)
 async def ui_delete_batch(request, userdata, batch_id):  # pylint: disable=unused-argument
@@ -1130,7 +1130,7 @@ async def ui_delete_batch(request, userdata, batch_id):  # pylint: disable=unuse
 
 
 @routes.get('/batches', name='batches')
-@monitor_endpoint
+@monitor_endpoint()
 @web_authenticated_users_only()
 async def ui_batches(request, userdata):
     user = userdata['username']
@@ -1228,7 +1228,7 @@ WHERE jobs.batch_id = %s AND NOT deleted AND jobs.job_id = %s;
 
 
 @routes.get('/api/v1alpha/batches/{batch_id}/jobs/{job_id}/attempts')
-@monitor_endpoint
+@monitor_endpoint()
 @rest_billing_project_users_only
 async def get_attempts(request, userdata, batch_id):  # pylint: disable=unused-argument
     job_id = int(request.match_info['job_id'])
@@ -1237,7 +1237,7 @@ async def get_attempts(request, userdata, batch_id):  # pylint: disable=unused-a
 
 
 @routes.get('/api/v1alpha/batches/{batch_id}/jobs/{job_id}')
-@monitor_endpoint
+@monitor_endpoint()
 @rest_billing_project_users_only
 async def get_job(request, userdata, batch_id):  # pylint: disable=unused-argument
     job_id = int(request.match_info['job_id'])
@@ -1246,7 +1246,7 @@ async def get_job(request, userdata, batch_id):  # pylint: disable=unused-argume
 
 
 @routes.get('/batches/{batch_id}/jobs/{job_id}')
-@monitor_endpoint
+@monitor_endpoint()
 @web_billing_project_users_only()
 async def ui_get_job(request, userdata, batch_id):
     app = request.app
@@ -1299,7 +1299,7 @@ async def ui_get_job(request, userdata, batch_id):
 
 
 @routes.get('/billing_limits')
-@monitor_endpoint
+@monitor_endpoint()
 @web_authenticated_users_only()
 async def ui_get_billing_limits(request, userdata):
     app = request.app
@@ -1360,7 +1360,7 @@ UPDATE billing_projects SET `limit` = %s WHERE name = %s;
 
 
 @routes.post('/api/v1alpha/billing_limits/{billing_project}/edit')
-@monitor_endpoint
+@monitor_endpoint()
 @rest_authenticated_developers_or_auth_only
 async def post_edit_billing_limits(request, userdata):  # pylint: disable=unused-argument
     db: Database = request.app['db']
@@ -1372,7 +1372,7 @@ async def post_edit_billing_limits(request, userdata):  # pylint: disable=unused
 
 
 @routes.post('/billing_limits/{billing_project}/edit')
-@monitor_endpoint
+@monitor_endpoint()
 @check_csrf_token
 @web_authenticated_developers_only(redirect=False)
 async def post_edit_billing_limits_ui(request, userdata):  # pylint: disable=unused-argument
@@ -1456,7 +1456,7 @@ GROUP BY billing_project, `user`;
 
 
 @routes.get('/billing')
-@monitor_endpoint
+@monitor_endpoint()
 @web_authenticated_developers_only()
 async def ui_get_billing(request, userdata):
     billing, start, end = await _query_billing(request)
@@ -1497,7 +1497,7 @@ async def ui_get_billing(request, userdata):
 
 
 @routes.get('/billing_projects')
-@monitor_endpoint
+@monitor_endpoint()
 @web_authenticated_developers_only()
 async def ui_get_billing_projects(request, userdata):
     db: Database = request.app['db']
@@ -1510,7 +1510,7 @@ async def ui_get_billing_projects(request, userdata):
 
 
 @routes.get('/api/v1alpha/billing_projects')
-@monitor_endpoint
+@monitor_endpoint()
 @rest_authenticated_users_only
 async def get_billing_projects(request, userdata):
     db: Database = request.app['db']
@@ -1526,7 +1526,7 @@ async def get_billing_projects(request, userdata):
 
 
 @routes.get('/api/v1alpha/billing_projects/{billing_project}')
-@monitor_endpoint
+@monitor_endpoint()
 @rest_authenticated_users_only
 async def get_billing_project(request, userdata):
     db: Database = request.app['db']
@@ -1580,7 +1580,7 @@ WHERE billing_project = %s AND user = %s;
 
 
 @routes.post('/billing_projects/{billing_project}/users/{user}/remove')
-@monitor_endpoint
+@monitor_endpoint()
 @check_csrf_token
 @web_authenticated_developers_only(redirect=False)
 async def post_billing_projects_remove_user(request, userdata):  # pylint: disable=unused-argument
@@ -1596,7 +1596,7 @@ async def post_billing_projects_remove_user(request, userdata):  # pylint: disab
 
 
 @routes.post('/api/v1alpha/billing_projects/{billing_project}/users/{user}/remove')
-@monitor_endpoint
+@monitor_endpoint()
 @rest_authenticated_developers_or_auth_only
 async def api_get_billing_projects_remove_user(request, userdata):  # pylint: disable=unused-argument
     db: Database = request.app['db']
@@ -1639,7 +1639,7 @@ VALUES (%s, %s);
 
 
 @routes.post('/billing_projects/{billing_project}/users/add')
-@monitor_endpoint
+@monitor_endpoint()
 @check_csrf_token
 @web_authenticated_developers_only(redirect=False)
 async def post_billing_projects_add_user(request, userdata):  # pylint: disable=unused-argument
@@ -1657,7 +1657,7 @@ async def post_billing_projects_add_user(request, userdata):  # pylint: disable=
 
 
 @routes.post('/api/v1alpha/billing_projects/{billing_project}/users/{user}/add')
-@monitor_endpoint
+@monitor_endpoint()
 @rest_authenticated_developers_or_auth_only
 async def api_billing_projects_add_user(request, userdata):  # pylint: disable=unused-argument
     db: Database = request.app['db']
@@ -1691,7 +1691,7 @@ VALUES (%s);
 
 
 @routes.post('/billing_projects/create')
-@monitor_endpoint
+@monitor_endpoint()
 @check_csrf_token
 @web_authenticated_developers_only(redirect=False)
 async def post_create_billing_projects(request, userdata):  # pylint: disable=unused-argument
@@ -1708,7 +1708,7 @@ async def post_create_billing_projects(request, userdata):  # pylint: disable=un
 
 
 @routes.post('/api/v1alpha/billing_projects/{billing_project}/create')
-@monitor_endpoint
+@monitor_endpoint()
 @rest_authenticated_developers_or_auth_only
 async def api_get_create_billing_projects(request, userdata):  # pylint: disable=unused-argument
     db: Database = request.app['db']
@@ -1745,7 +1745,7 @@ WHERE name = %s LIMIT 1 FOR UPDATE;
 
 
 @routes.post('/billing_projects/{billing_project}/close')
-@monitor_endpoint
+@monitor_endpoint()
 @check_csrf_token
 @web_authenticated_developers_only(redirect=False)
 async def post_close_billing_projects(request, userdata):  # pylint: disable=unused-argument
@@ -1760,7 +1760,7 @@ async def post_close_billing_projects(request, userdata):  # pylint: disable=unu
 
 
 @routes.post('/api/v1alpha/billing_projects/{billing_project}/close')
-@monitor_endpoint
+@monitor_endpoint()
 @rest_authenticated_developers_or_auth_only
 async def api_close_billing_projects(request, userdata):  # pylint: disable=unused-argument
     db: Database = request.app['db']
@@ -1791,7 +1791,7 @@ async def _reopen_billing_project(db, billing_project):
 
 
 @routes.post('/billing_projects/{billing_project}/reopen')
-@monitor_endpoint
+@monitor_endpoint()
 @check_csrf_token
 @web_authenticated_developers_only(redirect=False)
 async def post_reopen_billing_projects(request, userdata):  # pylint: disable=unused-argument
@@ -1806,7 +1806,7 @@ async def post_reopen_billing_projects(request, userdata):  # pylint: disable=un
 
 
 @routes.post('/api/v1alpha/billing_projects/{billing_project}/reopen')
-@monitor_endpoint
+@monitor_endpoint()
 @rest_authenticated_developers_or_auth_only
 async def api_reopen_billing_projects(request, userdata):  # pylint: disable=unused-argument
     db: Database = request.app['db']
@@ -1836,7 +1836,7 @@ async def _delete_billing_project(db, billing_project):
 
 
 @routes.post('/api/v1alpha/billing_projects/{billing_project}/delete')
-@monitor_endpoint
+@monitor_endpoint()
 @rest_authenticated_developers_or_auth_only
 async def api_delete_billing_projects(request, userdata):  # pylint: disable=unused-argument
     db: Database = request.app['db']
@@ -1848,6 +1848,7 @@ async def api_delete_billing_projects(request, userdata):  # pylint: disable=unu
 
 @routes.get('')
 @routes.get('/')
+@monitor_endpoint()
 @web_authenticated_users_only()
 async def index(request, userdata):  # pylint: disable=unused-argument
     location = request.app.router['batches'].url_for()
