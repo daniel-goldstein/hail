@@ -45,6 +45,7 @@ the string. Therefore, we get 'x = 6' as the resulting string.
     >>> print(f'x = {x + 1}')
     x = 6
 
+{% raw %}
 To use an f-string and output a single curly brace in the output string, escape the curly
 brace by duplicating the character. For example, `{` becomes `{{` in the string definition,
 but will print as `{`. Likewise, `}` becomes `}}`, but will print as `}`.
@@ -54,6 +55,7 @@ but will print as `{`. Likewise, `}` becomes `}}`, but will print as `}`.
     >>> x = 5
     >>> print(f'x = {{x + 1}} plus {x}')
     x = {x + 1} plus 5
+{% endraw %}
 
 To learn more about f-strings, check out this `tutorial <https://www.datacamp.com/community/tutorials/f-string-formatting-in-python>`_.
 
