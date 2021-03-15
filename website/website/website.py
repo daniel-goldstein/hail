@@ -49,8 +49,7 @@ STATIC_DOCS_PATHS = ['0.2/_static',
                      '0.2/_sources',
                      'batch/_static',
                      'batch/_images',
-                     'batch/_sources',
-                     'batch/tutorial.html']
+                     'batch/_sources']
 FQ_STATIC_DOCS_PATHS: Set[str] = set()
 
 
