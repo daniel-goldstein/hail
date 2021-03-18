@@ -35,14 +35,15 @@ hail-ubuntu-stmp: hail-ubuntu/Dockerfile hail-ubuntu/hail-pip-install hail-ubunt
 base: base-stmp
 
 base-stmp: hail-ubuntu-stmp Dockerfile.base core-site.xml requirements.txt ../pylintrc ../setup.cfg
-	-docker pull $(BASE_LATEST)
-	python3 ../ci/jinja2_render.py '{"hail_ubuntu_image":{"image":"hail-ubuntu"}}' Dockerfile.base Dockerfile.base.out
+	python3 ../ci/jinja2_render.py '{"hail_ubuntu_image":{"image":"gcr.io/hail-vdc/hail-ubuntu"}}' Dockerfile.base Dockerfile.base.out
 	[ "$(shell bash stat-permissions.sh Dockerfile.base)" = "644" ]
 	[ "$(shell bash stat-permissions.sh core-site.xml)" = "644" ]
 	[ "$(shell bash stat-permissions.sh requirements.txt)" = "644" ]
 	[ "$(shell bash stat-permissions.sh ../pylintrc)" = "644" ]
 	[ "$(shell bash stat-permissions.sh ../setup.cfg)" = "644" ]
-	docker build -t base -f Dockerfile.base.out --cache-from base,$(BASE_LATEST),hail-ubuntu ..
+	tar -C .. -s '|docker/Dockerfile.base.out|Dockerfile|' -cvzf base.tar.gz \
+		docker/Dockerfile.base.out docker/requirements.txt docker/core-site.xml pylintrc setup.cfg
+	gcloud builds submit base.tar.gz -t BASE_LATEST
 	touch base-stmp
 
 .PHONY: service-base
