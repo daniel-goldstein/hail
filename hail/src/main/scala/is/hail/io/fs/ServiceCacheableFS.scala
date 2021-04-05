@@ -3,9 +3,11 @@ package is.hail.io.fs
 import java.io.InputStream
 
 import is.hail.services.memory_client.MemoryClient
+import org.apache.log4j.{LogManager, Logger}
 import is.hail.utils._
 
 trait ServiceCacheableFS extends FS {
+  lazy val log: Logger = LogManager.getLogger("ServiceCacheableFS")
 
   def sessionID: String
 
@@ -18,7 +20,9 @@ trait ServiceCacheableFS extends FS {
   }
 
   def openCachedNoCompression(filename: String): SeekableDataInputStream = {
+    log.info("Checking to see if I should get cached thing")
     getEtagOrNone(filename).flatMap { etag =>
+      log.info("Getting cached thing")
       client.open(filename, etag).map(new WrappedSeekableDataInputStream(_))
     }.getOrElse(openNoCompression(filename))
   }
