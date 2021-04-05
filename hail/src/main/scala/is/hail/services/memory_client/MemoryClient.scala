@@ -31,19 +31,18 @@ class MemoryClient(deployConfig: DeployConfig, tokens: Tokens) {
 
     private[this] val baseUrl = deployConfig.baseUrl("memory")
 
-  def open(path: String, etag: Option[String] = None): Option[MemorySeekableInputStream] =
+  def open(path: String): Option[MemorySeekableInputStream] =
     try {
-      Some(new MemorySeekableInputStream(requester, s"$baseUrl/api/v1alpha/objects", path, etag))
+      Some(new MemorySeekableInputStream(requester, s"$baseUrl/api/v1alpha/objects", path))
     } catch { case e: ClientResponseException if e.status == 404 =>
       None
     }
 
 }
 
-class MemorySeekableInputStream(requester: Requester, objectEndpoint: String, fileURI: String, etag: Option[String]) extends InputStream with Seekable {
-  private[this] var uri = new URIBuilder(objectEndpoint)
+class MemorySeekableInputStream(requester: Requester, objectEndpoint: String, fileURI: String) extends InputStream with Seekable {
+  private[this] val uri = new URIBuilder(objectEndpoint)
     .addParameter("q", fileURI)
-  etag.flatMap(tag => uri = uri.addParameter("etag", tag))
 
   private[this] val req = new HttpGet(uri.build())
 

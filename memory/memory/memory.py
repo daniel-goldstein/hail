@@ -36,15 +36,13 @@ async def healthcheck(request):  # pylint: disable=unused-argument
 @rest_authenticated_users_only
 async def get_object(request, userdata):
     filename = request.query.get('q')
-    etag = request.query.get('etag') if 'etag' in request.query else None
     userinfo = await get_or_add_user(request.app, userdata)
     username = userdata['username']
     log.info(f'memory: request for object {filename} from user {username}')
-    result = await get_file_or_none(request.app, username, userinfo, filename, etag)
+    result = await get_file_or_none(request.app, username, userinfo, filename)
     if result is None:
         raise web.HTTPNotFound()
-    etag, body = result
-    return web.Response(headers={'ETag': etag}, body=body)
+    return web.Response(body=result)
 
 
 async def get_or_add_user(app, userdata):
@@ -66,16 +64,16 @@ def make_redis_key(username, filepath):
     return f'{ username }_{ filepath }'
 
 
-async def get_file_or_none(app, username, userinfo, filepath, etag):
+async def get_file_or_none(app, username, userinfo, filepath):
     file_key = make_redis_key(username, filepath)
     fs = userinfo['fs']
 
-    cached_etag, result = await app['redis_pool'].execute('HMGET', file_key, 'etag', 'body')
-    if cached_etag is not None and (etag is None or cached_etag.decode('ascii') == etag):
-        log.info(f"memory: Retrieved file {filepath} for user {username} with etag'{etag}'")
-        return cached_etag.decode('ascii'), result
+    result = await app['redis_pool'].execute('HMGET', file_key)
+    if result is not None:
+        log.info(f"memory: Retrieved file {filepath} for user {username}")
+        return result
 
-    log.info(f"memory: Couldn't retrieve file {filepath} for user {username}: current version not in cache (requested '{etag}', found '{cached_etag}').")
+    log.info(f"memory: Couldn't retrieve file {filepath} for user {username}: current version not in cache")
     if file_key not in app['files_in_progress']:
         try:
             log.info(f"memory: Loading {filepath} to cache for user {username}")
@@ -90,10 +88,9 @@ async def load_file(redis, files, file_key, fs, filepath):
     try:
         log.info(f"memory: {file_key}: reading.")
         data = await fs.read_binary_gs_file(filepath)
-        etag = await fs.get_etag(filepath)
-        log.info(f"memory: {file_key}: read {filepath} with etag {etag}")
-        await redis.execute('HMSET', file_key, 'etag', etag.encode('ascii'), 'body', data)
-        log.info(f"memory: {file_key}: stored {filepath} ('{etag}').")
+        log.info(f"memory: {file_key}: read {filepath}")
+        await redis.execute('HMSET', file_key, 'body', data)
+        log.info(f"memory: {file_key}: stored {filepath}")
     finally:
         files.remove(file_key)
 
