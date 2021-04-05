@@ -64,13 +64,10 @@ object Worker {
     timer.start("readInputs")
 
     val fs = retryTransientErrors {
-      log.info("Creating filesystem")
       using(new FileInputStream(s"$scratchDir/gsa-key/key.json")) { is =>
         new GoogleStorageFS(IOUtils.toString(is, Charset.defaultCharset().toString())).asCacheable()
       }
     }
-
-    log.info(s"FileSystem that we ended up with: ${fs.getClass()}")
 
     val f = retryTransientErrors {
       using(new ObjectInputStream(fs.openCachedNoCompression(s"$root/f"))) { is =>
