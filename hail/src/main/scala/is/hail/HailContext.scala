@@ -147,7 +147,7 @@ object HailContext {
 
     theContext = new HailContext(backend, logFile, branchingFactor, optimizerIterations)
 
-    info(s"Running Hail version ${ theContext.version }")
+    log.info(s"Running Hail version ${ theContext.version }")
 
     // needs to be after `theContext` is set, since this creates broadcasts
     ReferenceGenome.addDefaultReferences()
@@ -444,7 +444,7 @@ class HailContext private(
 
   def grepPrint(fs: FS, regex: String, files: Seq[String], maxLines: Int) {
     fileAndLineCounts(fs, regex, files, maxLines).foreach { case (file, lines) =>
-      info(s"$file: ${ lines.length } ${ plural(lines.length, "match", "matches") }:")
+      log.info(s"$file: ${ lines.length } ${ plural(lines.length, "match", "matches") }:")
       lines.map(_.value).foreach { line =>
         val (screen, logged) = line.truncatable().strings
         log.info("\t" + logged)
