@@ -68,7 +68,7 @@ async def get_file_or_none(app, username, userinfo, filepath):
     file_key = make_redis_key(username, filepath)
     fs = userinfo['fs']
 
-    result = await app['redis_pool'].execute('HMGET', file_key)
+    result = await app['redis_pool'].execute('HMGET', file_key, 'body')
     if result is not None:
         log.info(f"memory: Retrieved file {filepath} for user {username}")
         return result
