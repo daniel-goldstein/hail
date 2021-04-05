@@ -9,8 +9,6 @@ trait ServiceCacheableFS extends FS {
 
   def sessionID: String
 
-  def getEtagOrNone(filename: String): Option[String]
-
   @transient private lazy val client: MemoryClient = {
     if (sessionID != null)
       MemoryClient.fromSessionID(sessionID)
@@ -18,9 +16,7 @@ trait ServiceCacheableFS extends FS {
   }
 
   def openCachedNoCompression(filename: String): SeekableDataInputStream = {
-    getEtagOrNone(filename).flatMap { etag =>
-      client.open(filename, etag).map(new WrappedSeekableDataInputStream(_))
-    }.getOrElse(openNoCompression(filename))
+    client.open(filename).map(new WrappedSeekableDataInputStream(_))
   }
 
   override def open(path: String, codec: CompressionCodec): InputStream =

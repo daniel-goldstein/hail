@@ -36,7 +36,7 @@ async def healthcheck(request):  # pylint: disable=unused-argument
 @rest_authenticated_users_only
 async def get_object(request, userdata):
     filename = request.query.get('q')
-    etag = request.query.get('etag')
+    etag = request.query.get('etag') if 'etag' in request.query else None
     userinfo = await get_or_add_user(request.app, userdata)
     username = userdata['username']
     log.info(f'memory: request for object {filename} from user {username}')
@@ -71,7 +71,7 @@ async def get_file_or_none(app, username, userinfo, filepath, etag):
     fs = userinfo['fs']
 
     cached_etag, result = await app['redis_pool'].execute('HMGET', file_key, 'etag', 'body')
-    if cached_etag is not None and cached_etag.decode('ascii') == etag:
+    if cached_etag is not None and (etag is None or cached_etag.decode('ascii') == etag):
         log.info(f"memory: Retrieved file {filepath} for user {username} with etag'{etag}'")
         return cached_etag.decode('ascii'), result
 
