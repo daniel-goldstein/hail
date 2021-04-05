@@ -39,10 +39,10 @@ async def get_object(request, userdata):
     userinfo = await get_or_add_user(request.app, userdata)
     username = userdata['username']
     log.info(f'memory: request for object {filename} from user {username}')
-    result = await get_file_or_none(request.app, username, userinfo, filename)
-    if result is None:
+    maybe_file = await get_file_or_none(request.app, username, userinfo, filename)
+    if maybe_file is None:
         raise web.HTTPNotFound()
-    return web.Response(body=result)
+    return web.Response(body=maybe_file)
 
 
 async def get_or_add_user(app, userdata):
@@ -67,11 +67,12 @@ def make_redis_key(username, filepath):
 async def get_file_or_none(app, username, userinfo, filepath):
     file_key = make_redis_key(username, filepath)
     fs = userinfo['fs']
+    redis_pool: aioredis.ConnectionsPool = app['redis_pool']
 
-    result = await app['redis_pool'].execute('HMGET', file_key, 'body')
+    result = await redis_pool.execute('HMGET', file_key, 'body')
     if result is not None:
         log.info(f"memory: Retrieved file {filepath} for user {username}")
-        return result
+        return result[0]
 
     log.info(f"memory: Couldn't retrieve file {filepath} for user {username}: current version not in cache")
     if file_key not in app['files_in_progress']:
@@ -103,7 +104,7 @@ async def on_startup(app):
     kube.config.load_incluster_config()
     k8s_client = kube.client.CoreV1Api()
     app['k8s_client'] = k8s_client
-    app['redis_pool'] = await aioredis.create_pool(socket)
+    app['redis_pool']: aioredis.ConnectionsPool = await aioredis.create_pool(socket)
 
 
 async def on_cleanup(app):
