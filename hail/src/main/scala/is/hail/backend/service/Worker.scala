@@ -73,13 +73,13 @@ object Worker {
     log.info(s"FileSystem that we ended up with: ${fs.getClass()}")
 
     val f = retryTransientErrors {
-      using(new ObjectInputStream(fs.openNoCompression(s"$root/f"))) { is =>
+      using(new ObjectInputStream(fs.openCachedNoCompression(s"$root/f"))) { is =>
         is.readObject().asInstanceOf[(Array[Byte], HailTaskContext) => Array[Byte]]
       }
     }
 
     val context = retryTransientErrors {
-      using(fs.openNoCompression(s"$root/contexts")) { is =>
+      using(fs.openCachedNoCompression(s"$root/contexts")) { is =>
         is.seek(i * 12)
         val offset = is.readLong()
         val length = is.readInt()
