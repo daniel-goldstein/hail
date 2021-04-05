@@ -69,10 +69,10 @@ async def get_file_or_none(app, username, userinfo, filepath):
     fs = userinfo['fs']
     redis_pool: aioredis.ConnectionsPool = app['redis_pool']
 
-    result = await redis_pool.execute('HMGET', file_key, 'body')
-    if result is not None:
+    body, = await redis_pool.execute('HMGET', file_key, 'body')
+    if body is not None:
         log.info(f"memory: Retrieved file {filepath} for user {username}")
-        return result[0]
+        return body
 
     log.info(f"memory: Couldn't retrieve file {filepath} for user {username}: current version not in cache")
     if file_key not in app['files_in_progress']:
