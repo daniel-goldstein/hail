@@ -16,7 +16,7 @@ trait ServiceCacheableFS extends FS {
   }
 
   def openCachedNoCompression(filename: String): SeekableDataInputStream = {
-    client.open(filename).map(new WrappedSeekableDataInputStream(_))
+    client.open(filename).map(new WrappedSeekableDataInputStream(_)).getOrElse(openNoCompression(filename))
   }
 
   override def open(path: String, codec: CompressionCodec): InputStream =
