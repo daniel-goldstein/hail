@@ -12,6 +12,8 @@ import org.apache.commons.io.IOUtils
 import org.apache.log4j.Logger
 
 import scala.collection.mutable
+import scala.concurrent.duration.{Duration, MILLISECONDS}
+import scala.concurrent.{Future, Await}
 
 class ServiceTaskContext(val partitionId: Int) extends HailTaskContext {
   override type BackendType = ServiceBackend
@@ -69,23 +71,33 @@ object Worker {
       }
     }
 
-    val f = retryTransientErrors {
-      using(new ObjectInputStream(fs.openCachedNoCompression(s"$root/f"))) { is =>
-        is.readObject().asInstanceOf[(Array[Byte], HailTaskContext) => Array[Byte]]
+    val fileRetrievalExecutionContext = scala.concurrent.ExecutionContext.global
+    val fFuture = Future {
+      retryTransientErrors {
+        using(new ObjectInputStream(fs.openCachedNoCompression(s"$root/f"))) { is =>
+          is.readObject().asInstanceOf[(Array[Byte], HailTaskContext) => Array[Byte]]
+        }
       }
-    }
+    }(fileRetrievalExecutionContext)
 
-    val context = retryTransientErrors {
-      using(fs.openCachedNoCompression(s"$root/contexts")) { is =>
-        is.seek(i * 12)
-        val offset = is.readLong()
-        val length = is.readInt()
-        is.seek(offset)
-        val context = new Array[Byte](length)
-        is.readFully(context)
-        context
+    val contextFuture = Future {
+      retryTransientErrors {
+        using(fs.openCachedNoCompression(s"$root/contexts")) { is =>
+          is.seek(i * 12)
+          val offset = is.readLong()
+          val length = is.readInt()
+          is.seek(offset)
+          val context = new Array[Byte](length)
+          is.readFully(context)
+          context
+        }
       }
-    }
+    }(fileRetrievalExecutionContext)
+
+    // retryTransientErrors handles timeout and exception throwing logic
+    val f = Await.result(fFuture, Duration.Inf)
+    val context = Await.result(contextFuture, Duration.Inf)
+
     timer.end("readInputs")
     timer.start("executeFunction")
 
