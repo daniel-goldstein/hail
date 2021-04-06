@@ -14,6 +14,8 @@ import is.hail.HailContext
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 
+import org.apache.log4j.Logger
+
 object GoogleStorageFS {
   def containsWildcard(path: String): Boolean = {
     var i = 0
@@ -98,6 +100,8 @@ class GoogleStorageFileStatus(path: String, modificationTime: java.lang.Long, si
 class GoogleStorageFS(serviceAccountKey: String) extends FS {
   import GoogleStorageFS._
 
+  private val log = Logger.getLogger(getClass.getName())
+
   @transient private lazy val storage: Storage =
     StorageOptions.newBuilder()
       .setCredentials(
@@ -116,6 +120,7 @@ class GoogleStorageFS(serviceAccountKey: String) extends FS {
   def asCacheable(sessionID: String): CacheableGoogleStorageFS = new CacheableGoogleStorageFS(serviceAccountKey, sessionID)
 
   def openNoCompression(filename: String): SeekableDataInputStream = {
+    log.info("Reading from google storage")
     val (bucket, path) = getBucketPath(filename)
 
     val is: SeekableInputStream = new InputStream with Seekable {
