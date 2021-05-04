@@ -1,12 +1,11 @@
-
 import hail as hl
 
 ht_samples = hl.read_table('gs://hail-datasets-hail-data/1000_Genomes_phase3_samples.ht')
 ht_relationships = hl.read_table('gs://hail-datasets-hail-data/1000_Genomes_phase3_sample_relationships.ht')
 
 mt = hl.import_vcf(
-    'gs://hail-datasets-raw-data/1000_Genomes/1000_Genomes_phase3_chrY_GRCh37.vcf.bgz',
-    reference_genome='GRCh37')
+    'gs://hail-datasets-raw-data/1000_Genomes/1000_Genomes_phase3_chrY_GRCh37.vcf.bgz', reference_genome='GRCh37'
+)
 
 mt = mt.annotate_cols(**ht_samples[mt.s])
 mt = mt.annotate_cols(**ht_relationships[mt.s])
@@ -28,12 +27,16 @@ mt_split = mt_split.annotate_rows(
         AFR_AF=mt_split.info.AFR_AF[mt_split.a_index - 1],
         AMR_AF=mt_split.info.AMR_AF[mt_split.a_index - 1],
         SAS_AF=mt_split.info.SAS_AF[mt_split.a_index - 1],
-        VT=(hl.case()
-           .when((mt_split.alleles[0].length() == 1) & (mt_split.alleles[1].length() == 1), 'SNP')
-           .when(mt_split.alleles[0].matches('<CN*>') | mt_split.alleles[1].matches('<CN*>'), 'SV')
-           .default('INDEL')),
+        VT=(
+            hl.case()
+            .when((mt_split.alleles[0].length() == 1) & (mt_split.alleles[1].length() == 1), 'SNP')
+            .when(mt_split.alleles[0].matches('<CN*>') | mt_split.alleles[1].matches('<CN*>'), 'SV')
+            .default('INDEL')
+        ),
         EX_TARGET=mt_split.info.EX_TARGET,
-        MULTI_ALLELIC=mt_split.info.MULTI_ALLELIC))
+        MULTI_ALLELIC=mt_split.info.MULTI_ALLELIC,
+    )
+)
 
 n_rows, n_cols = mt_split.count()
 n_partitions = mt_split.n_partitions()
@@ -47,7 +50,9 @@ mt_split = mt_split.annotate_globals(
         reference_genome='GRCh37',
         n_rows=n_rows,
         n_cols=n_cols,
-        n_partitions=n_partitions))
+        n_partitions=n_partitions,
+    )
+)
 
 mt_split.write('gs://hail-datasets-hail-data/1000_Genomes_phase3_chrY.GRCh37.mt', overwrite=True)
 

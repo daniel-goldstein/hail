@@ -19,7 +19,7 @@ async def main():
         worker_disk_size_gb = 10
         max_instances = 3
         pool_size = 2
-        
+
     db = Database()
     await db.async_init()
 
@@ -35,8 +35,16 @@ INSERT INTO globals (
   worker_cores, worker_type, worker_disk_size_gb, max_instances, pool_size)
 VALUES (%s, %s, %s, %s, %s, %s, %s);
 ''',
-        (instance_id, secrets.token_urlsafe(32),
-         worker_cores, worker_type, worker_disk_size_gb, max_instances, pool_size))
+        (
+            instance_id,
+            secrets.token_urlsafe(32),
+            worker_cores,
+            worker_type,
+            worker_disk_size_gb,
+            max_instances,
+            pool_size,
+        ),
+    )
 
 
 loop = asyncio.get_event_loop()

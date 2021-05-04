@@ -1,4 +1,3 @@
-
 import hail as hl
 
 mt = hl.read_matrix_table('gs://hail-datasets/hail-data/gtex_v7_exon_read_counts.GRCh37.mt')

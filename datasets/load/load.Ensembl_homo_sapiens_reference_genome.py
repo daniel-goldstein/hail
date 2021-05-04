@@ -1,4 +1,3 @@
-
 import hail as hl
 import argparse
 
@@ -27,11 +26,11 @@ ht = ht.select('reference_allele')
 n_rows = ht.count()
 n_partitions = ht.n_partitions()
 
-ht = ht.annotate_globals(metadata=hl.struct(name=name,
-                                            version=f'release_{version}',
-                                            reference_genome=build,
-                                            n_rows=n_rows,
-                                            n_partitions=n_partitions))
+ht = ht.annotate_globals(
+    metadata=hl.struct(
+        name=name, version=f'release_{version}', reference_genome=build, n_rows=n_rows, n_partitions=n_partitions
+    )
+)
 
 ht.write(f'{hail_data_root}/{name}.release_{version}.{build}.ht', overwrite=True)
 ht = hl.read_table(f'{hail_data_root}/{name}.release_{version}.{build}.ht')

@@ -1,4 +1,3 @@
-
 import hail as hl
 import argparse
 
@@ -17,9 +16,18 @@ build = args.b
 ht = hl.import_table(f'{raw_data_root}/Ensembl_homo_sapiens_low_complexity_regions_release{version}_{build}.tsv.bgz')
 
 if build == 'GRCh37':
-    ht = ht.annotate(interval=hl.locus_interval(ht['chromosome'], hl.int(ht['start']), hl.int(ht['end']), reference_genome='GRCh37'))
+    ht = ht.annotate(
+        interval=hl.locus_interval(ht['chromosome'], hl.int(ht['start']), hl.int(ht['end']), reference_genome='GRCh37')
+    )
 else:
-    ht = ht.annotate(interval=hl.locus_interval('chr' + ht['chromosome'].replace('MT', 'M'), hl.int(ht['start']), hl.int(ht['end']), reference_genome='GRCh38'))
+    ht = ht.annotate(
+        interval=hl.locus_interval(
+            'chr' + ht['chromosome'].replace('MT', 'M'),
+            hl.int(ht['start']),
+            hl.int(ht['end']),
+            reference_genome='GRCh38',
+        )
+    )
 
 ht = ht.key_by('interval')
 ht = ht.select()
@@ -27,11 +35,11 @@ ht = ht.select()
 n_rows = ht.count()
 n_partitions = ht.n_partitions()
 
-ht = ht.annotate_globals(metadata=hl.struct(name=name,
-                                            version=f'release_{version}',
-                                            reference_genome=build,
-                                            n_rows=n_rows,
-                                            n_partitions=n_partitions))
+ht = ht.annotate_globals(
+    metadata=hl.struct(
+        name=name, version=f'release_{version}', reference_genome=build, n_rows=n_rows, n_partitions=n_partitions
+    )
+)
 
 path = f'{hail_data_root}/{name}.release_{version}.{build}.ht'
 ht.write(path, overwrite=True)

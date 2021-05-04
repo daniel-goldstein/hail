@@ -1,4 +1,3 @@
-
 import hail as hl
 
 ht_samples = hl.read_table('gs://hail-datasets-hail-data/1000_Genomes_phase3_samples.ht')
@@ -7,7 +6,8 @@ ht_relationships = hl.read_table('gs://hail-datasets-hail-data/1000_Genomes_phas
 mt = hl.import_vcf(
     'gs://hail-datasets-raw-data/1000_Genomes/1000_Genomes_phase3_chrY_GRCh38.vcf.bgz',
     reference_genome='GRCh38',
-    contig_recoding={'Y': 'chrY'})
+    contig_recoding={'Y': 'chrY'},
+)
 
 mt = mt.annotate_cols(**ht_samples[mt.s])
 mt = mt.annotate_cols(**ht_relationships[mt.s])
@@ -29,10 +29,12 @@ mt_split = mt_split.annotate_rows(
         AFR_AF=mt_split.info.AFR_AF[mt_split.a_index - 1],
         AMR_AF=mt_split.info.AMR_AF[mt_split.a_index - 1],
         SAS_AF=mt_split.info.SAS_AF[mt_split.a_index - 1],
-        VT=(hl.case()
-           .when((mt_split.alleles[0].length() == 1) & (mt_split.alleles[1].length() == 1), 'SNP')
-           .when(mt_split.alleles[0].matches('<CN*>') | mt_split.alleles[1].matches('<CN*>'), 'SV')
-           .default('INDEL')),
+        VT=(
+            hl.case()
+            .when((mt_split.alleles[0].length() == 1) & (mt_split.alleles[1].length() == 1), 'SNP')
+            .when(mt_split.alleles[0].matches('<CN*>') | mt_split.alleles[1].matches('<CN*>'), 'SV')
+            .default('INDEL')
+        ),
         EX_TARGET=mt_split.info.EX_TARGET,
         MULTI_ALLELIC=mt_split.info.MULTI_ALLELIC,
         STRAND_FLIP=mt_split.info.STRAND_FLIP,
@@ -45,7 +47,9 @@ mt_split = mt_split.annotate_rows(
         GRCH37_REF=mt_split.info.GRCH37_REF,
         ALLELE_TRANSFORM=mt_split.info.ALLELE_TRANSFORM,
         REF_NEW_ALLELE=mt_split.info.REF_NEW_ALLELE,
-        CHROM_CHANGE_BETWEEN_ASSEMBLIES=mt_split.info.CHROM_CHANGE_BETWEEN_ASSEMBLIES[mt_split.a_index - 1]))
+        CHROM_CHANGE_BETWEEN_ASSEMBLIES=mt_split.info.CHROM_CHANGE_BETWEEN_ASSEMBLIES[mt_split.a_index - 1],
+    )
+)
 
 n_rows, n_cols = mt_split.count()
 n_partitions = mt_split.n_partitions()
@@ -59,11 +63,12 @@ mt_split = mt_split.annotate_globals(
         reference_genome='GRCh38',
         n_rows=n_rows,
         n_cols=n_cols,
-        n_partitions=n_partitions))
+        n_partitions=n_partitions,
+    )
+)
 
 mt_split.write('gs://hail-datasets-hail-data/1000_Genomes_phase3_chrY.GRCh38.mt', overwrite=True)
 
 mt = hl.read_matrix_table('gs://hail-datasets-hail-data/1000_Genomes_phase3_chrY.GRCh38.mt')
 mt.describe()
 print(mt.count())
-

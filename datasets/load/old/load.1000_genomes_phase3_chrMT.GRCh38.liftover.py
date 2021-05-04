@@ -1,4 +1,3 @@
-
 import hail as hl
 
 mt = hl.read_matrix_table('gs://hail-datasets/hail-data/1000_genomes_phase3_chrMT.GRCh37.mt')

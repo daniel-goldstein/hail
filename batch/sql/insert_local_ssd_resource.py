@@ -10,17 +10,19 @@ async def main():
     # https://cloud.google.com/compute/disks-image-pricing#persistentdisk
     rates = [
         ('disk/local-ssd/1', rate_gib_month_to_mib_msec(0.048)),
-        ('disk/pd-ssd/1', rate_gib_month_to_mib_msec(0.17))
+        ('disk/pd-ssd/1', rate_gib_month_to_mib_msec(0.17)),
     ]
 
     db = Database()
     await db.async_init()
 
-    await db.execute_many('''
+    await db.execute_many(
+        '''
 INSERT INTO `resources` (resource, rate)
 VALUES (%s, %s)
 ''',
-                          rates)
+        rates,
+    )
 
     scope = os.environ['HAIL_SCOPE']
 
@@ -36,7 +38,8 @@ VALUES (%s, %s)
         '''
 UPDATE globals SET worker_disk_size_gb = %s;
 ''',
-        (worker_disk_size_gb,))
+        (worker_disk_size_gb,),
+    )
 
 
 loop = asyncio.get_event_loop()

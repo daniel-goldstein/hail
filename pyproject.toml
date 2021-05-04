@@ -1,0 +1,4 @@
+[tool.black]
+line-length = 120
+skip-string-normalization = true
+exclude = 'hail|\.mypy|load\.GTEx\.py|load\.LDSC_baseline_v1\.1_bed_files\.py'

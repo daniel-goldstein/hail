@@ -1,4 +1,3 @@
-
 import hail as hl
 
 ht = hl.read_table('gs://hail-datasets/hail-data/gerp_scores.GRCh37.liftover.ht')

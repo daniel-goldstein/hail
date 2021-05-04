@@ -18,12 +18,12 @@ async def main():
     async def insert_and_update(tx):
         await tx.just_execute('ALTER TABLE globals ADD COLUMN standing_worker_cores BIGINT;')
 
-        await tx.execute_update('UPDATE globals SET standing_worker_cores = %s',
-                                (standing_worker_cores,))
+        await tx.execute_update('UPDATE globals SET standing_worker_cores = %s', (standing_worker_cores,))
 
         await tx.just_execute('ALTER TABLE globals MODIFY COLUMN standing_worker_cores BIGINT NOT NULL;')
 
     await insert_and_update()  # pylint: disable=no-value-for-parameter
+
 
 loop = asyncio.get_event_loop()
 loop.run_until_complete(main())

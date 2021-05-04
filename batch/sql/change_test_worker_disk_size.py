@@ -18,7 +18,8 @@ async def main():
         '''
 UPDATE globals SET worker_disk_size_gb = %s;
 ''',
-        (worker_disk_size_gb,))
+        (worker_disk_size_gb,),
+    )
 
 
 loop = asyncio.get_event_loop()

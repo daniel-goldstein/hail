@@ -19,7 +19,8 @@ async def main():
         '''
 UPDATE globals SET max_instances = %s, pool_size = %s;
 ''',
-        (max_instances, pool_size))
+        (max_instances, pool_size),
+    )
 
 
 loop = asyncio.get_event_loop()

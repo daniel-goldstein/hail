@@ -1,4 +1,3 @@
-
 import hail as hl
 import argparse
 
@@ -12,12 +11,9 @@ args = parser.parse_args()
 name = 'DANN'
 build = args.b
 
-ht = hl.import_table(f'{raw_data_root}/DANN_GRCh37.tsv.bgz',
-                     types={'position': hl.tint,
-                            'DANN_score': hl.tfloat})
+ht = hl.import_table(f'{raw_data_root}/DANN_GRCh37.tsv.bgz', types={'position': hl.tint, 'DANN_score': hl.tfloat})
 
-ht = ht.annotate(locus=hl.locus(ht['chromosome'], ht['position'], 'GRCh37'),
-                 alleles=hl.array([ht['ref'], ht['alt']]))
+ht = ht.annotate(locus=hl.locus(ht['chromosome'], ht['position'], 'GRCh37'), alleles=hl.array([ht['ref'], ht['alt']]))
 
 if build == 'GRCh38':
     b37 = hl.get_reference('GRCh37')
@@ -32,11 +28,11 @@ ht = ht.key_by('locus', 'alleles')
 ht = ht.rename({'DANN_score': 'score'})
 ht = ht.select('score')
 
-ht = ht.annotate_globals(metadata=hl.struct(name=name,
-                                            version=hl.null(hl.tstr),
-                                            reference_genome=build,
-                                            n_rows=n_rows,
-                                            n_partitions=n_partitions))
+ht = ht.annotate_globals(
+    metadata=hl.struct(
+        name=name, version=hl.null(hl.tstr), reference_genome=build, n_rows=n_rows, n_partitions=n_partitions
+    )
+)
 
 ht.write(f'{hail_data_root}/DANN.{build}.ht', overwrite=True)
 ht = hl.read_table(f'{hail_data_root}/DANN.{build}.ht')
