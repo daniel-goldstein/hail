@@ -1,0 +1,67 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: influxdb
+  labels:
+    app: influxdb
+spec:
+  selector:
+    matchLabels:
+      app: influxdb
+  serviceName: influxdb
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: influxdb
+    spec:
+      containers:
+        - name: influxdb
+          image: influxdb:2.0.4
+          ports:
+            - containerPort: 8086
+              name: influxdb
+          volumeMounts:
+            - mountPath: /root/.influxdbv2
+              name: data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10G
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: influxdb-config
+data:
+  grafana.ini: |
+    [server]
+{% if deploy %}
+    domain = grafana.hail.is
+{% else %}
+    domain = internal.hail.is
+    root_url = %(protocol)s://%(domain)/{{ default_ns.name }}/grafana/
+    serve_from_sub_path = true
+{% endif %}
+---
+apiVersion: v1
+kind: ConfigMap
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: influxdb
+spec:
+    ports:
+      - name: influxdb
+        port: 443
+        targetPort: 443
+    selector:
+        app: influxdb
+    type: ClusterIP
