@@ -20,6 +20,16 @@ apt-get install -y \
     jq \
     software-properties-common
 
+apt-get install -y make git gcc build-essential pkgconf libtool \
+   libsystemd-dev libcap-dev libseccomp-dev \
+   go-md2man libtool autoconf automake
+git clone --depth 1 --branch 0.19.1 https://github.com/containers/crun.git && \
+   cd crun && \
+   ./autogen.sh && \
+   ./configure && \
+   make && \
+   make install
+
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
 
 add-apt-repository \

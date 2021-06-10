@@ -71,7 +71,7 @@ async def create_instance(
                 'boot': True,
                 'autoDelete': True,
                 'initializeParams': {
-                    'sourceImage': f'projects/{PROJECT}/global/images/batch-worker-12',
+                    'sourceImage': f'projects/{PROJECT}/global/images/batch-worker-3000',
                     'diskType': f'projects/{PROJECT}/zones/{zone}/diskTypes/pd-ssd',
                     'diskSizeGb': str(boot_disk_size_gb),
                 },
