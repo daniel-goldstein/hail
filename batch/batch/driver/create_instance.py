@@ -229,47 +229,157 @@ sudo service google-fluentd restart
 docker pull $BATCH_WORKER_IMAGE || \
 (echo 'pull failed, retrying' && sleep 15 && docker pull $BATCH_WORKER_IMAGE)
 
-# So here I go it's my shot.
-docker run \
--e CORES=$CORES \
--e NAME=$NAME \
--e NAMESPACE=$NAMESPACE \
--e ACTIVATION_TOKEN=$ACTIVATION_TOKEN \
--e IP_ADDRESS=$IP_ADDRESS \
--e BATCH_LOGS_BUCKET_NAME=$BATCH_LOGS_BUCKET_NAME \
--e INSTANCE_ID=$INSTANCE_ID \
--e PROJECT=$PROJECT \
--e ZONE=$ZONE \
--e DOCKER_PREFIX=$DOCKER_PREFIX \
--e DOCKER_ROOT_IMAGE=$DOCKER_ROOT_IMAGE \
--e WORKER_CONFIG=$WORKER_CONFIG \
--e MAX_IDLE_TIME_MSECS=$MAX_IDLE_TIME_MSECS \
--e WORKER_DATA_DISK_MOUNT=/mnt/disks/$WORKER_DATA_DISK_NAME \
--e BATCH_WORKER_IMAGE=$BATCH_WORKER_IMAGE \
--e UNRESERVED_WORKER_DATA_DISK_SIZE_GB=$UNRESERVED_WORKER_DATA_DISK_SIZE_GB \
--v /var/run/docker.sock:/var/run/docker.sock \
--v /var/run/netns:/var/run/netns:shared \
--v /usr/bin/docker:/usr/bin/docker \
--v /usr/sbin/xfs_quota:/usr/sbin/xfs_quota \
--v /batch:/batch:shared \
--v /logs:/logs \
--v /gcsfuse:/gcsfuse:shared \
--v /etc/netns:/etc/netns \
--v /sys/fs/cgroup:/sys/fs/cgroup \
---mount type=bind,source=/mnt/disks/$WORKER_DATA_DISK_NAME,target=/host \
---mount type=bind,source=/dev,target=/dev,bind-propagation=rshared \
--p 5000:5000 \
---device /dev/fuse \
---device $XFS_DEVICE \
---device /dev \
---privileged \
---cap-add SYS_ADMIN \
---security-opt apparmor:unconfined \
---network host \
-$BATCH_WORKER_IMAGE \
-python3 -u -m batch.worker.worker >worker.log 2>&1
+mkdir -p /worker_bundle/rootfs
+docker export $(docker create $BATCH_WORKER_IMAGE) | tar -C worker_bundle/rootfs -xf -
 
-[ $? -eq 0 ] || tail -n 1000 worker.log
+echo /worker_bundle/config.json <<EOF
+{{
+    "ociVersion": "1.0.1",
+    "root": {{
+        "path": "rootfs",
+        "readonly": false
+    }},
+    "mounts": [
+        {{
+            "source": "/var/run/netns",
+            "destination": "/var/run/netns",
+            "type": "none",
+            "options": ["rbind", "rw", "shared"]
+        }},
+        {{
+            "source": "/etc/netns",
+            "destination": "/etc/netns",
+            "type": "none",
+            "options": ["rbind", "rw", "shared"]
+        }},
+        {{
+            "source": "/usr/bin/xfs_quota",
+            "destination": "/usr/bin/xfs_quota",
+            "type": "none",
+            "options": ["rbind", "rw", "shared"]
+        }},
+        {{
+            "source": "/batch",
+            "destination": "/batch",
+            "type": "none",
+            "options": ["rbind", "rw", "shared"]
+        }},
+        {{
+            "source": "/logs",
+            "destination": "/logs",
+            "type": "none",
+            "options": ["rbind", "rw", "shared"]
+        }},
+        {{
+            "source": "/gcsfuse",
+            "destination": "/gcsfuse",
+            "type": "none",
+            "options": ["rbind", "rw", "shared"]
+        }},
+        {{
+            "source": "/mnt/disks/$WORKER_DATA_DISK_NAME",
+            "destination": "/host",
+            "type": "none",
+            "options": ["bind", "rw", "shared"]
+        }},
+        {{
+            "source": "/dev",
+            "destination": "/dev",
+            "type": "none",
+            "options": ["bind", "rw", "rshared"]
+        }},
+        {{
+            "source": "/sys/fs/cgroup",
+            "destination": "/sys/fs/cgroup",
+            "type": "none",
+            "options": ["rbind", "rw", "shared"]
+        }},
+        {{
+            "source": "proc",
+            "destination": "/proc",
+            "type": "proc",
+            "options": ["nosuid", "noexec", "nodev"]
+        }},
+        {{
+            "source": "tmpfs",
+            "destination": "/dev",
+            "type": "tmpfs",
+            "options": ["nosuid", "strictatime", "mode=755", "size=65536k"]
+        }},
+        {{
+            "source": "sysfs",
+            "destination": "/sys",
+            "type": "sysfs",
+            "options": ["nosuid", "noexec", "nodev", "ro"]
+        }},
+        {{
+            "source": "mqueue",
+            "destination": "/dev/mqueue",
+            "type": "mqueue",
+            "options": ["nosuid", "noexec", "nodev"]
+        }},
+        {{
+            "source": "shm",
+            "destination": "/dev/shm",
+            "type": "tmpfs",
+            "options": ["nosuid", "noexec", "nodev", "mode=1777", "size=67108864"]
+        }}
+    ],
+    "process": {{
+        "user": {{
+            "uid": 0,
+            "gid": 0
+        }},
+        "args": python3 -u -m batch.worker.worker >worker.log 2>&1,
+        "env": [
+            "CORES=$CORES",
+            "NAME=$NAME",
+            "NAMESPACE=$NAMESPACE",
+            "ACTIVATION_TOKEN=$ACTIVATION_TOKEN",
+            "IP_ADDRESS=$IP_ADDRESS",
+            "BATCH_LOGS_BUCKET_NAME=$BATCH_LOGS_BUCKET_NAME",
+            "INSTANCE_ID=$INSTANCE_ID",
+            "PROJECT=$PROJECT",
+            "ZONE=$ZONE",
+            "DOCKER_PREFIX=$DOCKER_PREFIX",
+            "DOCKER_ROOT_IMAGE=$DOCKER_ROOT_IMAGE",
+            "WORKER_CONFIG=$WORKER_CONFIG",
+            "MAX_IDLE_TIME_MSECS=$MAX_IDLE_TIME_MSECS",
+            "WORKER_DATA_DISK_MOUNT=/mnt/disks/$WORKER_DATA_DISK_NAME",
+            "BATCH_WORKER_IMAGE=$BATCH_WORKER_IMAGE",
+            "UNRESERVED_WORKER_DATA_DISK_SIZE_GB=$UNRESERVED_WORKER_DATA_DISK_SIZE_GB"
+        ],
+        "cwd": "/",
+        "capabilities": {{
+            "bounding": ["SYS_ADMIN"],
+            "effective": ["SYS_ADMIN"],
+            "inheritable": ["SYS_ADMIN"],
+            "permitted": ["SYS_ADMIN"],
+        }},
+        "apparmorProfile": "unconfined"
+    }},
+    "linux": {{
+        "devices": [
+            {{
+                "path": "/dev/fuse",
+                "type": "c"
+            }},
+            {{
+                "path": "$XFS_DEVICE",
+                "type": "b"
+            }},
+            {{
+                "path": "/dev",
+                "type": "d"
+            }}
+        ]
+    }}
+}}
+EOF
+
+cd /worker_bundle && crun run worker
+
+[ $? -eq 0 ] || tail -n 1000 /worker.log
 
 while true; do
 gcloud -q compute instances delete $NAME --zone=$ZONE
