@@ -261,6 +261,18 @@ cat >/worker_bundle/config.json <<EOF
             "options": ["rbind", "rw", "shared"]
         }},
         {{
+            "source": "/var/run/docker.sock",
+            "destination": "/var/run/docker.sock",
+            "type": "none",
+            "options": ["rbind", "rw", "shared"]
+        }},
+        {{
+            "source": "/usr/bin/docker",
+            "destination": "/usr/bin/docker",
+            "type": "none",
+            "options": ["rbind", "rw", "shared"]
+        }},
+        {{
             "source": "/batch",
             "destination": "/batch",
             "type": "none",
@@ -314,7 +326,7 @@ cat >/worker_bundle/config.json <<EOF
             "uid": 0,
             "gid": 0
         }},
-        "args": "python3 -u -m batch.worker.worker",
+        "args": ["python3", "-u", "-m", "batch.worker.worker"],
         "env": [
             $WORKER_IMAGE_ENV,
             "CORES=$CORES",
