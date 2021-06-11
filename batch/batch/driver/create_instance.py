@@ -138,6 +138,7 @@ sudo mkdir -p /mnt/disks/$WORKER_DATA_DISK_NAME/gcsfuse/
 sudo ln -s /mnt/disks/$WORKER_DATA_DISK_NAME/gcsfuse /gcsfuse
 
 sudo mkdir -p /etc/netns
+sudo mkdir -p /var/run/netns
 
 # private job network = 10.0.0.0/16
 # public job network = 10.1.0.0/16
@@ -231,6 +232,7 @@ docker pull $BATCH_WORKER_IMAGE || \
 
 mkdir -p /worker_bundle/rootfs
 docker export $(docker create $BATCH_WORKER_IMAGE) | tar -C worker_bundle/rootfs -xf -
+WORKER_IMAGE_ENV=$(docker inspect --format='{{{{json .Config.Env}}}}' $BATCH_WORKER_IMAGE | awk '{{print substr($0,2,length($0)-2)}}')
 
 cat >/worker_bundle/config.json <<EOF
 {{
@@ -253,8 +255,8 @@ cat >/worker_bundle/config.json <<EOF
             "options": ["rbind", "rw", "shared"]
         }},
         {{
-            "source": "/usr/bin/xfs_quota",
-            "destination": "/usr/bin/xfs_quota",
+            "source": "/usr/sbin/xfs_quota",
+            "destination": "/usr/sbin/xfs_quota",
             "type": "none",
             "options": ["rbind", "rw", "shared"]
         }},
@@ -301,28 +303,10 @@ cat >/worker_bundle/config.json <<EOF
             "options": ["nosuid", "noexec", "nodev"]
         }},
         {{
-            "source": "tmpfs",
-            "destination": "/dev",
-            "type": "tmpfs",
-            "options": ["nosuid", "strictatime", "mode=755", "size=65536k"]
-        }},
-        {{
             "source": "sysfs",
             "destination": "/sys",
             "type": "sysfs",
             "options": ["nosuid", "noexec", "nodev", "ro"]
-        }},
-        {{
-            "source": "mqueue",
-            "destination": "/dev/mqueue",
-            "type": "mqueue",
-            "options": ["nosuid", "noexec", "nodev"]
-        }},
-        {{
-            "source": "shm",
-            "destination": "/dev/shm",
-            "type": "tmpfs",
-            "options": ["nosuid", "noexec", "nodev", "mode=1777", "size=67108864"]
         }}
     ],
     "process": {{
@@ -330,8 +314,9 @@ cat >/worker_bundle/config.json <<EOF
             "uid": 0,
             "gid": 0
         }},
-        "args": "python3 -u -m batch.worker.worker >worker.log 2>&1",
+        "args": "python3 -u -m batch.worker.worker",
         "env": [
+            $WORKER_IMAGE_ENV,
             "CORES=$CORES",
             "NAME=$NAME",
             "NAMESPACE=$NAMESPACE",
@@ -361,25 +346,17 @@ cat >/worker_bundle/config.json <<EOF
     "linux": {{
         "devices": [
             {{
-                "path": "/dev/fuse",
-                "type": "c"
-            }},
-            {{
                 "path": "$XFS_DEVICE",
                 "type": "b"
-            }},
-            {{
-                "path": "/dev",
-                "type": "d"
             }}
         ]
     }}
 }}
 EOF
 
-crun run --bundle /worker_bundle --config /worker_bundle/config.json worker
+sudo crun run --bundle /worker_bundle --config /worker_bundle/config.json worker >worker.log 2>&1
 
-[ $? -eq 0 ] || tail -n 1000 /worker.log
+[ $? -eq 0 ] || tail -n 1000 worker.log
 
 while true; do
 gcloud -q compute instances delete $NAME --zone=$ZONE
