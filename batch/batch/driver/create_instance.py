@@ -348,10 +348,10 @@ cat >/worker_bundle/config.json <<EOF
         ],
         "cwd": "/",
         "capabilities": {{
-            "bounding": ["SYS_ADMIN"],
-            "effective": ["SYS_ADMIN"],
-            "inheritable": ["SYS_ADMIN"],
-            "permitted": ["SYS_ADMIN"]
+            "bounding": ["CAP_SYS_ADMIN", "CAP_NET_ADMIN"],
+            "effective": ["CAP_SYS_ADMIN", "CAP_NET_ADMIN"],
+            "inheritable": ["CAP_SYS_ADMIN", "CAP_NET_ADMIN"],
+            "permitted": ["CAP_SYS_ADMIN", "CAP_NET_ADMIN"]
         }},
         "apparmorProfile": "unconfined"
     }},
@@ -361,7 +361,10 @@ cat >/worker_bundle/config.json <<EOF
                 "path": "$XFS_DEVICE",
                 "type": "b"
             }}
-        ]
+        ],
+        "seccomp": {{
+            "defaultAction": "SCMP_ACT_ALLOW"
+        }}
     }}
 }}
 EOF
