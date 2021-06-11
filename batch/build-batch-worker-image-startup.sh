@@ -21,7 +21,7 @@ apt-get install -y \
     software-properties-common
 
 apt-get install -y make git gcc build-essential pkgconf libtool \
-   libsystemd-dev libcap-dev libseccomp-dev \
+   libsystemd-dev libcap-dev libseccomp-dev libyajl-dev \
    go-md2man libtool autoconf automake
 git clone --depth 1 --branch 0.19.1 https://github.com/containers/crun.git && \
    cd crun && \
