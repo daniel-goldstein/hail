@@ -232,7 +232,7 @@ docker pull $BATCH_WORKER_IMAGE || \
 mkdir -p /worker_bundle/rootfs
 docker export $(docker create $BATCH_WORKER_IMAGE) | tar -C worker_bundle/rootfs -xf -
 
-echo /worker_bundle/config.json <<EOF
+cat >/worker_bundle/config.json <<EOF
 {{
     "ociVersion": "1.0.1",
     "root": {{
@@ -330,7 +330,7 @@ echo /worker_bundle/config.json <<EOF
             "uid": 0,
             "gid": 0
         }},
-        "args": python3 -u -m batch.worker.worker >worker.log 2>&1,
+        "args": "python3 -u -m batch.worker.worker >worker.log 2>&1",
         "env": [
             "CORES=$CORES",
             "NAME=$NAME",
@@ -354,7 +354,7 @@ echo /worker_bundle/config.json <<EOF
             "bounding": ["SYS_ADMIN"],
             "effective": ["SYS_ADMIN"],
             "inheritable": ["SYS_ADMIN"],
-            "permitted": ["SYS_ADMIN"],
+            "permitted": ["SYS_ADMIN"]
         }},
         "apparmorProfile": "unconfined"
     }},
@@ -377,7 +377,7 @@ echo /worker_bundle/config.json <<EOF
 }}
 EOF
 
-cd /worker_bundle && crun run worker
+crun run --bundle /worker_bundle --config /worker_bundle/config.json worker
 
 [ $? -eq 0 ] || tail -n 1000 /worker.log
 
