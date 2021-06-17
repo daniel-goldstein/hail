@@ -1,3 +1,4 @@
+import asyncio
 from typing import List, Tuple, Any
 from aiohttp import web
 import prometheus_client as pc  # type: ignore
@@ -34,6 +35,23 @@ class InfluxClient:
             p = p.field(field, val)
 
         self.write_api.write(bucket=INFLUXDB_BUCKET, record=p)
+
+
+client = InfluxClient()
+
+
+async def gauge(metric_name: str, tags: List[Tuple[str, str]], field_name: str, every=60):
+    def create_report_loop(f):
+        async def report_periodically():
+            while True:
+                val = await f()
+                client.write(metric_name, tags, [(field_name, val)])
+                asyncio.sleep(every)
+
+        asyncio.ensure_future(report_periodically())
+        return f
+
+    return create_report_loop
 
 
 @web.middleware
