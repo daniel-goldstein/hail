@@ -6,7 +6,8 @@ import asyncio
 import concurrent.futures
 import aiohttp
 from aiohttp import web
-import aiohttp_session  # type: ignore
+import aiohttp_session
+from gear.metrics import InfluxClient  # type: ignore
 import uvloop  # type: ignore
 from prometheus_async.aio.web import server_stats  # type: ignore
 from gidgethub import aiohttp as gh_aiohttp, routing as gh_routing, sansio as gh_sansio
@@ -150,6 +151,8 @@ async def retry_pr(wb, pr, request):
         log.info('retry cannot be requested for PR #{pr.number} because it has no batch')
         set_message(session, f'Retry cannot be requested for PR #{pr.number} because it has no batch.', 'error')
         return
+
+    app['influxdb_client'].write('ci_pr_retry', [('pr_number', pr.number)], [('retry', '1')])
 
     batch_id = pr.batch.id
     dbpool = app['dbpool']
@@ -478,6 +481,8 @@ async def on_startup(app):
     app['github_client'] = gh_aiohttp.GitHubAPI(app['gh_client_session'], 'ci', oauth_token=oauth_token)
     app['batch_client'] = BatchClient('ci')
     app['dbpool'] = await create_database_pool()
+
+    app['influxdb_client'] = InfluxClient()
 
     app['task_manager'] = aiotools.BackgroundTaskManager()
     app['task_manager'].ensure_future(update_loop(app))
