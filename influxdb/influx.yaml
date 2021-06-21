@@ -16,6 +16,11 @@ spec:
       labels:
         app: influxdb
     spec:
+      volumes:
+        - name: ssl-config-influxdb
+          secret:
+            optional: false
+            secretName: ssl-config-influxdb
       containers:
         - name: influxdb
           image: influxdb:2.0.4
@@ -25,6 +30,26 @@ spec:
           volumeMounts:
             - mountPath: /var/lib/influxdb2
               name: data
+        - name: nginx
+          image: {{ influxdb_nginx_image.image }}
+          resources:
+            requests:
+              cpu: "20m"
+              memory: "20M"
+            limits:
+              cpu: "1"
+              memory: "1G"
+          ports:
+           - containerPort: 443
+          volumeMounts:
+           - name: ssl-config-influxdb
+             mountPath: /ssl-config
+             readOnly: true
+          readinessProbe:
+            tcpSocket:
+              port: 443
+            initialDelaySeconds: 5
+            periodSeconds: 5
   volumeClaimTemplates:
     - metadata:
         name: data
@@ -50,8 +75,8 @@ metadata:
 spec:
     ports:
       - name: influxdb
-        port: 8086
-        targetPort: 8086
+        port: 443
+        targetPort: 443
     selector:
         app: influxdb
     type: ClusterIP

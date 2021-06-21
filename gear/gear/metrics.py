@@ -43,8 +43,8 @@ class InfluxClient:
     def create_client(cls):
         deploy_config: DeployConfig = get_deploy_config()
         url = deploy_config.base_url_with_port('influxdb', port=8086)
-        url = url.rsplit('/', maxsplit=2)[0]  # FIXME Hack to get around subpath in a dev namespace
-        url = url.replace('https', 'http')
+        # url = url.rsplit('/', maxsplit=2)[0]  # FIXME Hack to get around subpath in a dev namespace
+        # url = url.replace('https', 'http')
         log.exception(f'URL: {url}')
         return InfluxClient(url)
 
