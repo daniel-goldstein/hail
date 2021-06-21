@@ -482,7 +482,7 @@ async def on_startup(app):
     app['batch_client'] = BatchClient('ci')
     app['dbpool'] = await create_database_pool()
 
-    app['influxdb_client'] = InfluxClient()
+    app['influxdb_client'] = InfluxClient.create_client()
 
     app['task_manager'] = aiotools.BackgroundTaskManager()
     app['task_manager'].ensure_future(update_loop(app))
