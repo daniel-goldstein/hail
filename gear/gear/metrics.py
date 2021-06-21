@@ -19,9 +19,9 @@ CONCURRENT_REQUESTS = pc.Gauge('http_concurrent_requests', 'Number of in progres
 
 
 class InfluxClient:
-    def __init__(self):
+    def __init__(self, url):
         self._client = client = influxdb_client.InfluxDBClient(
-            url=INFLUX_URL,
+            url=url,
             token=INFLUX_TOKEN,
             org=INFLUX_ORG,
         )
@@ -35,6 +35,10 @@ class InfluxClient:
             p = p.field(field, val)
 
         self.write_api.write(bucket=INFLUXDB_BUCKET, record=p)
+
+    @classmethod
+    def create_client(deploy_config):
+        return InfluxClient()
 
 
 client = InfluxClient()
