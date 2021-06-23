@@ -1,6 +1,6 @@
 import logging
 import asyncio
-from typing import List, Tuple, Any
+from typing import List, Tuple, Any, Callable, Awaitable
 from aiohttp import web
 from hailtop.config import get_deploy_config, DeployConfig
 import prometheus_client as pc  # type: ignore
@@ -52,13 +52,18 @@ class InfluxClient:
 influx_client = InfluxClient.create_client()
 
 
-async def gauge(metric_name: str, tags: List[Tuple[str, str]], field_name: str, every=60):
-    def create_report_loop(f):
+def gauge(metric_name: str, tags: List[Tuple[str, str]], field_names: List[str], every=60):
+    def create_report_loop(f: Callable[[], Awaitable[List[Any]]]):
         async def report_periodically():
             while True:
-                val = await f()
-                influx_client.write(metric_name, tags, [(field_name, val)])
-                asyncio.sleep(every)
+                try:
+                    log.info('running loop...')
+                    field_values = await f()
+                    assert len(field_values) == len(field_names)
+                    influx_client.write(metric_name, tags, list(zip(field_names, field_values)))
+                except Exception as e:
+                    log.exception(e)
+                await asyncio.sleep(every)
 
         asyncio.ensure_future(report_periodically())
         return f

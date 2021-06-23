@@ -21,6 +21,7 @@ from collections import defaultdict
 import psutil
 from aiodocker.exceptions import DockerError  # type: ignore
 import google.oauth2.service_account  # type: ignore
+import psutil
 from hailtop.utils import (
     time_msecs,
     request_retry_transient_errors,
@@ -42,6 +43,7 @@ from hailtop.batch.hail_genetics_images import HAIL_GENETICS_IMAGES
 from hailtop import aiotools
 from hailtop.aiotools.fs import RouterAsyncFS, LocalAsyncFS
 import hailtop.aiogoogle as aiogoogle
+from gear import gauge
 
 # import uvloop
 
@@ -423,9 +425,10 @@ class Container:
                         image_digest = get_image_digest(image_configs[self.image_ref_str])
                         shutil.rmtree(f'/host/rootfs/{image_digest}')
                     if not last_fetched or last_fetched < five_minutes_ago:
-                        worker.rootfs_last_fetched[self.image_ref_str] = time_msecs()
                         await self.pull_image()
+                        worker.rootfs_last_fetched[self.image_ref_str] = time_msecs()
 
+                    assert self.image_ref_str in image_configs
                     self.image_config = image_configs[self.image_ref_str]
                     image_digest = get_image_digest(self.image_config)
                     self.rootfs_path = f'/host/rootfs/{image_digest}'
@@ -1961,6 +1964,23 @@ class Worker:
 
             self.headers = {'X-Hail-Instance-Name': NAME, 'Authorization': f'Bearer {resp_json["token"]}'}
             self.active = True
+
+
+@gauge('job_utilization', [], [], every=10)
+async def report_container_stats():
+    global worker
+    if worker:
+        procs: Dict[Tuple, psutil.Process] = {}
+        for (batch_id, job_id), job in worker.jobs.items():
+            if isinstance(job, DockerJob):
+                for name, container in job.containers.items():
+                    if container.process is not None:
+                        procs[(batch_id, job_id, name)] = psutil.Process(container.process.pid)
+        for id, p in procs.items():
+            uss = p.memory_full_info().uss
+            children_uss = sum(c.memory_full_info().uss for c in p.children(recursive=True))
+            log.info(f'USS for container {id}: {uss} | children combined: {children_uss}')
+    return []
 
 
 async def async_main():
