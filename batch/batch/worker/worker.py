@@ -43,7 +43,7 @@ from hailtop.batch.hail_genetics_images import HAIL_GENETICS_IMAGES
 from hailtop import aiotools
 from hailtop.aiotools.fs import RouterAsyncFS, LocalAsyncFS
 import hailtop.aiogoogle as aiogoogle
-from gear import gauge
+from gear import InfluxClient, make_point
 
 # import uvloop
 
@@ -1659,6 +1659,9 @@ class Worker:
         self.headers = None
         self.compute_client = None
 
+        self.influx_client = InfluxClient.create_client(deploy_config)
+        self.influx_client.gauge(self.task_manager, self.report_container_stats, every=10)
+
     def shutdown(self):
         self.task_manager.shutdown()
 
@@ -1965,22 +1968,24 @@ class Worker:
             self.headers = {'X-Hail-Instance-Name': NAME, 'Authorization': f'Bearer {resp_json["token"]}'}
             self.active = True
 
-
-@gauge('job_utilization', [], [], every=10)
-async def report_container_stats():
-    global worker
-    if worker:
+    async def report_container_stats(self):
+        global worker
         procs: Dict[Tuple, psutil.Process] = {}
-        for (batch_id, job_id), job in worker.jobs.items():
+        for (batch_id, job_id), job in self.jobs.items():
             if isinstance(job, DockerJob):
                 for name, container in job.containers.items():
                     if container.process is not None:
                         procs[(batch_id, job_id, name)] = psutil.Process(container.process.pid)
-        for id, p in procs.items():
-            uss = p.memory_full_info().uss
-            children_uss = sum(c.memory_full_info().uss for c in p.children(recursive=True))
-            log.info(f'USS for container {id}: {uss} | children combined: {children_uss}')
-    return []
+        points = []
+        for (batch_id, job_id, name), proc in procs.items():
+            mem_usage = sum(c.memory_full_info().uss for c in proc.children(recursive=True))
+            point = make_point(
+                'job_resource_utilization',
+                [('container_name', name)],
+                [('batch_id', batch_id), ('job_id', job_id), ('uss', mem_usage)],
+            )
+            points.append(point)
+        return points
 
 
 async def async_main():

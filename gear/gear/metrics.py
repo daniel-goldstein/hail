@@ -2,12 +2,14 @@ import logging
 import asyncio
 from typing import List, Tuple, Any, Callable, Awaitable
 from aiohttp import web
-from hailtop.config import get_deploy_config, DeployConfig
+from hailtop import aiotools
+from hailtop.config import DeployConfig
 import prometheus_client as pc  # type: ignore
 from prometheus_async.aio import time as prom_async_time  # type: ignore
 
 import influxdb_client
 from influxdb_client.client.write_api import ASYNCHRONOUS
+
 
 INFLUXDB_BUCKET = 'default_bucket'
 INFLUX_ORG = 'hail-vdc'
@@ -30,45 +32,41 @@ class InfluxClient:
         )
         self.write_api = client.write_api(write_options=ASYNCHRONOUS)
 
-    def write(self, metric_name: str, labels: List[Tuple[str, str]], fields: List[Tuple[str, Any]]):
-        p = influxdb_client.Point(metric_name)
-        for label, val in labels:
-            p = p.tag(label, val)
-        for field, val in fields:
-            p = p.field(field, val)
-
-        self.write_api.write(bucket=INFLUXDB_BUCKET, record=p)
+    def write(self, points: List[influxdb_client.Point]):
+        self.write_api.write(bucket=INFLUXDB_BUCKET, record=points)
 
     @classmethod
-    def create_client(cls):
-        deploy_config: DeployConfig = get_deploy_config()
-        url = deploy_config.base_url_with_port('influxdb', port=8086)
-        # url = url.rsplit('/', maxsplit=2)[0]  # FIXME Hack to get around subpath in a dev namespace
-        # url = url.replace('https', 'http')
+    def create_client(cls, deploy_config: DeployConfig) -> 'InfluxClient':
+        url = deploy_config.base_url('influxdb')
         log.exception(f'URL: {url}')
         return InfluxClient(url)
 
-
-influx_client = InfluxClient.create_client()
-
-
-def gauge(metric_name: str, tags: List[Tuple[str, str]], field_names: List[str], every=60):
-    def create_report_loop(f: Callable[[], Awaitable[List[Any]]]):
+    def gauge(
+        self,
+        task_manager: aiotools.BackgroundTaskManager,
+        f: Callable[[], Awaitable[List[influxdb_client.Point]]],
+        every=60,
+    ):
         async def report_periodically():
             while True:
                 try:
-                    log.info('running loop...')
-                    field_values = await f()
-                    assert len(field_values) == len(field_names)
-                    influx_client.write(metric_name, tags, list(zip(field_names, field_values)))
+                    points = await f()
+                    self.write(points)
                 except Exception as e:
                     log.exception(e)
                 await asyncio.sleep(every)
 
-        asyncio.ensure_future(report_periodically())
-        return f
+        task_manager.ensure_future(report_periodically())
 
-    return create_report_loop
+
+def make_point(metric_name: str, tags: List[Tuple[str, str]], fields: List[Tuple[str, Any]]):
+    p = influxdb_client.Point(metric_name)
+    for tag, val in tags:
+        p = p.tag(tag, val)
+    for field, val in fields:
+        p = p.field(field, val)
+
+    return p
 
 
 @web.middleware

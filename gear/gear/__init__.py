@@ -12,7 +12,7 @@ from .auth import (
 )
 from .csrf import new_csrf_token, check_csrf_token
 from .auth_utils import insert_user, create_session
-from .metrics import monitor_endpoints_middleware, gauge
+from .metrics import monitor_endpoints_middleware, InfluxClient, make_point
 
 __all__ = [
     'create_database_pool',
@@ -32,5 +32,6 @@ __all__ = [
     'transaction',
     'maybe_parse_bearer_header',
     'monitor_endpoints_middleware',
-    'gauge',
+    'InfluxClient',
+    'make_point',
 ]
