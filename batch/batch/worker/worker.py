@@ -1969,22 +1969,25 @@ class Worker:
             self.active = True
 
     async def report_container_stats(self):
-        global worker
-        procs: Dict[Tuple, psutil.Process] = {}
+        points = []
         for (batch_id, job_id), job in self.jobs.items():
             if isinstance(job, DockerJob):
                 for name, container in job.containers.items():
                     if container.process is not None:
-                        procs[(batch_id, job_id, name)] = psutil.Process(container.process.pid)
-        points = []
-        for (batch_id, job_id, name), proc in procs.items():
-            mem_usage = sum(c.memory_full_info().uss for c in proc.children(recursive=True))
-            point = make_point(
-                'job_resource_utilization',
-                [('container_name', name)],
-                [('batch_id', batch_id), ('job_id', job_id), ('uss', mem_usage)],
-            )
-            points.append(point)
+                        proc = psutil.Process(container.process.pid)
+                        mem_usage = sum(c.memory_full_info().uss for c in proc.children(recursive=True))
+                        point = make_point(
+                            'job_resource_utilization',
+                            [('container_name', name)],
+                            [
+                                ('instance_name', NAME),
+                                ('batch_id', batch_id),
+                                ('job_id', job_id),
+                                ('memory_limit', container.spec['memory']),
+                                ('uss', mem_usage),
+                            ],
+                        )
+                        points.append(point)
         return points
 
 
