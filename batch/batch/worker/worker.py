@@ -1976,6 +1976,7 @@ class Worker:
                     if container.process is not None:
                         proc = psutil.Process(container.process.pid)
                         mem_usage = sum(c.memory_full_info().uss for c in proc.children(recursive=True))
+                        cpu_usage = sum(c.cpu_percent() for c in proc.children(recursive=True))
                         point = make_point(
                             'job_resource_utilization',
                             [('container_name', name)],
