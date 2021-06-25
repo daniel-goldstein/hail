@@ -1660,7 +1660,7 @@ class Worker:
         self.compute_client = None
 
         self.influx_client = InfluxClient.create_client(deploy_config)
-        self.influx_client.gauge(self.task_manager, self.report_container_stats, every=10)
+        self.influx_client.gauge(self.task_manager, self.report_container_stats, every=1)
 
     def shutdown(self):
         self.task_manager.shutdown()
@@ -1976,7 +1976,8 @@ class Worker:
                     if container.process is not None:
                         proc = psutil.Process(container.process.pid)
                         mem_usage = sum(c.memory_full_info().uss for c in proc.children(recursive=True))
-                        cpu_usage = sum(c.cpu_percent() for c in proc.children(recursive=True))
+                        cpu_usage_percent = sum(c.cpu_percent() for c in proc.children(recursive=True))
+                        cpu_usage_millis = cpu_usage_percent * 10
                         point = make_point(
                             'job_resource_utilization',
                             [('container_name', name)],
@@ -1986,6 +1987,8 @@ class Worker:
                                 ('job_id', job_id),
                                 ('memory_limit', container.spec['memory']),
                                 ('uss', mem_usage),
+                                ('cpu_limit', container.spec['cpu']),
+                                ('cpu_usage', cpu_usage_millis),
                             ],
                         )
                         points.append(point)
