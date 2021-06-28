@@ -1975,8 +1975,12 @@ class Worker:
                 for name, container in job.containers.items():
                     if container.process is not None:
                         proc = psutil.Process(container.process.pid)
-                        mem_usage = sum(c.memory_full_info().uss for c in proc.children(recursive=True))
-                        cpu_usage_percent = sum(c.cpu_percent() for c in proc.children(recursive=True))
+                        mem_usage = 0
+                        cpu_usage_percent = 0
+                        for c in proc.children(recursive=True):
+                            with c.oneshot():
+                                mem_usage += c.memory_full_info().uss
+                                cpu_usage_percent += c.cpu_percent()
                         cpu_usage_millis = cpu_usage_percent * 10
                         point = make_point(
                             'job_resource_utilization',
