@@ -1979,14 +1979,22 @@ class Worker:
                         mem_usage = 0
                         cpu_usage_percent = 0
                         children = list(proc.children(recursive=True))
-                        # FIXME Annoying
+                        # Calling `cpu_percent` the first time returns
+                        # 0.0 because it measuring from the previous
+                        # invocation
                         for c in children:
-                            c.cpu_percent()
+                            try:
+                                c.cpu_percent()
+                            except psutil.NoSuchProcess:
+                                pass
                         await asyncio.sleep(0.1)
                         for c in children:
-                            with c.oneshot():
-                                mem_usage += c.memory_full_info().uss
-                                cpu_usage_percent += c.cpu_percent()
+                            try:
+                                with c.oneshot():
+                                    mem_usage += c.memory_full_info().uss
+                                    cpu_usage_percent += c.cpu_percent()
+                            except psutil.NoSuchProcess:
+                                pass
                         cpu_usage_millis = cpu_usage_percent * 10
                         point = make_point(
                             'job_resource_utilization',
