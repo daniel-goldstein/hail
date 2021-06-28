@@ -8,6 +8,7 @@ import prometheus_client as pc  # type: ignore
 from prometheus_async.aio import time as prom_async_time  # type: ignore
 
 import influxdb_client
+from influxdb_client.client.flux_table import FluxTable
 from influxdb_client.client.write_api import ASYNCHRONOUS
 
 
@@ -29,17 +30,17 @@ class InfluxClient:
             url=url,
             token=INFLUX_TOKEN,
             org=INFLUX_ORG,
+            verify_ssl=False,
         )
         self.write_api = client.write_api(write_options=ASYNCHRONOUS)
+        self.query_api = client.query_api()
 
     def write(self, points: List[influxdb_client.Point]):
         self.write_api.write(bucket=INFLUXDB_BUCKET, record=points)
 
     @classmethod
     def create_client(cls, deploy_config: DeployConfig) -> 'InfluxClient':
-        url = deploy_config.base_url('influxdb')
-        log.exception(f'URL: {url}')
-        return InfluxClient(url)
+        return InfluxClient(deploy_config.base_url('influxdb'))
 
     def gauge(
         self,
@@ -57,6 +58,12 @@ class InfluxClient:
                 await asyncio.sleep(every)
 
         task_manager.ensure_future(report_periodically())
+
+    def query(self, query) -> List[FluxTable]:
+        return self.query_api.query(query)
+
+    def close(self):
+        self._client.close()
 
 
 def make_point(metric_name: str, tags: List[Tuple[str, str]], fields: List[Tuple[str, Any]]):

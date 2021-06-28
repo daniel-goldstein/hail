@@ -1664,6 +1664,7 @@ class Worker:
 
     def shutdown(self):
         self.task_manager.shutdown()
+        self.influx_client.close()
 
     async def run_job(self, job):
         try:
@@ -1977,7 +1978,12 @@ class Worker:
                         proc = psutil.Process(container.process.pid)
                         mem_usage = 0
                         cpu_usage_percent = 0
-                        for c in proc.children(recursive=True):
+                        children = list(proc.children(recursive=True))
+                        # FIXME Annoying
+                        for c in children:
+                            c.cpu_percent()
+                        await asyncio.sleep(0.1)
+                        for c in children:
                             with c.oneshot():
                                 mem_usage += c.memory_full_info().uss
                                 cpu_usage_percent += c.cpu_percent()

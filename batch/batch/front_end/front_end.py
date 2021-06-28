@@ -12,6 +12,7 @@ import aiohttp
 import signal
 from aiohttp import web
 import aiohttp_session
+from gear.metrics import InfluxClient
 import pymysql
 import google.oauth2.service_account
 import google.api_core.exceptions
@@ -1424,6 +1425,18 @@ async def ui_get_job(request, userdata, batch_id):
         resources['actual_cpu'] = resources['cores_mcpu'] / 1000
         del resources['cores_mcpu']
 
+    client = InfluxClient.create_client(deploy_config)
+    data = client.query(
+        f'''
+from(bucket: "default_bucket")
+  |> range(start: -5m)
+  |> filter(fn: (r) => r._measurement == "job_resource_utilization")
+  |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
+  |> filter(fn: (r) => r.batch_id == {batch_id} and r.job_id == {job_id})
+'''
+    )
+    influx_data = [str(r) for t in data for r in t]
+
     page_context = {
         'batch_id': batch_id,
         'job_id': job_id,
@@ -1435,7 +1448,9 @@ async def ui_get_job(request, userdata, batch_id):
         'job_status_str': json.dumps(job, indent=2),
         'step_errors': step_errors,
         'error': job_status.get('error'),
+        'influx_data': influx_data,
     }
+
     return await render_template('batch', request, userdata, 'job.html', page_context)
 
 
