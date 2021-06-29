@@ -1425,8 +1425,7 @@ async def ui_get_job(request, userdata, batch_id):
         resources['actual_cpu'] = resources['cores_mcpu'] / 1000
         del resources['cores_mcpu']
 
-    client = InfluxClient.create_client(deploy_config)
-    data = client.query(
+    data = app['influxdb_client'].query(
         f'''
 from(bucket: "default_bucket")
   |> range(start: -5m)
@@ -2057,6 +2056,8 @@ async def on_startup(app):
     pool = concurrent.futures.ThreadPoolExecutor()
     app['blocking_pool'] = pool
 
+    app['influxdb_client'] = InfluxClient.create_client(deploy_config)
+
     db = Database()
     await db.async_init()
     app['db'] = db
@@ -2103,7 +2104,10 @@ async def on_cleanup(app):
     try:
         app['blocking_pool'].shutdown()
     finally:
-        app['task_manager'].shutdown()
+        try:
+            app['influxdb_client'].close()
+        finally:
+            app['task_manager'].shutdown()
 
 
 def run():
