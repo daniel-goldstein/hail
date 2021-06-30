@@ -14,6 +14,7 @@ from influxdb_client.client.write_api import ASYNCHRONOUS
 
 INFLUXDB_BUCKET = 'default_bucket'
 INFLUX_ORG = 'hail-vdc'
+# TODO Make this a k8s secret
 INFLUX_TOKEN = 'E1GwwGWeZ8RH9SCRLy7CFkLVyodWvraEvReXqXDUYJn9Z8ij1jsnYMT71m7MHMKgnozo8s5BH68jSCfpOZUy6A=='
 
 
