@@ -98,6 +98,7 @@ WORKER_CONFIG = json.loads(base64.b64decode(os.environ['WORKER_CONFIG']).decode(
 MAX_IDLE_TIME_MSECS = int(os.environ['MAX_IDLE_TIME_MSECS'])
 WORKER_DATA_DISK_MOUNT = os.environ['WORKER_DATA_DISK_MOUNT']
 BATCH_WORKER_IMAGE = os.environ['BATCH_WORKER_IMAGE']
+BATCH_WORKER_IMAGE_ID = os.environ['BATCH_WORKER_IMAGE_ID']
 UNRESERVED_WORKER_DATA_DISK_SIZE_GB = int(os.environ['UNRESERVED_WORKER_DATA_DISK_SIZE_GB'])
 assert UNRESERVED_WORKER_DATA_DISK_SIZE_GB >= 0
 
@@ -1685,7 +1686,7 @@ class Worker:
         self.jar_download_locks = defaultdict(asyncio.Lock)
 
         self.rootfs_locks: Dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
-        self.image_ref_count = Counter()
+        self.image_ref_count = Counter({BATCH_WORKER_IMAGE_ID: 1})
 
         # filled in during activation
         self.log_store = None
