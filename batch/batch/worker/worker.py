@@ -423,6 +423,8 @@ class Container:
 
         self.container_name = f'batch-{self.job.batch_id}-job-{self.job.job_id}-{self.name}'
 
+        self.container_lock = asyncio.Lock()
+
         self.netns: Optional[NetworkNamespace] = None
         self.process = None
 
@@ -833,23 +835,25 @@ class Container:
         return env
 
     async def delete_container(self):
-        if self.container_is_running():
-            try:
-                log.info(f'{self} container is still running, killing crun process')
-                self.process.terminate()
-                self.process = None
-                await check_exec_output('crun', 'kill', '--all', self.container_name, 'SIGTERM')
-            except asyncio.CancelledError:
-                raise
-            except Exception:
-                log.exception('while deleting container', exc_info=True)
+        async with self.container_lock:
+            if self.container_is_running():
+                try:
+                    log.info(f'{self}: container is still running, killing crun process')
+                    self.process.terminate()
+                    self.process = None
+                    await check_exec_output('crun', 'kill', '--all', self.container_name, 'SIGTERM')
+                    log.info(f'{self}: killed crun process')
+                except asyncio.CancelledError:
+                    raise
+                except Exception:
+                    log.exception('while deleting container', exc_info=True)
 
-            try:
-                await check_shell(f'umount -l {self.container_overlay_path}/merged')
-            except asyncio.CancelledError:
-                raise
-            except Exception:
-                log.exception('while unmounting overlay', exc_info=True)
+                try:
+                    await check_shell(f'umount -l {self.container_overlay_path}/merged')
+                except asyncio.CancelledError:
+                    raise
+                except Exception:
+                    log.exception('while unmounting overlay', exc_info=True)
 
         if self.host_port is not None:
             port_allocator.free(self.host_port)
