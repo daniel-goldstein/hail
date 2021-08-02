@@ -1,3 +1,4 @@
+import os
 import secrets
 from shlex import quote as shq
 import json
@@ -12,6 +13,7 @@ import random
 from hailtop.config import get_deploy_config
 from hailtop.batch_client.aioclient import Batch
 from hailtop.utils import check_shell, check_shell_output, RETRY_FUNCTION_SCRIPT
+from .environment import HAS_MERGE_AUTHORITY
 from .constants import GITHUB_CLONE_URL, AUTHORIZED_USERS, GITHUB_STATUS_CONTEXT, SERVICES_TEAM, COMPILER_TEAM
 from .build import BuildConfiguration, Code
 from .globals import is_test_deployment
@@ -26,6 +28,8 @@ deploy_config = get_deploy_config()
 CALLBACK_URL = deploy_config.url('ci', '/api/v1alpha/batch_callback')
 
 zulip_client = zulip.Client(config_file="/zulip-config/.zuliprc")
+
+CI_IDENTITY = os.environ.get('HAIL_CI_IDENTITY')
 
 
 def select_random_teammate(team):
@@ -646,7 +650,8 @@ class WatchedBranch(Code):
                 if self.state_changed:
                     self.state_changed = False
                     await self._heal(batch_client, dbpool, gh)
-                    await self.try_to_merge(gh)
+                    if HAS_MERGE_AUTHORITY:
+                        await self.try_to_merge(gh)
         finally:
             log.info(f'update done {self.short_str()}')
             self.updating = False
@@ -731,9 +736,9 @@ class WatchedBranch(Code):
                     request = {
                         'type': 'stream',
                         'to': 'team',
-                        'topic': 'CI Deploy Failure',
+                        'topic': f'{CI_IDENTITY} Deploy Failure',
                         'content': f'''
-@**daniel king**
+@**Daniel Goldstein (he/him)**
 state: {self.deploy_state}
 branch: {self.branch.short_str()}
 sha: {self.sha}

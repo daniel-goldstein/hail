@@ -83,6 +83,10 @@ spec:
 {% else %}
              value: "hail-test-dmk9z"
 {% endif %}
+           - name: HAS_MERGE_AUTHORITY
+             value: {{ ci_identity.can_merge }}
+           -name: HAIL_CI_IDENTITY
+            value: "{{ ci_identity.name }}"
           ports:
             - containerPort: 5000
           volumeMounts:

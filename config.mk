@@ -15,3 +15,5 @@ else
 SCOPE = dev
 DEPLOY = false
 endif
+
+CI_CAN_MERGE = true
