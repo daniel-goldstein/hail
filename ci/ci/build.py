@@ -178,6 +178,10 @@ class Step(abc.ABC):
             'domain': DOMAIN,
             'ip': IP,
             'k8s_server_url': KUBERNETES_SERVER_URL,
+            'ci_identity': {
+                'can_merge': True,
+                'name': 'GCP CI',
+            },
         }
         config['token'] = self.token
         config['deploy'] = scope == 'deploy'

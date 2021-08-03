@@ -16,4 +16,5 @@ SCOPE = dev
 DEPLOY = false
 endif
 
-CI_CAN_MERGE = true
+CI_CAN_MERGE := true
+CI_NAME := GCP-CI
