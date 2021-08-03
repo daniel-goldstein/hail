@@ -4,16 +4,17 @@ metadata:
   name: hello-stateful-set
   labels:
     app: hello-stateful-set
+    hail.is/sha: "{{ code.sha }}"
 spec:
-  serviceName: hello-stateful-set
-  replicas: 1
   selector:
     matchLabels:
       app: hello-stateful-set
+  replicas: 1
   template:
     metadata:
       labels:
         app: hello-stateful-set
+        hail.is/sha: "{{ code.sha }}"
     spec:
       nodeSelector:
         preemptible: "true"
@@ -54,9 +55,15 @@ spec:
              readOnly: true
           env:
            - name: HAIL_IP
-             value: "{{ global.ip }}"
+             valueFrom:
+               secretKeyRef:
+                 name: global-config
+                 key: ip
            - name: HAIL_DOMAIN
-             value: "{{ global.domain }}"
+             valueFrom:
+               secretKeyRef:
+                 name: global-config
+                 key: domain
            - name: HAIL_DEPLOY_CONFIG_FILE
              value: /deploy-config/deploy-config.json
            - name: HAIL_SHA

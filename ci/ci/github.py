@@ -13,7 +13,7 @@ import random
 from hailtop.config import get_deploy_config
 from hailtop.batch_client.aioclient import Batch
 from hailtop.utils import check_shell, check_shell_output, RETRY_FUNCTION_SCRIPT
-from .environment import HAS_MERGE_AUTHORITY
+from .environment import HAS_MERGE_AUTHORITY, CI_IDENTITY_NAME
 from .constants import GITHUB_CLONE_URL, AUTHORIZED_USERS, GITHUB_STATUS_CONTEXT, SERVICES_TEAM, COMPILER_TEAM
 from .build import BuildConfiguration, Code
 from .globals import is_test_deployment
@@ -28,8 +28,6 @@ deploy_config = get_deploy_config()
 CALLBACK_URL = deploy_config.url('ci', '/api/v1alpha/batch_callback')
 
 zulip_client = zulip.Client(config_file="/zulip-config/.zuliprc")
-
-CI_IDENTITY = os.environ.get('HAIL_CI_IDENTITY')
 
 
 def select_random_teammate(team):
