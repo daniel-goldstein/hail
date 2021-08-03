@@ -87,7 +87,7 @@ spec:
            - name: HAS_MERGE_AUTHORITY
              value: "1"
 {% endif %}
-           - name: HAIL_CI_IDENTITY
+           - name: HAIL_CI_IDENTITY_NAME
              value: "{{ global.ci_identity.name }}"
           ports:
             - containerPort: 5000
@@ -107,9 +107,9 @@ spec:
            - mountPath: /user-tokens
              name: ci-tokens
              readOnly: true
-           - mountPath: /zulip-config
-             name: zulip-config
-             readOnly: true
+           # - mountPath: /zulip-config
+           #   name: zulip-config
+           #   readOnly: true
            - name: ssl-config-ci
              mountPath: /ssl-config
              readOnly: true
@@ -141,9 +141,9 @@ spec:
        - name: ci-tokens
          secret:
            secretName: ci-tokens
-       - name: zulip-config
-         secret:
-           secretName: zulip-config
+       # - name: zulip-config
+       #   secret:
+       #     secretName: zulip-config
        - name: ssl-config-ci
          secret:
            optional: false

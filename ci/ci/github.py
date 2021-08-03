@@ -27,7 +27,7 @@ deploy_config = get_deploy_config()
 
 CALLBACK_URL = deploy_config.url('ci', '/api/v1alpha/batch_callback')
 
-zulip_client = zulip.Client(config_file="/zulip-config/.zuliprc")
+# zulip_client = zulip.Client(config_file="/zulip-config/.zuliprc")
 
 
 def select_random_teammate(team):
@@ -743,7 +743,7 @@ sha: {self.sha}
 url: {url}
 ''',
                     }
-                    result = zulip_client.send_message(request)
+                    # result = zulip_client.send_message(request)
                     log.info(result)
 
                 self.state_changed = True
