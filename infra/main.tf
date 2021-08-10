@@ -21,6 +21,8 @@ variable "hail_query_bucket_storage_class" {}
 variable "gcp_region" {}
 variable "gcp_zone" {}
 variable "gcp_location" {}
+variable "ci_watched_branches" {}
+variable "ci_github_oauth_token" {}
 variable "domain" {}
 variable "use_artifact_registry" {
   type = bool
@@ -238,6 +240,7 @@ resource "kubernetes_secret" "global_config" {
     gcp_region = var.gcp_region
     gcp_zone = var.gcp_zone
     docker_prefix = local.docker_prefix
+    ci_watched_branches = var.ci_watched_branches
     gsuite_organization = var.gsuite_organization
     internal_ip = google_compute_address.internal_gateway.address
     ip = google_compute_address.gateway.address
@@ -515,6 +518,26 @@ module "test_gsa_secret" {
 module "test_dev_gsa_secret" {
   source = "./gsa_k8s_secret"
   name = "test-dev"
+}
+
+resource "kubernetes_secret" "hail_ci_0_1_github_oauth_token" {
+  metadata {
+    name = "hail-ci-0-1-github-oauth-token"
+  }
+
+  data = {
+    "oauth-token" = var.ci_github_oauth_token
+  }
+}
+
+resource "kubernetes_secret" "zulip_config" {
+  metadata {
+    name = "zulip-config"
+  }
+
+  data = {
+    ".zuliprc" = file("~/.hail/.zuliprc")
+  }
 }
 
 resource "google_service_account" "batch_agent" {

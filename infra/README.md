@@ -74,6 +74,11 @@ Instructions:
    # If set to true, pull the base ubuntu image from Artifact Registry.
    # Otherwise, assumes GCR.
    use_artifact_registry = false
+
+   # If the third element in the inner array is set to false,
+   # CI will not merge PRs in the source repo, but will still test
+   # and post statuses.
+   ci_watched_branches = "[[\"<repo_org>/hail:main\",true,true]]"
    ```
 
 - Run `terraform init`.
@@ -94,12 +99,19 @@ Instructions:
 
 You can now install Hail:
 
-- Create a VM on the internal network, standard-8, 100GB PD-SSD,
-  Ubuntu 20.04 TLS, allow full access to all Cloud APIs, use the
-  Terraform service account.  10GB will run out of space.  We assume
-  the rest of the commands are run on the VM.  You will need to
-  connect to this instance with ssh.  You may want to add a suiteable
+- Create a VM with the following command. You will need to
+  connect to this instance with ssh. You may want to add a suiteable
   ssh forwarding rule to the default network.
+
+  ```
+  gcloud compute instances create bootstrap-vm \
+    --image-project=ubuntu-os-cloud \
+    --image-family=ubuntu-2004-lts \
+    --machine-type=n1-standard-8 \
+    --boot-disk-size=100GB \
+    --service-account=terraform@<gcp_project>.iam.gserviceaccount.com \
+    --scopes=cloud-platform
+  ```
 
 - Standardize file permissions.  This is for docker, which considers
   permissions for caching.  Run `echo 'umask 022' > ~/.profile`.  You
@@ -108,7 +120,7 @@ You can now install Hail:
 - Clone the Hail Github repository:
 
   ```
-  git clone https://github.com/hail-is/hail.git
+  git clone https://github.com/<repo_org>/hail.git
   ```
 
 - Install some dependencies on the VM:
@@ -134,6 +146,13 @@ You can now install Hail:
   kubectl -n default get secret global-config -o json | jq '.data | map_values(@base64d)'
   ```
 
+- Generate the hail version info:
+
+  ```
+  make -C $HAIL/hail python-version-info
+  make -C $HAIL/docker hail_version
+  ```
+
   Make sure that by this point you've registered the `domain` from config.mk with
   a DNS registry with a record pointing to the Kubernetes external load balancer.
 
@@ -157,13 +176,6 @@ You can now install Hail:
 - Create Let's Encrypt certs. Run `make -C $HAIL/letsencrypt run`.
 
 - Deploy the internal-gateway.  Run `make -C $HAIL/internal-gateway deploy`.
-
-- Generate the version info:
-
-  ```
-  make -C $HAIL/hail python-version-info
-  make -C $HAIL/docker hail_version
-  ```
 
 - Go to the Google Cloud console, API & Services, Credentials.
   Configure the consent screen.  Add the scope:
@@ -196,6 +208,13 @@ You can now install Hail:
 
   ```
   make -C $HAIL/batch build-worker
+  ```
+
+- Download the necessary secrets to run the bootstrap CI locally.
+
+  ```
+  sudo mkdir /zulip-config
+  kubectl get secret zulip-config -o json | jq -jr '.data.".zuliprc"' | base64 --decode | sudo tee /zulip-config/.zuliprc
   ```
 
 - Bootstrap the cluster. Make sure to substitute the values for the exported

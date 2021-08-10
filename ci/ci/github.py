@@ -28,6 +28,7 @@ deploy_config = get_deploy_config()
 CALLBACK_URL = deploy_config.url('ci', '/api/v1alpha/batch_callback')
 
 zulip_client = zulip.Client(config_file="/zulip-config/.zuliprc")
+SEND_ZULIP = False
 
 TRACKED_PRS = pc.Gauge('ci_tracked_prs', 'PRs currently being monitored by CI', ['build_state', 'review_state'])
 
@@ -751,7 +752,7 @@ class WatchedBranch(Code):
                 else:
                     self.deploy_state = 'failure'
 
-                if not is_test_deployment and self.deploy_state == 'failure':
+                if not is_test_deployment and self.deploy_state == 'failure' and SEND_ZULIP:
                     url = deploy_config.external_url('ci', f'/batches/{self.deploy_batch.id}')
                     request = {
                         'type': 'stream',
