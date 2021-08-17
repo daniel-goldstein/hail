@@ -41,6 +41,16 @@ Instructions:
 - Delete the default network if it exists. Enabling the networking
   API creates it.
 
+- Go to the Google Cloud console, API & Services, Credentials.
+  Configure the consent screen.  Add the scope:
+  https://www.googleapis.com/auth/userinfo.email.  Back in Credentials, create an OAuth
+  client ID.  Authorize the redirect URIs:
+
+   - https://auth.<domain>/oauth2callback
+   - http://127.0.0.1/oauth2callback
+
+  Download the client secret to $HOME/.hail/client_secret.json.
+
 - Install terraform.
 
 - Create `$HOME/.hail/global.tfvars` that looks like:
@@ -177,19 +187,11 @@ You can now install Hail:
 
 - Deploy the internal-gateway.  Run `make -C $HAIL/internal-gateway deploy`.
 
-- Go to the Google Cloud console, API & Services, Credentials.
-  Configure the consent screen.  Add the scope:
-  https://www.googleapis.com/auth/userinfo.email.  Back in Credentials, create an OAuth
-  client ID.  Authorize the redirect URIs:
-
-   - https://auth.<domain>/oauth2callback
-   - http://127.0.0.1/oauth2callback
-
-  Download the client secret as client_secret.json.  Create the
-  auth-oauth2-client-secret secret with:
+- Generate the version info:
 
   ```
-  kubectl -n default create secret generic auth-oauth2-client-secret --from-file=./client_secret.json
+  make -C $HAIL/hail python-version-info
+  make -C $HAIL/docker hail_version
   ```
 
 - Create the batch worker VM image. Run:
