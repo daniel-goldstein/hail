@@ -52,7 +52,7 @@ spec:
                  key: ci_watched_branches
 {% else %}
            - name: HAIL_WATCHED_BRANCHES
-             value: '[["hail-ci-test/ci-test-{{create_ci_test_repo.token}}:master", true]]'
+             value: '[["hail-ci-test/ci-test-{{create_ci_test_repo.token}}:master", true, true, true]]'
 {% endif %}
            - name: HAIL_GCP_PROJECT
              value: "{{ global.project }}"

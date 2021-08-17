@@ -88,7 +88,9 @@ Instructions:
    # If the third element in the inner array is set to false,
    # CI will not merge PRs in the source repo, but will still test
    # and post statuses.
-   ci_watched_branches = "[[\"<repo_org>/hail:main\",true,true]]"
+   # If the fourth element is set to false, CI will not notify of failures
+   # on Zulip
+   ci_watched_branches = "[[\"<repo_org>/hail:main\",true,true,true]]"
    ```
 
 - Run `terraform init`.

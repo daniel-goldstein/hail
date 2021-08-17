@@ -28,7 +28,6 @@ deploy_config = get_deploy_config()
 CALLBACK_URL = deploy_config.url('ci', '/api/v1alpha/batch_callback')
 
 zulip_client = zulip.Client(config_file="/zulip-config/.zuliprc")
-SEND_ZULIP = False
 
 TRACKED_PRS = pc.Gauge('ci_tracked_prs', 'PRs currently being monitored by CI', ['build_state', 'review_state'])
 
@@ -586,10 +585,12 @@ git merge {shq(self.source_sha)} -m 'merge PR'
 
 
 class WatchedBranch(Code):
-    def __init__(self, index, branch, deployable):
+    def __init__(self, index, branch, deployable, mergeable, notify_zulip):
         self.index = index
         self.branch = branch
         self.deployable = deployable
+        self.mergeable = mergeable
+        self.notify_zulip = notify_zulip
 
         self.prs: Optional[Dict[str, PR]] = None
         self.sha = None
@@ -668,7 +669,8 @@ class WatchedBranch(Code):
                 if self.state_changed:
                     self.state_changed = False
                     await self._heal(batch_client, dbpool, gh)
-                    await self.try_to_merge(gh)
+                    if self.mergeable:
+                        await self.try_to_merge(gh)
         finally:
             log.info(f'update done {self.short_str()}')
             self.updating = False
@@ -752,14 +754,14 @@ class WatchedBranch(Code):
                 else:
                     self.deploy_state = 'failure'
 
-                if not is_test_deployment and self.deploy_state == 'failure' and SEND_ZULIP:
+                if self.notify_zulip and not is_test_deployment and self.deploy_state == 'failure':
                     url = deploy_config.external_url('ci', f'/batches/{self.deploy_batch.id}')
                     request = {
                         'type': 'stream',
                         'to': 'team',
                         'topic': 'CI Deploy Failure',
                         'content': f'''
-@**daniel king**
+@**Daniel Goldstein**
 state: {self.deploy_state}
 branch: {self.branch.short_str()}
 sha: {self.sha}
