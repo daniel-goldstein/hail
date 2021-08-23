@@ -845,7 +845,8 @@ mkdir -p {shq(repo_dir)}
 '''
             )
             with open(f'{repo_dir}/build.yaml', 'r') as f:
-                config = BuildConfiguration(self, f.read(), scope='deploy')
+                excluded_steps = () if self.mergeable else ('deploy', 'deploy_hail')
+                config = BuildConfiguration(self, f.read(), scope='deploy', excluded_step_names=excluded_steps)
 
             log.info(f'creating deploy batch for {self.branch.short_str()}')
             deploy_batch = batch_client.create_batch(
