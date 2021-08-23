@@ -1,7 +1,7 @@
 from typing import Optional, List
 
 GITHUB_CLONE_URL = 'https://github.com/'
-GITHUB_STATUS_CONTEXT = 'ci-test'
+GITHUB_STATUS_CONTEXT = 'daniel-ci-test'
 SERVICES_TEAM = 'Services'
 COMPILER_TEAM = 'Compiler'
 TEAMS = [SERVICES_TEAM, COMPILER_TEAM]
