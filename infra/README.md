@@ -191,13 +191,6 @@ You can now install Hail:
 
 - Deploy the internal-gateway.  Run `make -C $HAIL/internal-gateway deploy`.
 
-- Generate the version info:
-
-  ```
-  make -C $HAIL/hail python-version-info
-  make -C $HAIL/docker hail_version
-  ```
-
 - Create the batch worker VM image. Run:
 
   ```
