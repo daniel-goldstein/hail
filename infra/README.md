@@ -91,6 +91,8 @@ Instructions:
    # If the fourth element is set to false, CI will not notify of failures
    # on Zulip
    ci_watched_branches = "[[\"<repo_org>/hail:main\",true,true,true]]"
+
+   ci_github_oauth_token = "<ci_github_oauth_token>"
    ```
 
 - Run `terraform init`.
