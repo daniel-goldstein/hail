@@ -32,6 +32,7 @@ resource "azurerm_subnet" "k8s_subnet" {
   address_prefixes     = ["10.240.0.0/16"]
   resource_group_name  = data.azurerm_resource_group.rg.name
   virtual_network_name = azurerm_virtual_network.default.name
+  service_endpoints = ["Microsoft.Sql"]
 }
 
 resource "azurerm_subnet" "batch_worker_subnet" {
@@ -72,6 +73,25 @@ resource "azurerm_kubernetes_cluster_node_pool" "vdc_pool" {
   max_count = 200
 }
 
+resource "azurerm_public_ip" "gateway_ip" {
+  name                = "gateway-ip"
+  resource_group_name = data.azurerm_resource_group.rg.name
+  location            = data.azurerm_resource_group.rg.location
+  allocation_method   = "Static"
+}
+
+resource "azurerm_network_interface" "internal_gatewal_nic" {
+  name                = "internal-gateway-ip"
+  resource_group_name = data.azurerm_resource_group.rg.name
+  location            = data.azurerm_resource_group.rg.location
+
+  ip_configuration {
+    name      = "internal"
+    subnet_id = azurerm_subnet.batch_worker_subnet.id
+    private_ip_address_allocation = "Static"
+  }
+}
+
 resource "random_id" "db_name_suffix" {
   byte_length = 4
 }
@@ -94,4 +114,11 @@ resource "azurerm_mysql_server" "db" {
 
   ssl_enforcement_enabled       = true
   public_network_access_enabled = false
+}
+
+resource "azurerm_mysql_virtual_network_rule" "db_vnet_rule" {
+  name                = "${azurerm_mysql_server.db.name}-vnet-rule"
+  resource_group_name = data.azurerm_resource_group.rg.name
+  server_name         = azurerm_mysql_server.db.name
+  subnet_id           = azurerm_subnet.k8s_subnet.id
 }
