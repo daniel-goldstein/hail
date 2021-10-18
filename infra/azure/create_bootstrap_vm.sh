@@ -3,7 +3,7 @@
 set -ex
 
 if [ -z  "$1" ]; then
-    echo "Call like ./create_bootstrap_vm.sh <RESOURCE_GROUP>"
+    echo "Usage: ./create_bootstrap_vm.sh <RESOURCE_GROUP>"
     exit 1
 fi
 

@@ -4,6 +4,10 @@ terraform {
       source  = "hashicorp/azurerm"
       version = "=2.74.0"
     }
+    azuread = {
+      source  = "hashicorp/azuread"
+      version = "=2.7.0"
+    }
     http = {
       source = "hashicorp/http"
       version = "2.1.0"
@@ -14,6 +18,9 @@ terraform {
 
 provider "azurerm" {
   features {}
+}
+
+provider "azuread" {
 }
 
 locals {
@@ -213,4 +220,17 @@ resource "azurerm_shared_image" "batch_worker" {
     offer     = "UbuntuServer"
     sku       = "20.04-LTS"
   }
+}
+
+data "azuread_client_config" "current" {}
+
+resource "azuread_application" "acr_push" {
+  display_name = "acr_push"
+  owners       = [data.azuread_client_config.current.object_id]
+}
+
+resource "azuread_service_principal" "acr_push" {
+  application_id               = azuread_application.acr_push.application_id
+  app_role_assignment_required = false
+  owners                       = [data.azuread_client_config.current.object_id]
 }

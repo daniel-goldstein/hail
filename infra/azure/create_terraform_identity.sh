@@ -2,6 +2,11 @@
 
 set -ex
 
+if [ -z  "$1" ]; then
+    echo "Usage: ./create_bootstrap_vm.sh <RESOURCE_GROUP>"
+    exit 1
+fi
+
 RESOURCE_GROUP=$1
 SUBSCRIPTION_ID=$(az account list | jq -rj '.[0].id')
 
