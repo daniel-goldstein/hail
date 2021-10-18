@@ -371,6 +371,24 @@ resource "kubernetes_secret" "gcr_push_key" {
   }
 }
 
+resource "kubernetes_secret" "container_registry_push_credentials" {
+  metadata {
+    name = "container-registry-push-credentials"
+  }
+
+  data = {
+    "config.json" = jsonencode({
+      "auths": {
+        (local.docker_prefix): {
+          "auth": base64encode(
+            "_json_key:${var.registry_push_credentials.password}"
+          )
+        }
+      }
+    })
+  }
+}
+
 module "ukbb" {
   source = "./ukbb"
 }

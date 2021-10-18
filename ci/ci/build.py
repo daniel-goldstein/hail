@@ -303,7 +303,8 @@ time python3 \
      /home/user/Dockerfile
 
 set +x
-/bin/sh /home/user/convert-google-application-credentials-to-docker-auth-config
+mkdir -p $HOME/.docker
+ln -sf $CREDENTIALS_FILE $HOME/.docker/config.json
 set -x
 
 export BUILDKITD_FLAGS='--oci-worker-no-process-sandbox --oci-worker-snapshotter=overlayfs'
@@ -322,20 +323,18 @@ cat /home/user/trace
 
         log.info(f'step {self.name}, script:\n{script}')
 
-        docker_registry = DOCKER_PREFIX.split('/')[0]
         self.job = batch.create_job(
             BUILDKIT_IMAGE,
             command=['/bin/sh', '-c', script],
             secrets=[
                 {
                     'namespace': DEFAULT_NAMESPACE,
-                    'name': 'gcr-push-service-account-key',
-                    'mount_path': '/secrets/gcr-push-service-account-key',
+                    'name': 'container-registry-push-credentials',
+                    'mount_path': '/secrets/registry-credentials',
                 }
             ],
             env={
-                'GOOGLE_APPLICATION_CREDENTIALS': '/secrets/gcr-push-service-account-key/gcr-push-service-account-key.json',
-                'REGISTRY': docker_registry,
+                'CREDENTIALS_FILE': '/secrets/registry-credentials/config.json',
             },
             attributes={'name': self.name},
             resources=self.resources,
