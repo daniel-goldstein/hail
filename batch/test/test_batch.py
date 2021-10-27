@@ -19,9 +19,9 @@ from .failure_injecting_client_session import FailureInjectingClientSession
 
 deploy_config = get_deploy_config()
 
-DOCKER_PREFIX = os.environ.get('DOCKER_PREFIX')
-DOCKER_ROOT_IMAGE = os.environ.get('DOCKER_ROOT_IMAGE', 'gcr.io/hail-vdc/ubuntu:18.04')
-NAMESPACE = os.environ.get('HAIL_DEFAULT_NAMESPACE')
+DOCKER_PREFIX = os.environ['DOCKER_PREFIX']
+DOCKER_ROOT_IMAGE = os.environ['DOCKER_ROOT_IMAGE']
+NAMESPACE = os.environ['HAIL_DEFAULT_NAMESPACE']
 SCOPE = os.environ.get('HAIL_SCOPE', 'test')
 
 
@@ -59,7 +59,7 @@ def test_attributes(client: BatchClient):
     a = {'name': 'test_attributes', 'foo': 'bar'}
     builder = client.create_batch()
     j = builder.create_job(DOCKER_ROOT_IMAGE, ['true'], attributes=a)
-    b =builder.submit()
+    b = builder.submit()
     assert j.attributes() == a, str(b.debug_info())
 
 
@@ -337,7 +337,9 @@ def test_unknown_image(client: BatchClient):
     b = b.submit()
     status = j.wait()
     assert j._get_exit_code(status, 'main') is None
-    assert status['status']['container_statuses']['main']['short_error'] == 'image not found', str((status, b.debug_info()))
+    assert status['status']['container_statuses']['main']['short_error'] == 'image not found', str(
+        (status, b.debug_info())
+    )
 
 
 def test_running_job_log_and_status(client: BatchClient):

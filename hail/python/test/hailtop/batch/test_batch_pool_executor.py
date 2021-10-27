@@ -12,6 +12,7 @@ from hailtop.utils import sync_sleep_and_backoff
 
 PYTHON_DILL_IMAGE = os.environ['PYTHON_DILL_IMAGE']
 
+PROJECT = 'hail-vdc'
 
 submitted_batch_ids = []
 
@@ -44,25 +45,25 @@ def check_for_running_batches():
 
 
 def test_simple_map(backend):
-    with BatchPoolExecutor(backend=backend, project='hail-vdc', image=PYTHON_DILL_IMAGE) as bpe:
+    with BatchPoolExecutor(backend=backend, project=PROJECT, image=PYTHON_DILL_IMAGE) as bpe:
         actual = list(bpe.map(lambda x: x * 3, range(4)))
     assert [0, 3, 6, 9] == actual
 
 
 def test_empty_map(backend):
-    with BatchPoolExecutor(backend=backend, project='hail-vdc', image=PYTHON_DILL_IMAGE) as bpe:
+    with BatchPoolExecutor(backend=backend, project=PROJECT, image=PYTHON_DILL_IMAGE) as bpe:
         actual = list(bpe.map(lambda x: x * 3, []))
     assert [] == actual
 
 
 def test_simple_submit_result(backend):
-    with BatchPoolExecutor(backend=backend, project='hail-vdc', image=PYTHON_DILL_IMAGE) as bpe:
+    with BatchPoolExecutor(backend=backend, project=PROJECT, image=PYTHON_DILL_IMAGE) as bpe:
         future_twenty_one = bpe.submit(lambda: 7 * 3)
     assert 21 == future_twenty_one.result()
 
 
 def test_cancel_future(backend):
-    with BatchPoolExecutor(backend=backend, project='hail-vdc', image=PYTHON_DILL_IMAGE) as bpe:
+    with BatchPoolExecutor(backend=backend, project=PROJECT, image=PYTHON_DILL_IMAGE) as bpe:
         def sleep_forever():
             while True:
                 time.sleep(3600)
@@ -74,7 +75,7 @@ def test_cancel_future(backend):
 
 
 def test_cancel_future_after_shutdown_no_wait(backend):
-    bpe = BatchPoolExecutor(backend=backend, project='hail-vdc', image=PYTHON_DILL_IMAGE)
+    bpe = BatchPoolExecutor(backend=backend, project=PROJECT, image=PYTHON_DILL_IMAGE)
     def sleep_forever():
         while True:
             time.sleep(3600)
@@ -87,7 +88,7 @@ def test_cancel_future_after_shutdown_no_wait(backend):
 
 
 def test_cancel_future_after_exit_no_wait_on_exit(backend):
-    with BatchPoolExecutor(backend=backend, project='hail-vdc', wait_on_exit=False, image=PYTHON_DILL_IMAGE) as bpe:
+    with BatchPoolExecutor(backend=backend, project=PROJECT, wait_on_exit=False, image=PYTHON_DILL_IMAGE) as bpe:
         def sleep_forever():
             while True:
                 time.sleep(3600)
@@ -99,7 +100,7 @@ def test_cancel_future_after_exit_no_wait_on_exit(backend):
 
 
 def test_result_with_timeout(backend):
-    with BatchPoolExecutor(backend=backend, project='hail-vdc', image=PYTHON_DILL_IMAGE) as bpe:
+    with BatchPoolExecutor(backend=backend, project=PROJECT, image=PYTHON_DILL_IMAGE) as bpe:
         def sleep_forever():
             while True:
                 time.sleep(3600)
@@ -122,7 +123,7 @@ def test_map_chunksize(backend):
     col_args = [x
                 for row in range(5)
                 for x in list(range(5))]
-    with BatchPoolExecutor(backend=backend, project='hail-vdc', image=PYTHON_DILL_IMAGE) as bpe:
+    with BatchPoolExecutor(backend=backend, project=PROJECT, image=PYTHON_DILL_IMAGE) as bpe:
         multiplication_table = list(bpe.map(lambda x, y: x * y,
                                             row_args,
                                             col_args,
@@ -136,7 +137,7 @@ def test_map_chunksize(backend):
 
 
 def test_map_timeout(backend):
-    with BatchPoolExecutor(backend=backend, project='hail-vdc', image=PYTHON_DILL_IMAGE) as bpe:
+    with BatchPoolExecutor(backend=backend, project=PROJECT, image=PYTHON_DILL_IMAGE) as bpe:
         def sleep_forever():
             while True:
                 time.sleep(3600)
@@ -149,14 +150,14 @@ def test_map_timeout(backend):
 
 
 def test_map_error_without_wait_no_error(backend):
-    with BatchPoolExecutor(backend=backend, project='hail-vdc', wait_on_exit=False, image=PYTHON_DILL_IMAGE) as bpe:
+    with BatchPoolExecutor(backend=backend, project=PROJECT, wait_on_exit=False, image=PYTHON_DILL_IMAGE) as bpe:
         bpe.map(lambda _: time.sleep(10), range(5), timeout=2)
 
 
 def test_exception_in_map(backend):
     def raise_value_error():
         raise ValueError('dead')
-    with BatchPoolExecutor(backend=backend, project='hail-vdc', image=PYTHON_DILL_IMAGE) as bpe:
+    with BatchPoolExecutor(backend=backend, project=PROJECT, image=PYTHON_DILL_IMAGE) as bpe:
         try:
             gen = bpe.map(lambda _: raise_value_error(), range(5))
             next(gen)
@@ -169,7 +170,7 @@ def test_exception_in_map(backend):
 def test_exception_in_result(backend):
     def raise_value_error():
         raise ValueError('dead')
-    with BatchPoolExecutor(backend=backend, project='hail-vdc', image=PYTHON_DILL_IMAGE) as bpe:
+    with BatchPoolExecutor(backend=backend, project=PROJECT, image=PYTHON_DILL_IMAGE) as bpe:
         try:
             future = bpe.submit(raise_value_error)
             future.result()
@@ -182,7 +183,7 @@ def test_exception_in_result(backend):
 def test_exception_in_exception(backend):
     def raise_value_error():
         raise ValueError('dead')
-    with BatchPoolExecutor(backend=backend, project='hail-vdc', image=PYTHON_DILL_IMAGE) as bpe:
+    with BatchPoolExecutor(backend=backend, project=PROJECT, image=PYTHON_DILL_IMAGE) as bpe:
         try:
             future = bpe.submit(raise_value_error)
             future.exception()
@@ -195,7 +196,7 @@ def test_exception_in_exception(backend):
 def test_no_exception_when_exiting_context(backend):
     def raise_value_error():
         raise ValueError('dead')
-    with BatchPoolExecutor(backend=backend, project='hail-vdc', image=PYTHON_DILL_IMAGE) as bpe:
+    with BatchPoolExecutor(backend=backend, project=PROJECT, image=PYTHON_DILL_IMAGE) as bpe:
         future = bpe.submit(raise_value_error)
     try:
         future.exception()
@@ -208,7 +209,7 @@ def test_no_exception_when_exiting_context(backend):
 def test_bad_image_gives_good_error(backend):
     with BatchPoolExecutor(
             backend=backend,
-            project='hail-vdc',
+            project=PROJECT,
             image='hailgenetics/not-a-valid-image:123abc') as bpe:
         future = bpe.submit(lambda: 3)
     try:
@@ -220,7 +221,7 @@ def test_bad_image_gives_good_error(backend):
 
 
 def test_call_result_after_timeout():
-    with BatchPoolExecutor(project='hail-vdc', image=PYTHON_DILL_IMAGE) as bpe:
+    with BatchPoolExecutor(project=PROJECT, image=PYTHON_DILL_IMAGE) as bpe:
         def sleep_forever():
             while True:
                 time.sleep(3600)

@@ -3596,7 +3596,7 @@ steps:
       cd /io/repo
 
       gcloud auth activate-service-account --key-file=/test-dataproc-service-account-key/test-dataproc-service-account-key.json
-      gcloud config set project hail-vdc
+      gcloud config set project {{ global.project }}
       gcloud config set dataproc/region us-central1
 
       if git ls-remote --exit-code --tags origin $(cat /io/hail_pip_version)

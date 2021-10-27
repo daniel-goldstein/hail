@@ -202,7 +202,7 @@ class NetworkNamespace:
         with open(f'/etc/netns/{self.network_ns_name}/resolv.conf', 'w') as resolv:
             if self.private:
                 resolv.write('nameserver 169.254.169.254\n')
-                resolv.write('search c.hail-vdc.internal google.internal\n')
+                resolv.write(f'search c.{PROJECT}.internal google.internal\n')
             else:
                 resolv.write('nameserver 8.8.8.8\n')
 
@@ -462,6 +462,7 @@ class Container:
 
     async def run(self):
         try:
+
             async def localize_rootfs():
                 async with image_lock.reader_lock:
                     # FIXME Authentication is entangled with pulling images. We need a way to test
@@ -876,7 +877,10 @@ class Container:
                     await check_exec_output('crun', 'kill', '--all', self.container_name, 'SIGKILL')
                 except CalledProcessError as e:
                     not_extant_message = (
-                        b'error opening file `/run/crun/' + self.container_name.encode() + b'/status`: No such file or directory')
+                        b'error opening file `/run/crun/'
+                        + self.container_name.encode()
+                        + b'/status`: No such file or directory'
+                    )
                     if not (e.returncode == 1 and not_extant_message in e.stderr):
                         log.exception(f'while deleting container {self}', exc_info=True)
             finally:
@@ -1080,19 +1084,22 @@ class Job:
         return f'{self.scratch}/gsa-key'
 
     @staticmethod
-    def create(batch_id,
-               user,
-               gsa_key: Optional[Dict[str, str]],
-               job_spec: dict,
-               format_version: BatchFormatVersion,
-               task_manager: aiotools.BackgroundTaskManager,
-               pool: concurrent.futures.ThreadPoolExecutor,
-               client_session: httpx.ClientSession,
-               worker: 'Worker'
-               ) -> 'Job':
+    def create(
+        batch_id,
+        user,
+        gsa_key: Optional[Dict[str, str]],
+        job_spec: dict,
+        format_version: BatchFormatVersion,
+        task_manager: aiotools.BackgroundTaskManager,
+        pool: concurrent.futures.ThreadPoolExecutor,
+        client_session: httpx.ClientSession,
+        worker: 'Worker',
+    ) -> 'Job':
         type = job_spec['process']['type']
         if type == 'docker':
-            return DockerJob(batch_id, user, gsa_key, job_spec, format_version, task_manager, pool, client_session, worker)
+            return DockerJob(
+                batch_id, user, gsa_key, job_spec, format_version, task_manager, pool, client_session, worker
+            )
         assert type == 'jvm'
         return JVMJob(batch_id, user, gsa_key, job_spec, format_version, task_manager, pool, worker)
 
@@ -1886,7 +1893,7 @@ class Worker:
             self.task_manager,
             self.pool,
             self.client_session,
-            self
+            self,
         )
 
         log.info(f'created {job}, adding to jobs')
