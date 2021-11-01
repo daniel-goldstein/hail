@@ -32,6 +32,7 @@ copy_images() {
     DOCKER_PREFIX=$(get_global_config_field docker_prefix)
     DOCKER_PREFIX=$DOCKER_PREFIX ./copy_images.sh
     cd -
+    make -C $HAIL/docker/python-dill push
 }
 
 generate_ssl_certs() {
