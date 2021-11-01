@@ -20,6 +20,9 @@ variable "hail_query_bucket_location" {}
 variable "hail_query_bucket_storage_class" {}
 variable "hail_test_gcs_bucket_location" {}
 variable "hail_test_gcs_bucket_storage_class" {}
+variable "ci_watched_branches" {
+  type = list(tuple([string, bool]))
+}
 variable "gcp_region" {}
 variable "gcp_zone" {}
 variable "gcp_location" {}
@@ -252,6 +255,8 @@ resource "kubernetes_secret" "global_config" {
     hail_query_gcs_path = "gs://${module.hail_query.name}"
     hail_test_gcs_bucket = module.hail_test_gcs_bucket.name # Deprecated
     test_storage_uri = "gs://${module.hail_test_gcs_bucket.name}"
+    ci_storage_uri = "gs://${module.hail_ci_bucket.name}"
+    ci_watched_branches = jsonencode(var.ci_watched_branches)
     default_namespace = "default"
     docker_root_image = local.docker_root_image
     domain = var.domain
