@@ -172,12 +172,7 @@ You can now install Hail:
    - https://auth.<domain>/oauth2callback
    - http://127.0.0.1/oauth2callback
 
-  Download the client secret as client_secret.json.  Create the
-  auth-oauth2-client-secret secret with:
-
-  ```
-  kubectl -n default create secret generic auth-oauth2-client-secret --from-file=./client_secret.json
-  ```
+  Download the client secret as `~/.hail/auth_oauth2_client_secret.json`.
 
 - Create the batch worker VM image. Run:
 
