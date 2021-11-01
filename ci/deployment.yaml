@@ -49,7 +49,7 @@ spec:
              valueFrom:
                secretKeyRef:
                  name: global-config
-                 key: ci-watched-branches
+                 key: ci_watched_branches
 {% else %}
            - name: HAIL_WATCHED_BRANCHES
              value: '[["hail-ci-test/ci-test-{{create_ci_test_repo.token}}:master", true]]'
