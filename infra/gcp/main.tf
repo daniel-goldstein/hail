@@ -29,6 +29,14 @@ variable "use_artifact_registry" {
   description = "pull the ubuntu image from Artifact Registry. Otherwise, GCR"
 }
 
+variable "ci_config" {
+  type = object({
+    github_oauth_token = string
+    github_user1_oauth_token = string
+  })
+  default = null
+}
+
 locals {
   docker_prefix = (
     var.use_artifact_registry ?
@@ -600,4 +608,12 @@ resource "kubernetes_secret" "auth_oauth2_client_secret" {
   data = {
     "client_secret.json" = file("~/.hail/auth_oauth2_client_secret.json")
   }
+}
+
+module "ci" {
+  source = "./ci"
+  count = var.ci_config != null ? 1 : 0
+
+  github_oauth_token = var.ci_config.github_oauth_token
+  github_user1_oauth_token = var.ci_config.github_user1_oauth_token
 }
