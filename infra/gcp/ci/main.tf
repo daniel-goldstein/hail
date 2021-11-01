@@ -20,3 +20,13 @@ resource "kubernetes_secret" "hail_ci_0_1_github_oauth_token" {
     "oauth-token" = var.github_oauth_token
   }
 }
+
+resource "kubernetes_secret" "hail_ci_0_1_service_account_key" {
+  metadata {
+    name = "hail-ci-0-1-service-account-key"
+  }
+
+  data = {
+    "user1" = var.github_user1_oauth_token
+  }
+}
