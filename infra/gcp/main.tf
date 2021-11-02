@@ -23,6 +23,8 @@ variable "hail_test_gcs_bucket_storage_class" {}
 variable "ci_watched_branches" {
   type = list(tuple([string, bool]))
 }
+variable "hail_ci_gcs_bucket_location" {}
+variable "hail_ci_gcs_bucket_storage_class" {}
 variable "gcp_region" {}
 variable "gcp_zone" {}
 variable "gcp_location" {}
@@ -547,6 +549,13 @@ module "hail_query" {
   short_name    = "hail-query"
   location      = var.hail_query_bucket_location
   storage_class = var.hail_query_bucket_storage_class
+}
+
+module "hail_ci_bucket" {
+  source        = "./gcs_bucket"
+  short_name    = "hail-ci"
+  location      = var.hail_ci_bucket_location
+  storage_class = var.hail_ci_bucket_storage_class
 }
 
 module "hail_test_gcs_bucket" {
