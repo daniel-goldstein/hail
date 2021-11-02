@@ -54,6 +54,11 @@ spec:
            - name: HAIL_WATCHED_BRANCHES
              value: '[["hail-ci-test/ci-test-{{create_ci_test_repo.token}}:master", true]]'
 {% endif %}
+           - name: DEPLOY_STEPS
+             valueFrom:
+               secretKeyRef:
+                 name: global-config
+                 key: ci_deploy_steps
            - name: HAIL_DOCKER_PREFIX
              valueFrom:
                secretKeyRef:

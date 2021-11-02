@@ -6,6 +6,9 @@ variable "watched_branches" {
   type = list(tuple([string, bool]))
 }
 variable "ci_email" {}
+variable deploy_steps {
+  type = list(string)
+}
 
 module "bucket" {
   source        = "../gcs_bucket"
@@ -28,6 +31,7 @@ resource "kubernetes_secret" "ci_config" {
   data = {
     storage_uri = "gs://${module.bucket.name}"
     watched_branches = jsonencode(var.watched_branches)
+    deploy_steps = jsonencode(var.deploy_steps)
   }
 }
 

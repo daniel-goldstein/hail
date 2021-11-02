@@ -36,6 +36,7 @@ variable "ci_config" {
     watched_branches = list(tuple([string, bool]))
     bucket_location = string
     bucket_storage_class = string
+    deploy_steps = list(string)
   })
   default = null
 }
@@ -615,4 +616,5 @@ module "ci" {
   bucket_location = var.ci_config.bucket_location
   bucket_storage_class = var.ci_config.bucket_storage_class
   ci_email = module.ci_gsa_secret.email
+  deploy_steps = var.ci_config.deploy_steps
 }
