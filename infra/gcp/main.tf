@@ -20,11 +20,6 @@ variable "hail_query_bucket_location" {}
 variable "hail_query_bucket_storage_class" {}
 variable "hail_test_gcs_bucket_location" {}
 variable "hail_test_gcs_bucket_storage_class" {}
-variable "ci_watched_branches" {
-  type = list(tuple([string, bool]))
-}
-variable "hail_ci_bucket_location" {}
-variable "hail_ci_bucket_storage_class" {}
 variable "gcp_region" {}
 variable "gcp_zone" {}
 variable "gcp_location" {}
@@ -38,6 +33,9 @@ variable "ci_config" {
   type = object({
     github_oauth_token = string
     github_user1_oauth_token = string
+    watched_branches = list(tuple([string, bool]))
+    bucket_location = string
+    bucket_storage_class = string
   })
   default = null
 }
@@ -173,7 +171,7 @@ resource "google_container_node_pool" "vdc_nonpreemptible_pool" {
 }
 
 resource "random_id" "db_name_suffix" {
-  byte_length = 4
+  byte_length = 5
 }
 
 # Without this, I get:
@@ -257,8 +255,6 @@ resource "kubernetes_secret" "global_config" {
     hail_query_gcs_path = "gs://${module.hail_query.name}"
     hail_test_gcs_bucket = module.hail_test_gcs_bucket.name # Deprecated
     test_storage_uri = "gs://${module.hail_test_gcs_bucket.name}"
-    ci_storage_uri = "gs://${module.hail_ci_bucket.name}"
-    ci_watched_branches = jsonencode(var.ci_watched_branches)
     default_namespace = "default"
     docker_root_image = local.docker_root_image
     domain = var.domain
@@ -440,14 +436,6 @@ module "ci_gsa_secret" {
   name = "ci"
 }
 
-resource "google_artifact_registry_repository_iam_member" "artifact_registry_viewer" {
-  provider = google-beta
-  repository = google_artifact_registry_repository.repository.name
-  location = var.gcp_location
-  role = "roles/artifactregistry.reader"
-  member = "serviceAccount:${module.ci_gsa_secret.email}"
-}
-
 module "monitoring_gsa_secret" {
   source = "./gsa_k8s_secret"
   name = "monitoring"
@@ -551,20 +539,6 @@ module "hail_query" {
   storage_class = var.hail_query_bucket_storage_class
 }
 
-module "hail_ci_bucket" {
-  source        = "./gcs_bucket"
-  short_name    = "hail-ci"
-  location      = var.hail_ci_bucket_location
-  storage_class = var.hail_ci_bucket_storage_class
-}
-
-resource "google_storage_bucket_iam_member" "ci_bucket_admin" {
-  bucket = module.hail_ci_bucket.name
-  role = "roles/storage.objectAdmin"
-  member = "serviceAccount:${module.ci_gsa_secret.email}"
-}
-
-
 module "hail_test_gcs_bucket" {
   source        = "./gcs_bucket"
   short_name    = "hail-test"
@@ -637,4 +611,8 @@ module "ci" {
 
   github_oauth_token = var.ci_config.github_oauth_token
   github_user1_oauth_token = var.ci_config.github_user1_oauth_token
+  watched_branches = var.ci_config.watched_branches
+  bucket_location = var.ci_config.bucket_location
+  bucket_storage_class = var.ci_config.bucket_storage_class
+  ci_email = module.ci_gsa_secret.email
 }

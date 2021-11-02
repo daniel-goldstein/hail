@@ -43,7 +43,7 @@ def send_zulip_deploy_failure_message(message):
         'topic': 'CI Deploy Failure',
         'content': message,
     }
-    result = zulip_client.send_message(request)
+    # result = zulip_client.send_message(request)
     log.info(result)
 
 

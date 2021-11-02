@@ -1,5 +1,35 @@
 variable "github_oauth_token" {}
 variable "github_user1_oauth_token" {}
+variable "bucket_location" {}
+variable "bucket_storage_class" {}
+variable "watched_branches" {
+  type = list(tuple([string, bool]))
+}
+variable "ci_email" {}
+
+module "bucket" {
+  source        = "../gcs_bucket"
+  short_name    = "hail-ci"
+  location      = var.bucket_location
+  storage_class = var.bucket_storage_class
+}
+
+resource "google_storage_bucket_iam_member" "ci_bucket_admin" {
+  bucket = module.bucket.name
+  role = "roles/storage.objectAdmin"
+  member = "serviceAccount:${var.ci_email}"
+}
+
+resource "kubernetes_secret" "ci_config" {
+  metadata {
+    name = "ci-config"
+  }
+
+  data = {
+    storage_uri = "gs://${module.bucket.name}"
+    watched_branches = jsonencode(var.watched_branches)
+  }
+}
 
 resource "kubernetes_secret" "zulip_config" {
   metadata {
