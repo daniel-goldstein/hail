@@ -58,7 +58,7 @@ spec:
              valueFrom:
                secretKeyRef:
                  name: ci-config
-                 key: ci_deploy_steps
+                 key: deploy_steps
            - name: HAIL_DOCKER_PREFIX
              valueFrom:
                secretKeyRef:
