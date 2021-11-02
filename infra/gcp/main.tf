@@ -23,8 +23,8 @@ variable "hail_test_gcs_bucket_storage_class" {}
 variable "ci_watched_branches" {
   type = list(tuple([string, bool]))
 }
-variable "hail_ci_gcs_bucket_location" {}
-variable "hail_ci_gcs_bucket_storage_class" {}
+variable "hail_ci_bucket_location" {}
+variable "hail_ci_bucket_storage_class" {}
 variable "gcp_region" {}
 variable "gcp_zone" {}
 variable "gcp_location" {}
@@ -557,6 +557,13 @@ module "hail_ci_bucket" {
   location      = var.hail_ci_bucket_location
   storage_class = var.hail_ci_bucket_storage_class
 }
+
+resource "google_storage_bucket_iam_member" "ci_bucket_admin" {
+  bucket = module.hail_ci_bucket.name
+  role = "roles/storage.objectAdmin"
+  member = "serviceAccount:${module.ci_gsa_secret.email}"
+}
+
 
 module "hail_test_gcs_bucket" {
   source        = "./gcs_bucket"
