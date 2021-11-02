@@ -1,4 +1,5 @@
 import os
+import json
 from gear.cloud_config import get_global_config
 
 global_config = get_global_config()
@@ -13,3 +14,5 @@ DEFAULT_NAMESPACE = global_config['default_namespace']
 CI_UTILS_IMAGE = os.environ['HAIL_CI_UTILS_IMAGE']
 BUILDKIT_IMAGE = os.environ['HAIL_BUILDKIT_IMAGE']
 STORAGE_URI = os.environ['HAIL_CI_STORAGE_URI']
+
+DEPLOY_STEPS = tuple(json.loads(os.environ['DEPLOY_STEPS']))

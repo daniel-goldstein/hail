@@ -17,6 +17,7 @@ from hailtop.utils import check_shell, check_shell_output, RETRY_FUNCTION_SCRIPT
 from .constants import GITHUB_CLONE_URL, AUTHORIZED_USERS, GITHUB_STATUS_CONTEXT, SERVICES_TEAM, COMPILER_TEAM
 from .build import BuildConfiguration, Code
 from .globals import is_test_deployment
+from .environment import DEPLOY_STEPS
 
 
 repos_lock = asyncio.Lock()
@@ -847,7 +848,7 @@ mkdir -p {shq(repo_dir)}
 '''
             )
             with open(f'{repo_dir}/build.yaml', 'r') as f:
-                config = BuildConfiguration(self, f.read(), scope='deploy')
+                config = BuildConfiguration(self, f.read(), requested_step_names=DEPLOY_STEPS, scope='deploy')
 
             log.info(f'creating deploy batch for {self.branch.short_str()}')
             deploy_batch = batch_client.create_batch(
