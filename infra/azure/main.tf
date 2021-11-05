@@ -66,6 +66,13 @@ resource "azurerm_subnet" "db_subnet" {
   enforce_private_link_endpoint_network_policies = true
 }
 
+resource "azurerm_log_analytics_workspace" "logs" {
+  name                = "${data.azurerm_resource_group.rg.name}-logs"
+  location            = data.azurerm_resource_group.rg.location
+  resource_group_name = data.azurerm_resource_group.rg.name
+  retention_in_days   = 30
+}
+
 resource "azurerm_kubernetes_cluster" "vdc" {
   name                = "vdc"
   resource_group_name = data.azurerm_resource_group.rg.name
@@ -82,6 +89,13 @@ resource "azurerm_kubernetes_cluster" "vdc" {
 
   identity {
     type = "SystemAssigned"
+  }
+
+  addon_profile {
+    oms_agent {
+      enabled = true
+      log_analytics_workspace_id = azurerm_log_analytics_workspace.logs.id
+    }
   }
 }
 
@@ -372,6 +386,24 @@ module "batch_sp" {
 resource "azurerm_role_assignment" "batch_compute_contributor" {
   scope                = data.azurerm_subscription.primary.id
   role_definition_name = "Virtual Machine Contributor"
+  principal_id         = module.batch_sp.principal_id
+}
+
+resource "azurerm_role_assignment" "batch_network_contributor" {
+  scope                = data.azurerm_resource_group.rg.id
+  role_definition_name = "Network Contributor"
+  principal_id         = module.batch_sp.principal_id
+}
+
+resource "azurerm_role_assignment" "batch_shared_gallery_reader" {
+  scope                = azurerm_shared_image_gallery.batch.id
+  role_definition_name = "Reader"
+  principal_id         = module.batch_sp.principal_id
+}
+
+resource "azurerm_role_assignment" "batch_managed_identity_operator" {
+  scope                = data.azurerm_resource_group.rg.id
+  role_definition_name = "Managed Identity Operator"
   principal_id         = module.batch_sp.principal_id
 }
 
