@@ -425,9 +425,11 @@ class ServiceBackend(Backend[bc.Batch]):
                     'Use the remote_tmpdir parameter to specify a path.')
             remote_tmpdir = f'gs://{bucket}/batch'
         else:
-            if not remote_tmpdir.startswith('gs://'):
+            schemes = {'file', 'gs', 'hail-az', 's3'}
+            found_scheme = any([remote_tmpdir.startswith(f'{scheme}://') for scheme in schemes])
+            if not found_scheme:
                 raise ValueError(
-                    'remote_tmpdir must be a google storage path like gs://bucket/folder')
+                    'remote_tmpdir must be a storage uri path like gs://bucket/folder')
         if remote_tmpdir[-1] != '/':
             remote_tmpdir += '/'
         self.remote_tmpdir = remote_tmpdir
