@@ -368,6 +368,12 @@ resource "azurerm_role_assignment" "batch_worker_test_container_contributor" {
   principal_id         = azurerm_user_assigned_identity.batch_worker.principal_id
 }
 
+resource "azurerm_role_assignment" "ci_test_container_contributor" {
+  scope                = azurerm_storage_container.test.resource_manager_id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = module.ci_sp.principal_id
+}
+
 provider "azuread" {}
 
 resource "azuread_application" "auth" {
@@ -474,4 +480,25 @@ module "grafana_sp" {
   source = "./service_principal"
   application_id = azuread_application.grafana.application_id
   object_id      = azuread_application.grafana.object_id
+}
+
+module "ci" {
+  source = "./ci"
+  count = var.ci_config != null ? 1 : 0
+
+  resource_group        = data.azurerm_resource_group.rg
+  ci_principal_id       = module.ci_sp.principal_id
+  container_registry_id = azurerm_container_registry.acr.id
+}
+
+module "ci_k8s_resources" {
+  source = "../k8s/ci"
+  count = var.ci_config != null ? 1 : 0
+
+  storage_uri              = module.ci[0].storage_uri
+  deploy_steps             = var.ci_config.deploy_steps
+  watched_branches         = var.ci_config.watched_branches
+  github_context           = var.ci_config.github_context
+  github_oauth_token       = var.ci_config.github_oauth_token
+  github_user1_oauth_token = var.ci_config.github_user1_oauth_token
 }
