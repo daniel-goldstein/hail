@@ -23,6 +23,20 @@ provider "azurerm" {
   features {}
 }
 
+provider "kubernetes" {
+  host = "https://${azurerm_kubernetes_cluster.vdc.fqdn}"
+
+  cluster_ca_certificate = base64decode(
+    azurerm_kubernetes_cluster.vdc.kube_config[0].cluster_ca_certificate
+  )
+  client_certificate = base64decode(
+    azurerm_kubernetes_cluster.vdc.kube_config[0].client_certificate
+  )
+  client_key = base64decode(
+    azurerm_kubernetes_cluster.vdc.kube_config[0].client_key
+  )
+}
+
 locals {
   acr_name = var.acr_name == "" ? var.az_resource_group_name : var.acr_name
   # An IP toward the top of the batch-worker-subnet IP address range
@@ -96,6 +110,11 @@ resource "azurerm_kubernetes_cluster" "vdc" {
       enabled = true
       log_analytics_workspace_id = azurerm_log_analytics_workspace.logs.id
     }
+  }
+
+  # https://github.com/hashicorp/terraform-provider-azurerm/issues/7396
+  lifecycle {
+    ignore_changes = [addon_profile.0]
   }
 }
 
