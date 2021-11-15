@@ -3156,6 +3156,7 @@ steps:
         valueFrom: default_ns.name
     scopes:
       - test
+      - dev
     dependsOn:
       - default_ns
       - base_image
