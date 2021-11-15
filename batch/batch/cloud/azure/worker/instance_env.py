@@ -67,21 +67,18 @@ class LazyShortLivedToken(abc.ABC):
 class AadAccessToken(LazyShortLivedToken):
     async def _fetch(self, session: httpx.ClientSession) -> Tuple[str, int]:
         # https://docs.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/how-to-use-vm-token#get-a-token-using-http
-        params = {
-            'api-version': '2018-02-01',
-            'resource': 'https://management.azure.com/'
-        }
+        params = {'api-version': '2018-02-01', 'resource': 'https://management.azure.com/'}
         async with await request_retry_transient_errors(
             session,
             'GET',
             'http://169.254.169.254/metadata/identity/oauth2/token',
             headers={'Metadata': 'true'},
             params=params,
-            timeout=aiohttp.ClientTimeout(total=60)  # type: ignore
+            timeout=aiohttp.ClientTimeout(total=60),  # type: ignore
         ) as resp:
             resp_json = await resp.json()
             access_token: str = resp_json['access_token']
-            expiration_time_ms = int(isoparse(resp_json['expires_on']).timestamp()) * 1000
+            expiration_time_ms = int(resp_json['expires_on']) * 1000
             return access_token, expiration_time_ms
 
 
@@ -104,7 +101,7 @@ class AcrRefreshToken(LazyShortLivedToken):
             f'https://{self.acr_url}/oauth2/exchange',
             headers={'Content-Type': 'application/x-www-form-urlencoded'},
             data=data,
-            timeout=aiohttp.ClientTimeout(total=60)  # type: ignore
+            timeout=aiohttp.ClientTimeout(total=60),  # type: ignore
         ) as resp:
             refresh_token: str = (await resp.json())['refresh_token']
             expiration_time_ms = time_msecs() + 60 * 60 * 1000  # token expires in 3 hours so we refresh after 1 hour
