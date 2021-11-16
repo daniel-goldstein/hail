@@ -36,8 +36,10 @@ resource "azurerm_role_assignment" "ci_ci_account_contributor" {
   principal_id         = var.ci_principal_id
 }
 
-resource "azurerm_role_assignment" "ci_acr_contributor" {
+resource "azurerm_role_assignment" "ci_acr_role" {
+  for_each = toset(["AcrPush", "AcrDelete"])
+
   scope                = var.container_registry_id
-  role_definition_name = "Contributor"
+  role_definition_name = each.key
   principal_id         = var.ci_principal_id
 }
