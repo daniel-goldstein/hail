@@ -1,7 +1,6 @@
 import aiohttp
 import abc
 from typing import Dict, Optional, Tuple
-from dateutil.parser import isoparse
 import os
 
 from hailtop import httpx
@@ -26,6 +25,10 @@ class AzureWorkerAPI(CloudWorkerAPI):
         self.subscription_id = subscription_id
         self.resource_group = resource_group
         self.acr_refresh_token = AcrRefreshToken(acr_url, AadAccessToken())
+
+    @property
+    def nameserver_ip(self):
+        return '168.63.129.16'
 
     def create_disk(self, instance_name: str, disk_name: str, size_in_gb: int, mount_path: str) -> AzureDisk:
         return AzureDisk(disk_name, instance_name, size_in_gb, mount_path)
