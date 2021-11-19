@@ -377,6 +377,7 @@ done
                 'dataCollectionRuleId': {
                     'value': f'/subscriptions/${subscription_id}/resourceGroups/{resource_group}/providers/'
                              f'Microsoft.Insights/dataCollectionRules/batch-worker-data-collection-rule'
+                }
             },
             'template': {
                 '$schema': 'https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#',
