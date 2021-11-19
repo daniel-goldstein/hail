@@ -42,6 +42,8 @@ locals {
   # An IP toward the top of the batch-worker-subnet IP address range
   # that we will use for the bath-worker side of the internal-gateway
   internal_ip = "10.128.255.254"
+
+  data_collection_rule_id = "/subscriptions/${data.azurerm_subscription.primary.id}/resourceGroups/${data.azurerm_resource_group.rg.name}/providers/Microsoft.Insights/dataCollectionRules/batch-worker-data-collection-rule"
 }
 
 data "azurerm_subscription" "primary" {}
@@ -85,6 +87,34 @@ resource "azurerm_log_analytics_workspace" "logs" {
   location            = data.azurerm_resource_group.rg.location
   resource_group_name = data.azurerm_resource_group.rg.name
   retention_in_days   = 30
+}
+
+// NOTE: At the time of writing, the azurerm does not yet provide a resource
+// for an Azure Monitor Data Collection Rule. This is a workaround using the
+// CLI from the issue requesting the actual resource implementation:
+// https://github.com/hashicorp/terraform-provider-azurerm/issues/9679
+data "template_file" "data_collection_rule" {
+  template = file("${path.module}/worker-data-collection-rule.json.tpl")
+
+  vars = {
+    location                   = data.azurerm_resource_group.rg.location
+    log_analytics_workspace_id = azurerm_log_analytics_workspace.logs.id
+  }
+}
+
+resource "null_resource" "data_collection_rule" {
+  provisioner "local-exec" {
+    command = <<EOC
+      az rest --subscription ${data.azurerm_subscription.primary.id} \
+              --method PUT \
+              --url https://management.azure.com${local.data_collection_rule_id}?api-version=2019-11-01-preview \
+              --body '${data.template_file.data_collection_rule.rendered}'
+EOC
+  }
+
+  triggers = {
+    data = md5(data.template_file.data_collection_rule.rendered)
+  }
 }
 
 resource "azurerm_kubernetes_cluster" "vdc" {
