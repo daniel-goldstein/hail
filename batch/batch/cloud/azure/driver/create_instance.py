@@ -404,14 +404,19 @@ done
                     },
                     'imageReference': {
                         'type': 'object',
-                        'defaultValue':
-                            {
-                                'publisher': 'Canonical',
-                                'offer': 'UbuntuServer',
-                                'sku': '18.04-LTS',
-                                'version': 'latest'
-                            }
-                    }
+                        'defaultValue': {
+                            'publisher': 'Canonical',
+                            'offer': 'UbuntuServer',
+                            'sku': '18.04-LTS',
+                            'version': 'latest'
+                        }
+                    },
+                    "associationName": {
+                        "type": "string",
+                    },
+                    "dataCollectionRuleId": {
+                        "type": "string",
+                    },
                 },
                 'variables': {
                     'ipName': "[concat(parameters('vmName'), '-ip')]",
@@ -474,6 +479,14 @@ done
                             'typeHandlerVersion': '1.5',
                             'autoUpgradeMinorVersion': True,
                         },
+                    },
+                    {
+                        "type": "Microsoft.Compute/virtualMachines/providers/dataCollectionRuleAssociations",
+                        "name": "[concat(parameters('vmName'),'/microsoft.insights/', parameters('associationName'))]",
+                        "apiVersion": "2019-11-01-preview",
+                        "properties": {
+                            "dataCollectionRuleId": "[parameters('dataCollectionRuleId')]"
+                        }
                     },
                     vm_config
                 ],
