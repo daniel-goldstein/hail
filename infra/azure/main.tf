@@ -375,6 +375,12 @@ resource "azurerm_storage_management_policy" "test" {
   }
 }
 
+resource "azurerm_role_assignment" "test_test_container_contributor" {
+  scope                = azurerm_storage_container.test.resource_manager_id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = module.test_sp.principal_id
+}
+
 resource "azurerm_role_assignment" "batch_test_container_contributor" {
   scope                = azurerm_storage_container.test.resource_manager_id
   role_definition_name = "Storage Blob Data Contributor"
@@ -435,6 +441,12 @@ resource "azurerm_role_assignment" "batch_network_contributor" {
   principal_id         = module.batch_sp.principal_id
 }
 
+resource "azurerm_role_assignment" "batch_subscription_reader" {
+  scope                = data.azurerm_subscription.primary.id
+  role_definition_name = "Reader"
+  principal_id         = module.batch_sp.principal_id
+}
+
 resource "azurerm_role_assignment" "batch_shared_gallery_reader" {
   scope                = azurerm_shared_image_gallery.batch.id
   role_definition_name = "Reader"
@@ -472,6 +484,36 @@ module "test_sp" {
   source = "./service_principal"
   application_id = azuread_application.test.application_id
   object_id      = azuread_application.test.object_id
+}
+
+resource "azurerm_role_assignment" "test_compute_contributor" {
+  scope                = data.azurerm_subscription.primary.id
+  role_definition_name = "Virtual Machine Contributor"
+  principal_id         = module.test_sp.principal_id
+}
+
+resource "azurerm_role_assignment" "test_network_contributor" {
+  scope                = data.azurerm_resource_group.rg.id
+  role_definition_name = "Network Contributor"
+  principal_id         = module.test_sp.principal_id
+}
+
+resource "azurerm_role_assignment" "test_subscription_reader" {
+  scope                = data.azurerm_subscription.primary.id
+  role_definition_name = "Reader"
+  principal_id         = module.test_sp.principal_id
+}
+
+resource "azurerm_role_assignment" "test_shared_gallery_reader" {
+  scope                = azurerm_shared_image_gallery.batch.id
+  role_definition_name = "Reader"
+  principal_id         = module.test_sp.principal_id
+}
+
+resource "azurerm_role_assignment" "test_managed_identity_operator" {
+  scope                = data.azurerm_resource_group.rg.id
+  role_definition_name = "Managed Identity Operator"
+  principal_id         = module.test_sp.principal_id
 }
 
 resource "azuread_application" "test_dev" {
