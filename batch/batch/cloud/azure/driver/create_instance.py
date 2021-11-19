@@ -463,6 +463,18 @@ done
                             }
                         }
                     },
+                    {
+                        'name': "[concat(parameters('vmName'),'/AzureMonitorLinuxAgent')]",
+                        'type': 'Microsoft.Compute/virtualMachines/extensions',
+                        'location': "[parameters('location')]",
+                        'apiVersion': '2020-06-01',
+                        'properties': {
+                            'publisher': 'Microsoft.Azure.Monitor',
+                            'type': 'AzureMonitorLinuxAgent',
+                            'typeHandlerVersion': '1.5',
+                            'autoUpgradeMinorVersion': True,
+                        },
+                    },
                     vm_config
                 ],
                 'outputs': {}
