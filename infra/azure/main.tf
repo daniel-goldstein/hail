@@ -43,7 +43,7 @@ locals {
   # that we will use for the bath-worker side of the internal-gateway
   internal_ip = "10.128.255.254"
 
-  data_collection_rule_id = "/subscriptions/${data.azurerm_subscription.primary.id}/resourceGroups/${data.azurerm_resource_group.rg.name}/providers/Microsoft.Insights/dataCollectionRules/batch-worker-data-collection-rule"
+  data_collection_rule_id = "${data.azurerm_resource_group.rg.id}/providers/Microsoft.Insights/dataCollectionRules/batch-worker-data-collection-rule"
 }
 
 data "azurerm_subscription" "primary" {}

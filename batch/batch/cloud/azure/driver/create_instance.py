@@ -350,7 +350,8 @@ done
                     'value': ssh_public_key
                 },
                 'subnetId': {
-                    'value': f'/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Network/virtualNetworks/default/subnets/batch-worker-subnet'
+                    'value': f'/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/'
+                             f'Microsoft.Network/virtualNetworks/default/subnets/batch-worker-subnet'
                 },
                 'adminUsername': {
                     'value': 'batch-worker'
@@ -369,7 +370,13 @@ done
                         'id': f'/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/'
                               f'Microsoft.Compute/galleries/{resource_group}_batch/images/batch-worker/versions/0.0.12'
                     }
-                }
+                },
+                'associationName': {
+                    'value': f'{machine_name}-data-collection-rule-association'
+                },
+                'dataCollectionRuleId': {
+                    'value': f'/subscriptions/${subscription_id}/resourceGroups/{resource_group}/providers/'
+                             f'Microsoft.Insights/dataCollectionRules/batch-worker-data-collection-rule'
             },
             'template': {
                 '$schema': 'https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#',
