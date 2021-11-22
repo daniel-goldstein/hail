@@ -496,7 +496,7 @@ done
                         'name': "[concat(parameters('vmName'),'/microsoft.insights/', parameters('associationName'))]",
                         'apiVersion': '2021-04-01',
                         'dependsOn': [
-                            "[concat('Microsoft.Compute/virtualMachines/', parameters('vmName'))]"
+                            "[concat('Microsoft.Compute/virtualMachines/extensions/', parameters('vmName'), '/AzureMonitorLinuxAgent')]",
                         ],
                         'properties': {
                             "dataCollectionRuleId": "[parameters('dataCollectionRuleId')]"
