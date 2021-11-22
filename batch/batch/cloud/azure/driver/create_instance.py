@@ -482,7 +482,7 @@ done
                         'location': "[parameters('location')]",
                         'apiVersion': '2020-06-01',
                         'dependsOn': [
-                            "[concat('Microsoft.Compute/virtualMachines/', variables('vmName'))]"
+                            "[concat('Microsoft.Compute/virtualMachines/', parameters('vmName'))]"
                         ],
                         'properties': {
                             'publisher': 'Microsoft.Azure.Monitor',
@@ -496,7 +496,7 @@ done
                         'name': "[concat(parameters('vmName'),'/microsoft.insights/', parameters('associationName'))]",
                         'apiVersion': '2021-04-01',
                         'dependsOn': [
-                            "[concat('Microsoft.Compute/virtualMachines/', variables('vmName'))]"
+                            "[concat('Microsoft.Compute/virtualMachines/', parameters('vmName'))]"
                         ],
                         'properties': {
                             "dataCollectionRuleId": "[parameters('dataCollectionRuleId')]"
