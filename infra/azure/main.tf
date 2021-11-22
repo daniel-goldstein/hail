@@ -373,6 +373,12 @@ resource "azurerm_role_assignment" "batch_worker_virtual_machine_contributor" {
   principal_id         = azurerm_user_assigned_identity.batch_worker.principal_id
 }
 
+resource "azurerm_role_assignment" "batch_worker_monitoring_contributor" {
+  scope                = data.azurerm_resource_group.rg.id
+  role_definition_name = "Monitoring Contributor"
+  principal_id         = azurerm_user_assigned_identity.batch_worker.principal_id
+}
+
 resource "azurerm_storage_account" "test" {
   name                     = "${data.azurerm_resource_group.rg.name}test"
   resource_group_name      = data.azurerm_resource_group.rg.name
@@ -483,6 +489,12 @@ resource "azurerm_role_assignment" "batch_shared_gallery_reader" {
   principal_id         = module.batch_sp.principal_id
 }
 
+resource "azurerm_role_assignment" "batch_monitoring_contributor" {
+  scope                = data.azurerm_resource_group.rg.id
+  role_definition_name = "Monitoring Contributor"
+  principal_id         = module.batch_sp.principal_id
+}
+
 resource "azurerm_role_assignment" "batch_managed_identity_operator" {
   scope                = data.azurerm_resource_group.rg.id
   role_definition_name = "Managed Identity Operator"
@@ -543,6 +555,12 @@ resource "azurerm_role_assignment" "test_shared_gallery_reader" {
 resource "azurerm_role_assignment" "test_managed_identity_operator" {
   scope                = data.azurerm_resource_group.rg.id
   role_definition_name = "Managed Identity Operator"
+  principal_id         = module.test_sp.principal_id
+}
+
+resource "azurerm_role_assignment" "test_monitoring_contributor" {
+  scope                = data.azurerm_resource_group.rg.id
+  role_definition_name = "Monitoring Contributor"
   principal_id         = module.test_sp.principal_id
 }
 
