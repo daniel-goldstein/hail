@@ -93,7 +93,7 @@ write_files:
       if [ -f "/started" ]; then
           echo "instance $NAME has previously been started"
           while true; do
-          # az vm delete -g $RESOURCE_GROUP -n $NAME --yes
+          az vm delete -g $RESOURCE_GROUP -n $NAME --yes
           sleep 1
           done
           exit
@@ -241,7 +241,7 @@ python3 -u -m batch.worker.worker >worker.log 2>&1
 [ $? -eq 0 ] || tail -n 1000 worker.log
 
 while true; do
-# az vm delete -g $RESOURCE_GROUP -n $NAME --yes
+az vm delete -g $RESOURCE_GROUP -n $NAME --yes
 sleep 1
 done
     '''
