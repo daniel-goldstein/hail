@@ -476,12 +476,14 @@ done
                             }
                         }
                     },
-                    vm_config,
                     {
                         'name': "[concat(parameters('vmName'),'/AzureMonitorLinuxAgent')]",
                         'type': 'Microsoft.Compute/virtualMachines/extensions',
                         'location': "[parameters('location')]",
                         'apiVersion': '2020-06-01',
+                        'dependsOn': [
+                            "[concat('Microsoft.Compute/virtualMachines/', variables('vmName'))]"
+                        ],
                         'properties': {
                             'publisher': 'Microsoft.Azure.Monitor',
                             'type': 'AzureMonitorLinuxAgent',
@@ -490,13 +492,17 @@ done
                         },
                     },
                     {
-                        "type": "Microsoft.Compute/virtualMachines/providers/dataCollectionRuleAssociations",
-                        "name": "[concat(parameters('vmName'),'/microsoft.insights/', parameters('associationName'))]",
-                        "apiVersion": "2019-11-01-preview",
-                        "properties": {
+                        'type': 'Microsoft.Compute/virtualMachines/providers/dataCollectionRuleAssociations',
+                        'name': "[concat(parameters('vmName'),'/microsoft.insights/', parameters('associationName'))]",
+                        'apiVersion': '2021-04-01',
+                        'dependsOn': [
+                            "[concat('Microsoft.Compute/virtualMachines/', variables('vmName'))]"
+                        ],
+                        'properties': {
                             "dataCollectionRuleId": "[parameters('dataCollectionRuleId')]"
                         }
-                    }
+                    },
+                    vm_config,
                 ],
                 'outputs': {}
             }
