@@ -371,9 +371,9 @@ done
                               f'Microsoft.Compute/galleries/{resource_group}_batch/images/batch-worker/versions/0.0.12'
                     }
                 },
-                'associationName': {
-                    'value': f'{machine_name}-data-collection-rule-association'
-                },
+                # 'associationName': {
+                #     'value': f'{machine_name}-data-collection-rule-association'
+                # },
                 'dataCollectionRuleId': {
                     'value': f'/subscriptions/${subscription_id}/resourceGroups/{resource_group}/providers/'
                              f'Microsoft.Insights/dataCollectionRules/batch-worker-data-collection-rule'
