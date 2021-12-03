@@ -47,18 +47,18 @@ spec:
           - name: HAIL_CI_OAUTH_TOKEN
             value: /secrets/oauth-token/oauth-token
 {% if deploy %}
-          - name: HAIL_BENCHMARK_BUCKET_NAME
-            value: hail-test
+          - name: HAIL_BENCHMARK_STORAGE_URI
+            value: "gs://hail-test"  # FIXME Add terraform bucket in GCP and Azure
           - name: START_POINT
             value: "2020-11-01T00:00:00Z"
           - name: INSTANCE_ID
             value: "WetqnMQMoqq2"
 {% else %}
-          - name: HAIL_BENCHMARK_BUCKET_NAME
+          - name: HAIL_BENCHMARK_STORAGE_URI
             valueFrom:
               secretKeyRef:
                 name: global-config
-                key: hail_test_gcs_bucket
+                key: test_storage_uri
 {% endif %}
 {% if scope == "dev" %}
           - name: INSTANCE_ID

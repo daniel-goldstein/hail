@@ -7,7 +7,7 @@ from hailtop.config import get_deploy_config
 from hailtop.tls import internal_server_ssl_context
 from hailtop.hail_logging import AccessLogger, configure_logging
 from hailtop.utils import retry_long_running, collect_agen, humanize_timedelta_msecs
-from hailtop.aiocloud import aiogoogle
+from hailtop.aiotools.router_fs import RouterAsyncFS
 from hailtop import aiotools, httpx
 import hailtop.batch_client.aioclient as bc
 from web_common import setup_aiohttp_jinja2, setup_common_static_routes, render_template
@@ -429,8 +429,12 @@ async def github_polling_loop(app):
 
 
 async def on_startup(app):
-    credentials = aiogoogle.GoogleCredentials.from_file('/benchmark-gsa-key/key.json')
-    app['fs'] = aiogoogle.GoogleStorageAsyncFS(credentials=credentials)
+    credentials = '/benchmark-gsa-key/key.json'
+    app['fs'] = RouterAsyncFS(
+        'file',
+        gcs_kwargs={'credentials_file': credentials},
+        azure_kwargs={'credential_file': credentials},
+    )
     app['client_session'] = httpx.client_session()
     app['github_client'] = gidgethub.aiohttp.GitHubAPI(
         app['client_session'], 'hail-is/hail', oauth_token=oauth_token
