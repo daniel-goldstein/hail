@@ -194,9 +194,15 @@ spec:
           - mountPath: "/prometheus"
             name: prometheus-storage
          resources:
+{% if deploy %}
            requests:
              cpu: "1"
-             memory: 5G
+             memory: 4G
+{% else %}
+           requests:
+             cpu: "100m"
+             memory: 1G
+{% endif %}
            limits:
              cpu: "1"
              memory: 10G

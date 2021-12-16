@@ -1973,6 +1973,7 @@ steps:
     config: prometheus/prometheus.yaml
     scopes:
       - deploy
+      - test
       - dev
     dependsOn:
       - default_ns
