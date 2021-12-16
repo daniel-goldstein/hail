@@ -1971,10 +1971,6 @@ steps:
     namespace:
       valueFrom: default_ns.name
     config: prometheus/prometheus.yaml
-    scopes:
-      - deploy
-      - test
-      - dev
     dependsOn:
       - default_ns
       - prom_nginx_image
