@@ -187,6 +187,11 @@ DOCKER_PREFIX=$(jq -r '.docker_prefix' userdata)
 
 INTERNAL_GATEWAY_IP=$(jq -r '.internal_ip' userdata)
 
+WORKSPACE_ID=$(curl -s -H Metadata:true --noproxy "*" "http://169.254.169.254/metadata/instance/compute/logAnalyticsWorkspaceId?api-version=2021-02-01&format=text")
+set +x
+WORKSPACE_KEY=$(curl -s -H Metadata:true --noproxy "*" "http://169.254.169.254/metadata/instance/compute/logAnalyticsWorkspaceKey?api-version=2021-02-01&format=text")
+set -x
+
 # private job network = 172.20.0.0/16
 # public job network = 172.21.0.0/16
 # [all networks] Rewrite traffic coming from containers to masquerade as the host
@@ -338,30 +343,9 @@ done
                 },
             },
             'userData': "[parameters('userData')]",
+            'logAnalyticsWorkspaceId': "[variables('logAnalyticsWorkspaceId')]",
+            'logAnalyticsWorkspaceKey': "[variables('logAnalyticsWorkspaceKey')]",
         },
-        'resources': [
-            {
-                'apiVersion': '2018-06-01',
-                'type': 'extensions',
-                'name': 'OMSExtension',
-                'location': "[parameters('location')]",
-                'tags': tags,
-                'dependsOn': ["[concat('Microsoft.Compute/virtualMachines/', parameters('vmName'))]"],
-                'properties': {
-                    'publisher': 'Microsoft.EnterpriseCloud.Monitoring',
-                    'type': 'OmsAgentForLinux',
-                    'typeHandlerVersion': '1.13',
-                    'autoUpgradeMinorVersion': False,
-                    'enableAutomaticUpgrade': False,
-                    'settings': {
-                        'workspaceId': "[reference(resourceId('Microsoft.OperationalInsights/workspaces/', parameters('workspaceName')), '2015-03-20').customerId]"
-                    },
-                    'protectedSettings': {
-                        'workspaceKey': "[listKeys(resourceId('Microsoft.OperationalInsights/workspaces/', parameters('workspaceName')), '2015-03-20').primarySharedKey]"
-                    },
-                },
-            },
-        ],
     }
 
     properties = vm_config['properties']
@@ -390,7 +374,7 @@ done
                 'imageReference': {
                     'value': {
                         'id': f'/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/'
-                        f'Microsoft.Compute/galleries/{resource_group}_batch/images/batch-worker/versions/0.0.12'
+                        f'Microsoft.Compute/galleries/{resource_group}_batch/images/batch-worker/versions/0.0.3001'
                     }
                 },
                 'workspaceName': {
@@ -424,6 +408,8 @@ done
                     'ipName': "[concat(parameters('vmName'), '-ip')]",
                     'nicName': "[concat(parameters('vmName'), '-nic')]",
                     'ipconfigName': "[concat(parameters('vmName'), '-ipconfig')]",
+                    'logAnalyticsWorkspaceId': "[reference(resourceId('Microsoft.OperationalInsights/workspaces/', parameters('workspaceName')), '2015-03-20').customerId]",
+                    'logAnalyticsWorkspaceKey': "[listKeys(resourceId('Microsoft.OperationalInsights/workspaces/', parameters('workspaceName')), '2015-03-20').primarySharedKey]",
                 },
                 'resources': [
                     {
