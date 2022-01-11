@@ -343,8 +343,8 @@ done
                 },
             },
             'userData': "[parameters('userData')]",
-            'logAnalyticsWorkspaceId': "[variables('logAnalyticsWorkspaceId')]",
-            'logAnalyticsWorkspaceKey': "[variables('logAnalyticsWorkspaceKey')]",
+            'logAnalyticsWorkspaceId': "[reference(resourceId('Microsoft.OperationalInsights/workspaces/', parameters('workspaceName')), '2015-03-20').customerId]",
+            'logAnalyticsWorkspaceKey': "[listKeys(resourceId('Microsoft.OperationalInsights/workspaces/', parameters('workspaceName')), '2015-03-20').primarySharedKey]",
         },
     }
 
@@ -408,8 +408,6 @@ done
                     'ipName': "[concat(parameters('vmName'), '-ip')]",
                     'nicName': "[concat(parameters('vmName'), '-nic')]",
                     'ipconfigName': "[concat(parameters('vmName'), '-ipconfig')]",
-                    'logAnalyticsWorkspaceId': "[reference(resourceId('Microsoft.OperationalInsights/workspaces/', parameters('workspaceName')), '2015-03-20').customerId]",
-                    'logAnalyticsWorkspaceKey': "[listKeys(resourceId('Microsoft.OperationalInsights/workspaces/', parameters('workspaceName')), '2015-03-20').primarySharedKey]",
                 },
                 'resources': [
                     {
