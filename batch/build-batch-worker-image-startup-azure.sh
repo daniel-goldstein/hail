@@ -43,6 +43,12 @@ curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
 az login --identity
 az acr login --name {{ global.container_registry_name }}
 
+# Install the azure log analytics agent
+wget https://github.com/microsoft/OMS-Agent-for-Linux/releases/download/OMSAgent_v1.14.9-0/omsagent-1.14.9-0.universal.x64.sh \
+    -O omsagent.sh
+# Install packages and dependencies without configuring log analytics workspace
+sh omsagent.sh --install
+
 # avoid "unable to get current user home directory: os/user lookup failed"
 export HOME=/root
 
