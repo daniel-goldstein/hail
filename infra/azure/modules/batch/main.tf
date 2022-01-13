@@ -1,4 +1,5 @@
 data "azurerm_subscription" "primary" {}
+data "azurerm_client_config" "primary" {}
 
 resource "azurerm_network_security_group" "batch_worker" {
   name                = "batch-worker-nsg"
@@ -276,4 +277,43 @@ module "grafana_sp" {
   resource_group_roles = [
     "Monitoring Reader",
   ]
+}
+
+resource "azurerm_key_vault" "worker_vault" {
+  name                   = "workervault"
+  location               = var.resource_group.location
+  resource_group_name    = var.resource_group.name
+  tenant_id              = data.azurerm_client_config.primary.tenant_id
+  enabled_for_deployment = true
+
+  sku_name = "standard"
+
+  access_policy {
+    tenant_id = data.azurerm_client_config.primary.tenant_id
+    object_id = azurerm_user_assigned_identity.batch_worker.principal_id
+
+    secret_permissions = ["Get"]
+  }
+
+  // Let the identity using terraform access the vault
+  access_policy {
+    tenant_id = data.azurerm_client_config.primary.tenant_id
+    object_id = data.azurerm_client_config.primary.object_id
+
+    key_permissions     = ["Get", "Create", "Update", "Delete"]
+    secret_permissions  = ["Get", "Set", "Delete"]
+    storage_permissions = ["Get", "Update", "Delete"]
+  }
+}
+
+resource "azurerm_key_vault_secret" "log_analytics_workspace_id" {
+  name         = "log-analytics-workspace-id"
+  value        = var.log_analytics_workspace_id
+  key_vault_id = azurerm_key_vault.worker_vault.id
+}
+
+resource "azurerm_key_vault_secret" "log_analytics_workspace_key" {
+  name         = "log-analytics-workspace-key"
+  value        = var.log_analytics_workspace_key
+  key_vault_id = azurerm_key_vault.worker_vault.id
 }

@@ -82,6 +82,9 @@ module "batch" {
 
   resource_group        = data.azurerm_resource_group.rg
   container_registry_id = azurerm_container_registry.acr.id
+
+  log_analytics_workspace_id  = module.vdc.log_analytics_workspace_id
+  log_analytics_workspace_key = module.vdc.log_analytics_workspace_key
 }
 
 module "global_config" {

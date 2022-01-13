@@ -21,3 +21,11 @@ output internal_gateway_ip {
 output db_subnet_id {
   value = azurerm_subnet.db_subnet.id
 }
+
+output log_analytics_workspace_id {
+  value = azurerm_log_analytics_workspace.logs.id
+}
+
+output log_analytics_workspace_key {
+  value = azurerm_log_analytics_workspace.logs.primary_shared_key
+}

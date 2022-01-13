@@ -187,11 +187,6 @@ DOCKER_PREFIX=$(jq -r '.docker_prefix' userdata)
 
 INTERNAL_GATEWAY_IP=$(jq -r '.internal_ip' userdata)
 
-WORKSPACE_ID=$(curl -s -H Metadata:true --noproxy "*" "http://169.254.169.254/metadata/instance/compute/logAnalyticsWorkspaceId?api-version=2021-02-01&format=text")
-set +x
-WORKSPACE_KEY=$(curl -s -H Metadata:true --noproxy "*" "http://169.254.169.254/metadata/instance/compute/logAnalyticsWorkspaceKey?api-version=2021-02-01&format=text")
-set -x
-
 # private job network = 172.20.0.0/16
 # public job network = 172.21.0.0/16
 # [all networks] Rewrite traffic coming from containers to masquerade as the host
@@ -343,8 +338,6 @@ done
                 },
             },
             'userData': "[parameters('userData')]",
-            'logAnalyticsWorkspaceId': "[reference(resourceId('Microsoft.OperationalInsights/workspaces/', parameters('workspaceName')), '2015-03-20').customerId]",
-            'logAnalyticsWorkspaceKey': "[listKeys(resourceId('Microsoft.OperationalInsights/workspaces/', parameters('workspaceName')), '2015-03-20').primarySharedKey]",
         },
     }
 
@@ -377,9 +370,6 @@ done
                         f'Microsoft.Compute/galleries/{resource_group}_batch/images/batch-worker/versions/0.0.3001'
                     }
                 },
-                'workspaceName': {
-                    'value': f'{resource_group}-logs',
-                },
             },
             'template': {
                 '$schema': 'https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#',
@@ -402,7 +392,6 @@ done
                             'version': 'latest',
                         },
                     },
-                    'workspaceName': {'type': 'string'},
                 },
                 'variables': {
                     'ipName': "[concat(parameters('vmName'), '-ip')]",
