@@ -113,6 +113,13 @@ runcmd:
 
     run_script = f'''
 #!/bin/bash
+
+set +x
+VAULT_ACCESS_TOKEN=$(curl 'http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Fvault.azure.net' -H Metadata:true | jq -r '.access_token')
+
+WORKSPACE_ID=$(curl 'https://workervault.vault.azure.net/secrets/log-analytics-workspace-id?api-version=2016-10-01' -H "Authorization: Bearer $VAULT_ACCESS_TOKEN" | jq -r '.value')
+WORKSPACE_KEY=$(curl 'https://workervault.vault.azure.net/secrets/log-analytics-workspace-key?api-version=2016-10-01' -H "Authorization: Bearer $VAULT_ACCESS_TOKEN" | jq -r '.value')
+/opt/microsoft/omsagent/bin/omsadmin.sh -w $WORKSPACE_ID -s $WORKSPACE_KEY
 set -x
 
 WORKER_DATA_DISK_NAME="{worker_data_disk_name}"
