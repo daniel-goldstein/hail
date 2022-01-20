@@ -45,6 +45,9 @@ def expand_value_from(value, config):
 def get_namespace(value, config):
     assert isinstance(value, dict)
 
+    if value['valueFrom'] == 'default':
+        return 'default'
+
     path = value['valueFrom'].split('.')
 
     assert len(path) == 2
