@@ -23,7 +23,7 @@ output db_subnet_id {
 }
 
 output log_analytics_workspace_id {
-  value = azurerm_log_analytics_workspace.logs.id
+  value = azurerm_log_analytics_workspace.logs.workspace_id
 }
 
 output log_analytics_workspace_key {
