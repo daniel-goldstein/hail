@@ -34,7 +34,7 @@ BATCH_WORKER_IDENTITY=$(az identity show \
 
 echo "Creating $BUILD_IMAGE_RESOURCE_GROUP resource group..."
 
-az group delete --name $BUILD_IMAGE_RESOURCE_GROUP || true
+az group delete --name $BUILD_IMAGE_RESOURCE_GROUP --yes || true
 az group create --name $BUILD_IMAGE_RESOURCE_GROUP --location ${REGION}
 
 az role assignment create \
@@ -47,7 +47,7 @@ echo "Creating $VM_NAME VM..."
 IP=$(az vm create \
     --resource-group $BUILD_IMAGE_RESOURCE_GROUP \
     --name $VM_NAME \
-    --image UbuntuLTS \
+    --image Canonical:0001-com-ubuntu-server-focal:20_04-lts:latest \
     --generate-ssh-keys \
     --public-ip-sku Standard \
     --assign-identity ${BATCH_WORKER_IDENTITY} \
@@ -102,6 +102,6 @@ az sig image-version create \
 echo "Image created!"
 echo "Deleting resource group $BUILD_IMAGE_RESOURCE_GROUP"
 
-az group delete --name $BUILD_IMAGE_RESOURCE_GROUP
+az group delete --name $BUILD_IMAGE_RESOURCE_GROUP --yes
 
 echo "Resource group $BUILD_IMAGE_RESOURCE_GROUP deleted successfully!"
