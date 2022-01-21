@@ -85,7 +85,7 @@ az sig image-version delete \
     --gallery-image-definition batch-worker \
     --gallery-name ${SHARED_GALLERY_NAME} \
     --resource-group ${RESOURCE_GROUP} \
-    --gallery-image-version 0.0.3001 || true
+    --gallery-image-version 0.0.12 || true
 
 echo "Creating image..."
 
@@ -93,7 +93,7 @@ az sig image-version create \
     --resource-group ${RESOURCE_GROUP} \
     --gallery-name ${SHARED_GALLERY_NAME} \
     --gallery-image-definition batch-worker \
-    --gallery-image-version 0.0.3001 \
+    --gallery-image-version 0.0.12 \
     --target-regions ${REGION} \
     --replica-count 1 \
     --managed-image "/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/build-batch-worker-image/providers/Microsoft.Compute/virtualMachines/$VM_NAME"

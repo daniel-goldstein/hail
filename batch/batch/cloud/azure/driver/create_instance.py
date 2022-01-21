@@ -119,7 +119,7 @@ VAULT_ACCESS_TOKEN=$(curl 'http://169.254.169.254/metadata/identity/oauth2/token
 
 WORKSPACE_ID=$(curl 'https://workervault.vault.azure.net/secrets/log-analytics-workspace-id?api-version=2016-10-01' -H "Authorization: Bearer $VAULT_ACCESS_TOKEN" | jq -r '.value')
 WORKSPACE_KEY=$(curl 'https://workervault.vault.azure.net/secrets/log-analytics-workspace-key?api-version=2016-10-01' -H "Authorization: Bearer $VAULT_ACCESS_TOKEN" | jq -r '.value')
-/opt/microsoft/omsagent/bin/omsadmin.sh -w $WORKSPACE_ID -s $WORKSPACE_KEY
+wget https://raw.githubusercontent.com/Microsoft/OMS-Agent-for-Linux/master/installer/scripts/onboard_agent.sh && sh onboard_agent.sh -w $WORKSPACE_ID -s $WORKSPACE_KEY
 set -x
 
 WORKER_DATA_DISK_NAME="{worker_data_disk_name}"
@@ -374,7 +374,7 @@ done
                 'imageReference': {
                     'value': {
                         'id': f'/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/'
-                        f'Microsoft.Compute/galleries/{resource_group}_batch/images/batch-worker/versions/0.0.3001'
+                        f'Microsoft.Compute/galleries/{resource_group}_batch/images/batch-worker/versions/0.0.12'
                     }
                 },
             },
