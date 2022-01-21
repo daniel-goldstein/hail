@@ -59,11 +59,10 @@ python3 ../ci/jinja2_render.py "{\"global\":{\"container_registry_name\":\"${CON
 
 echo "Running image startup script..."
 
-az vm run-command invoke \
-    --resource-group $BUILD_IMAGE_RESOURCE_GROUP \
-    --command-id RunShellScript \
-    --name $VM_NAME \
-    --scripts "@build-batch-worker-image-startup-azure.sh.out"
+ssh -i '~/.ssh/id_rsa' \
+    -o StrictHostKeyChecking="accept-new" \
+    $USERNAME@$IP \
+    'sudo bash -s ' < build-batch-worker-image-startup-azure.sh.out
 
 echo "Startup script completed!"
 echo "Shutting down agent..."
