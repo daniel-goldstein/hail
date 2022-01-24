@@ -34,7 +34,7 @@ apt-get install -y docker-ce
 
 rm -rf /var/lib/apt/lists/*
 
-[ -f /etc/docker/daemon.json ] || sudo echo "{}" > /etc/docker/daemon.json
+[ -f /etc/docker/daemon.json ] || echo "{}" > /etc/docker/daemon.json
 
 # Install Azure CLI
 curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
