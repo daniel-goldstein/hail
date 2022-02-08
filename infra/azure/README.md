@@ -24,13 +24,13 @@ terraform state. The following command creates these and stores their names in
 `remote_storage.tfvars`:
 
 ```
-./bootstrap.sh create_terraform_remote_storage <RESOURCE_GROUP>
+./bootstrap.sh create_terraform_remote_storage [<RESOURCE_GROUP>]
 ```
 
 Initialize terraform:
 
 ```
-./bootstrap.sh init_terraform <RESOURCE_GROUP>
+./bootstrap.sh init_terraform [<RESOURCE_GROUP>]
 ```
 
 Create a `global.tfvars` file with the necessary variables from
