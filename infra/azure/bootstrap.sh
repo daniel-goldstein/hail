@@ -82,6 +82,7 @@ full_bootstrap_from_scratch() {
     grant_auth_sp_admin_consent
 
     echo "Register the following IP with your domain"
+    # TODO Gotta give them time to respond to this
     terraform output -raw gateway_ip
 
     echo "Deploying the bootstrap vm"
