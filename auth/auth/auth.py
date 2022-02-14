@@ -1,4 +1,5 @@
 import asyncio
+import concurrent.futures
 import json
 import logging
 import os
@@ -584,7 +585,7 @@ async def verify_dev_or_sa_credentials(request):
 
 async def on_startup(app):
     db = Database()
-    await db.async_init(maxsize=50)
+    await db.async_init(concurrent.futures.ThreadPoolExecutor(), maxsize=50)
     app['db'] = db
     app['client_session'] = httpx.client_session()
     app['flow_client'] = get_flow_client('/auth-oauth2-client-secret/client_secret.json')

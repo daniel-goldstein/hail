@@ -1,4 +1,5 @@
 import base64
+import concurrent.futures
 import json
 import os
 
@@ -78,13 +79,10 @@ async def main():
 
     app = {}
 
+    thread_pool = concurrent.futures.ThreadPoolExecutor()
     db = Database()
-    await db.async_init(maxsize=50)
+    await db.async_init(thread_pool, maxsize=50)
     app['db'] = db
-
-    db_instance = Database()
-    await db_instance.async_init(maxsize=50, config_file='/database-server-config/sql-config.json')
-    app['db_instance'] = db_instance
 
     # kube.config.load_incluster_config()
     await kubernetes_asyncio.config.load_kube_config()

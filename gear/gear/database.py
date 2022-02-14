@@ -1,17 +1,20 @@
 import asyncio
+import contextlib
 import functools
 import logging
 import os
 import ssl
 import traceback
-from typing import Optional
+from concurrent.futures import Executor
+from typing import Any, List, Optional
 
-import aiomysql
-import pymysql
+import MySQLdb
+import MySQLdb.connections
+import MySQLdb.cursors
 
 from gear.metrics import PrometheusSQLTimer
 from hailtop.auth.sql_config import SQLConfig
-from hailtop.utils import sleep_and_backoff
+from hailtop.utils import blocking_to_async, sleep_and_backoff
 
 log = logging.getLogger('gear.database')
 
@@ -32,7 +35,7 @@ def retry_transient_mysql_errors(f):
         while True:
             try:
                 return await f(*args, **kwargs)
-            except pymysql.err.InternalError as e:
+            except MySQLdb.InternalError as e:
                 if e.args[0] in internal_error_retry_codes:
                     log.warning(
                         f'encountered pymysql error, retrying {e}',
@@ -41,10 +44,10 @@ def retry_transient_mysql_errors(f):
                     )
                 else:
                     raise
-            except pymysql.err.OperationalError as e:
+            except MySQLdb.OperationalError as e:
                 if e.args[0] in operational_error_retry_codes:
                     log.warning(
-                        f'encountered pymysql error, retrying {e}',
+                        f'encountered mysql error, retrying {e}',
                         exc_info=True,
                         extra={'full_stacktrace': '\n'.join(traceback.format_stack())},
                     )
@@ -103,48 +106,116 @@ def get_database_ssl_context(sql_config: Optional[SQLConfig] = None) -> ssl.SSLC
     return database_ssl_context
 
 
-@retry_transient_mysql_errors
-async def create_database_pool(config_file: str = None, autocommit: bool = True, maxsize: int = 10):
-    sql_config = get_sql_config(config_file)
-    ssl_context = get_database_ssl_context(sql_config)
-    assert ssl_context is not None
-    return await aiomysql.create_pool(
-        maxsize=maxsize,
-        # connection args
-        host=sql_config.host,
-        user=sql_config.user,
-        password=sql_config.password,
-        db=sql_config.db,
-        port=sql_config.port,
-        charset='utf8',
-        ssl=ssl_context,
-        cursorclass=aiomysql.cursors.DictCursor,
-        autocommit=autocommit,
-    )
+class MySQLAsyncCursor:
+    def __init__(self, executor: Executor, cursor: MySQLdb.cursors.Cursor):
+        self.executor = executor
+        self.cursor = cursor
 
+    @property
+    def lastrowid(self):
+        return self.cursor.lastrowid
 
-class TransactionAsyncContextManager:
-    def __init__(self, db_pool, read_only):
-        self.db_pool = db_pool
-        self.read_only = read_only
-        self.tx = None
+    async def execute(self, sql: str, args=None):
+        if args is not None and not (isinstance(args, tuple) or isinstance(args, list)):
+            args = tuple([args])
+        return await blocking_to_async(self.executor, self.cursor.execute, sql, args)
+
+    async def executemany(self, sql: List[str], args: List[Any]):
+        return await blocking_to_async(self.executor, self.cursor.executemany, sql, args)
+
+    async def fetchone(self):
+        return await blocking_to_async(self.executor, self.cursor.fetchone)
+
+    async def fetchmany(self, count: int):
+        return await blocking_to_async(self.executor, self.cursor.fetchmany, count)
 
     async def __aenter__(self):
-        tx = Transaction()
-        await tx.async_init(self.db_pool, self.read_only)
-        self.tx = tx
-        return tx
+        return self
 
+    # TODO Add safety measures to close connection if necessary
+    # and ensure cursor and parent connection are only in use by one
+    # thread at a time
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        await self.tx._aexit(exc_type, exc_val, exc_tb)
-        self.tx = None
+        await blocking_to_async(self.executor, self.cursor.close)
+
+
+class MySQLAsyncConnection:
+    def __init__(self, executor: Executor, conn: MySQLdb.connections.Connection):
+        self.executor = executor
+        self.conn = conn
+
+    def cursor(self) -> MySQLAsyncCursor:
+        return MySQLAsyncCursor(self.executor, self.conn.cursor())
+
+    async def commit(self):
+        await blocking_to_async(self.executor, self.conn.commit)
+
+    async def rollback(self):
+        await blocking_to_async(self.executor, self.conn.rollback)
+
+    def close(self):
+        self.conn.close()
+
+
+class MySQLConnectionPool:
+    def __init__(self, executor: Executor, config_file: Optional[str], autocommit: bool, maxsize: int):
+        self.executor = executor
+        self.sql_config = get_sql_config(config_file)
+        self.ssl_context = {
+            'ca': self.sql_config.ssl_ca,
+            'cert': self.sql_config.ssl_cert,
+            'key': self.sql_config.ssl_key,
+        }
+        self.autocommit = autocommit
+        self.maxsize = maxsize
+        self.connections: List[MySQLAsyncConnection] = []
+        self.free_connections = asyncio.Queue(maxsize=maxsize)
+
+    @contextlib.asynccontextmanager
+    async def acquire(self):
+        if self.free_connections.empty() and len(self.connections) < self.maxsize:
+            conn = self._new_connection()
+            self.connections.append(conn)
+        else:
+            conn = await self.free_connections.get()
+
+        try:
+            yield conn
+        finally:
+            self.free_connections.put_nowait(conn)
+
+    def close(self):
+        for conn in self.connections:
+            conn.close()
+
+    def _new_connection(self) -> MySQLAsyncConnection:
+        return MySQLAsyncConnection(
+            self.executor,
+            MySQLdb.connect(
+                host=self.sql_config.host,
+                user=self.sql_config.user,
+                password=self.sql_config.password,
+                database=self.sql_config.db,
+                port=self.sql_config.port,
+                charset='utf8',
+                ssl=self.ssl_context,
+                cursorclass=MySQLdb.cursors.DictCursor,
+                autocommit=self.autocommit,
+            ),
+        )
+
+
+@retry_transient_mysql_errors
+async def create_database_pool(
+    executor: Executor, config_file: str = None, autocommit: bool = True, maxsize: int = 10
+) -> MySQLConnectionPool:
+    return MySQLConnectionPool(executor, config_file, autocommit, maxsize)
 
 
 async def _release_connection(conn_context_manager):
     if conn_context_manager is not None:
         try:
-            if conn_context_manager._conn is not None:
-                await aexit(conn_context_manager)
+            await aexit(conn_context_manager)
         except:
             log.exception('while releasing database connection')
 
@@ -152,9 +223,9 @@ async def _release_connection(conn_context_manager):
 class Transaction:
     def __init__(self):
         self.conn_context_manager = None
-        self.conn = None
+        self.conn: Optional[MySQLAsyncConnection] = None
 
-    async def async_init(self, db_pool, read_only):
+    async def async_init(self, db_pool: MySQLConnectionPool, read_only: bool):
         try:
             self.conn_context_manager = db_pool.acquire()
             self.conn = await aenter(self.conn_context_manager)
@@ -238,6 +309,23 @@ class Transaction:
             return await cursor.executemany(sql, args_array)
 
 
+class TransactionAsyncContextManager:
+    def __init__(self, db_pool: MySQLConnectionPool, read_only: bool):
+        self.db_pool: MySQLConnectionPool = db_pool
+        self.read_only: bool = read_only
+        self.tx: Optional['Transaction'] = None
+
+    async def __aenter__(self):
+        tx = Transaction()
+        await tx.async_init(self.db_pool, self.read_only)
+        self.tx = tx
+        return tx
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.tx._aexit(exc_type, exc_val, exc_tb)
+        self.tx = None
+
+
 class CallError(Exception):
     def __init__(self, rv):
         super().__init__(rv)
@@ -246,12 +334,13 @@ class CallError(Exception):
 
 class Database:
     def __init__(self):
-        self.pool = None
+        self.pool: Optional[MySQLConnectionPool] = None
 
-    async def async_init(self, config_file=None, maxsize=10):
-        self.pool = await create_database_pool(config_file=config_file, autocommit=False, maxsize=maxsize)
+    async def async_init(self, pool: Executor, config_file=None, maxsize=10):
+        self.pool = await create_database_pool(pool, config_file=config_file, autocommit=False, maxsize=maxsize)
 
-    def start(self, read_only=False):
+    def start(self, read_only: bool = False):
+        assert self.pool
         return TransactionAsyncContextManager(self.pool, read_only)
 
     @retry_transient_mysql_errors
@@ -301,6 +390,6 @@ class Database:
             raise CallError(rv)
         return rv
 
+    # async for backwards-compatibility with migration code
     async def async_close(self):
         self.pool.close()
-        await self.pool.wait_closed()

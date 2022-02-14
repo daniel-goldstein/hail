@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import concurrent.futures
 import json
 import logging
 import os
@@ -608,14 +609,14 @@ async def async_main():
     user_creation_loop = None
     try:
         db = Database()
-        await db.async_init(maxsize=50)
+        await db.async_init(concurrent.futures.ThreadPoolExecutor(), maxsize=50)
         app['db'] = db
 
-        app['client_session'] = httpx.client_session()
-
         db_instance = Database()
-        await db_instance.async_init(maxsize=50, config_file='/database-server-config/sql-config.json')
+        await db_instance.async_init(concurrent.futures.ThreadPoolExecutor(), maxsize=50)
         app['db_instance'] = db_instance
+
+        app['client_session'] = httpx.client_session()
 
         kubernetes_asyncio.config.load_incluster_config()
         app['k8s_client'] = kubernetes_asyncio.client.CoreV1Api()
@@ -641,18 +642,14 @@ async def async_main():
                 await app['db'].async_close()
         finally:
             try:
-                if 'db_instance_pool' in app:
-                    await app['db_instance_pool'].async_close()
+                await app['client_session'].close()
             finally:
                 try:
-                    await app['client_session'].close()
+                    if user_creation_loop is not None:
+                        user_creation_loop.shutdown()
                 finally:
                     try:
-                        if user_creation_loop is not None:
-                            user_creation_loop.shutdown()
+                        await app['identity_client'].close()
                     finally:
-                        try:
-                            await app['identity_client'].close()
-                        finally:
-                            k8s_client: kubernetes_asyncio.client.CoreV1Api = app['k8s_client']
-                            await k8s_client.api_client.rest_client.pool_manager.close()
+                        k8s_client: kubernetes_asyncio.client.CoreV1Api = app['k8s_client']
+                        await k8s_client.api_client.rest_client.pool_manager.close()

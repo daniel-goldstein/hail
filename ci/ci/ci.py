@@ -526,7 +526,7 @@ async def on_startup(app):
     app['client_session'] = httpx.client_session()
     app['github_client'] = gh_aiohttp.GitHubAPI(app['client_session'], 'ci', oauth_token=oauth_token)
     app['batch_client'] = await BatchClient.create('ci')
-    app['dbpool'] = await create_database_pool()
+    app['dbpool'] = await create_database_pool(concurrent.futures.ThreadPoolExecutor())
 
     app['task_manager'] = aiotools.BackgroundTaskManager()
     app['task_manager'].ensure_future(update_loop(app))

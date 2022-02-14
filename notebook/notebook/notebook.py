@@ -10,6 +10,7 @@ import aiohttp_session.cookie_storage
 import kubernetes_asyncio.client
 import kubernetes_asyncio.client.rest
 import kubernetes_asyncio.config
+import MySQLdb
 import pymysql
 from aiohttp import web
 from prometheus_async.aio.web import server_stats  # type: ignore
@@ -534,7 +535,7 @@ INSERT INTO workshops (name, image, cpu, memory, password, active, token) VALUES
                     (name, post['image'], post['cpu'], post['memory'], post['password'], active, token),
                 )
                 set_message(session, f'Created workshop {name}.', 'info')
-            except pymysql.err.IntegrityError as e:
+            except MySQLdb.IntegrityError as e:
                 if e.args[0] == 1062:  # duplicate error
                     set_message(session, f'Cannot create workshop {name}: duplicate name.', 'error')
                 else:

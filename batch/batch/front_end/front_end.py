@@ -1,5 +1,6 @@
 import asyncio
 import collections
+import concurrent.futures
 import datetime
 import json
 import logging
@@ -14,10 +15,10 @@ from typing import Dict, Optional, Union
 import aiohttp
 import aiohttp_session
 import humanize
+import MySQLdb
 import pandas as pd
 import plotly
 import plotly.express as px
-import pymysql
 from aiohttp import web
 from prometheus_async.aio.web import server_stats  # type: ignore
 
@@ -959,7 +960,7 @@ VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
 ''',
                             jobs_args,
                         )
-                    except pymysql.err.IntegrityError as err:
+                    except MySQLdb.IntegrityError as err:
                         # 1062 ER_DUP_ENTRY https://dev.mysql.com/doc/refman/5.7/en/server-error-reference.html#error_er_dup_entry
                         if err.args[0] == 1062:
                             log.info(f'bunch containing job {(batch_id, jobs_args[0][1])} already inserted ({err})')
@@ -973,7 +974,7 @@ VALUES (%s, %s, %s);
 ''',
                             job_parents_args,
                         )
-                    except pymysql.err.IntegrityError as err:
+                    except MySQLdb.IntegrityError as err:
                         # 1062 ER_DUP_ENTRY https://dev.mysql.com/doc/refman/5.7/en/server-error-reference.html#error_er_dup_entry
                         if err.args[0] == 1062:
                             raise web.HTTPBadRequest(text=f'bunch contains job with duplicated parents ({err})')
@@ -2264,7 +2265,7 @@ async def on_startup(app):
     app['client_session'] = httpx.client_session()
 
     db = Database()
-    await db.async_init()
+    await db.async_init(concurrent.futures.ThreadPoolExecutor())
     app['db'] = db
 
     row = await db.select_and_fetchone(

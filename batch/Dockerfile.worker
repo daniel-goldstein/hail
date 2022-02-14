@@ -11,6 +11,11 @@ RUN hail-apt-get-install \
     openjdk-8-jre-headless \
     liblapack3
 
+RUN curl --remote-name https://downloads.mysql.com/archives/get/p/23/file/mysql-8.0.26-linux-glibc2.17-x86_64-minimal-rebuild.tar.xz && \
+    mkdir -p /opt && \
+    tar -vx -C /opt -f mysql-8.0.26-linux-glibc2.17-x86_64-minimal-rebuild.tar.xz && \
+    ln -s /opt/mysql-8.0.26-linux-glibc2.17-x86_64-minimal-rebuild/bin/* /usr/bin/
+
 COPY docker/hail-ubuntu/pip.conf /root/.config/pip/pip.conf
 COPY docker/hail-ubuntu/hail-pip-install /bin/hail-pip-install
 COPY docker/requirements.txt .

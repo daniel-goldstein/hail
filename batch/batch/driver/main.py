@@ -1,4 +1,7 @@
+import MySQLdb
+
 import asyncio
+import concurrent.futures
 import copy
 import json
 import logging
@@ -1139,7 +1142,7 @@ async def on_startup(app):
     app['k8s_cache'] = K8sCache(app['k8s_client'])
 
     db = Database()
-    await db.async_init(maxsize=50)
+    await db.async_init(concurrent.futures.ThreadPoolExecutor(), maxsize=50)
     app['db'] = db
 
     row = await db.select_and_fetchone(
