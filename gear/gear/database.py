@@ -143,8 +143,8 @@ class MySQLAsyncConnection:
     async def rollback(self):
         await blocking_to_async(self.executor, self.conn.rollback)
 
-    def close(self):
-        self.conn.close()
+    async def close(self):
+        await blocking_to_async(self.executor, self.conn.close)
 
 
 class MySQLConnectionPool:
@@ -174,9 +174,10 @@ class MySQLConnectionPool:
         finally:
             self.free_connections.put_nowait(conn)
 
-    def close(self):
+    async def close(self):
+        assert self.free_connections.qsize() == len(self.connections)
         for conn in self.connections:
-            conn.close()
+            await conn.close()
 
     def _new_connection(self) -> MySQLAsyncConnection:
         return MySQLAsyncConnection(
@@ -195,7 +196,6 @@ class MySQLConnectionPool:
         )
 
 
-@retry_transient_mysql_errors
 async def create_database_pool(
     executor: Executor, config_file: str = None, autocommit: bool = True, maxsize: int = 10
 ) -> MySQLConnectionPool:
@@ -380,6 +380,5 @@ class Database:
             raise CallError(rv)
         return rv
 
-    # async for backwards-compatibility with migration code
     async def async_close(self):
-        self.pool.close()
+        await self.pool.close()
