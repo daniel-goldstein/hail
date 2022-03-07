@@ -34,11 +34,11 @@ from web_common import render_template, set_message, setup_aiohttp_jinja2, setup
 from .constants import AUTHORIZED_USERS, TEAMS
 from .environment import STORAGE_URI
 from .github import (
-    MergePriority,
     PR,
     WIP,
     FQBranch,
     MergeFailureBatch,
+    MergePriority,
     Repo,
     UnwatchedBranch,
     WatchedBranch,
