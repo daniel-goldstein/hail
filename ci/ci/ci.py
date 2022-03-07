@@ -33,7 +33,17 @@ from web_common import render_template, set_message, setup_aiohttp_jinja2, setup
 
 from .constants import AUTHORIZED_USERS, TEAMS
 from .environment import STORAGE_URI
-from .github import PR, WIP, FQBranch, MergeFailureBatch, Repo, UnwatchedBranch, WatchedBranch, select_random_teammate
+from .github import (
+    MergePriority,
+    PR,
+    WIP,
+    FQBranch,
+    MergeFailureBatch,
+    Repo,
+    UnwatchedBranch,
+    WatchedBranch,
+    select_random_teammate,
+)
 
 with open(os.environ.get('HAIL_CI_OAUTH_TOKEN', 'oauth-token/oauth-token'), 'r', encoding='utf-8') as f:
     oauth_token = f.read().strip()
@@ -65,6 +75,7 @@ class PRConfig(TypedDict):
     reviewers: Set[str]
     labels: Set[str]
     out_of_date: bool
+    merge_priority: MergePriority
 
 
 async def pr_config(app, pr: PR) -> PRConfig:
@@ -86,6 +97,7 @@ async def pr_config(app, pr: PR) -> PRConfig:
         'reviewers': pr.reviewers,
         'labels': pr.labels,
         'out_of_date': pr.build_state in ['failure', 'success', None] and not pr.is_up_to_date(),
+        'merge_priority': pr.merge_priority(),
     }
 
 

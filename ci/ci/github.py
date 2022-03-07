@@ -7,7 +7,7 @@ import random
 import secrets
 from enum import Enum
 from shlex import quote as shq
-from typing import Dict, Optional, Set, Union
+from typing import Dict, Optional, Set, Tuple, Union
 
 import aiohttp
 import gidgethub
@@ -44,6 +44,9 @@ class GithubStatus(Enum):
     SUCCESS = 'success'
     PENDING = 'pending'
     FAILURE = 'failure'
+
+
+MergePriority = Tuple[bool, bool, int, int]
 
 
 def select_random_teammate(team):
@@ -216,7 +219,7 @@ class PR(Code):
 
         self.sha: Optional[str] = None
         self.batch: Union[Batch, MergeFailureBatch, None] = None
-        self.source_sha_failed: Optional[str] = None
+        self.source_sha_failed: Optional[bool] = None
 
         # 'error', 'success', 'failure', None
         self.build_state: Optional[str] = None
@@ -261,12 +264,14 @@ class PR(Code):
                 row = await cursor.fetchone()
                 return row is not None
 
-    def merge_priority(self):
+    def merge_priority(self) -> MergePriority:
         # passed > unknown > failed
-        if self.source_sha_failed is None:
+        if self.source_sha_failed is True:
+            source_sha_failed_prio = 2
+        elif self.source_sha_failed is None:
             source_sha_failed_prio = 1
         else:
-            source_sha_failed_prio = 0 if self.source_sha_failed else 2
+            source_sha_failed_prio = 0
 
         return (
             HIGH_PRIORITY in self.labels,
