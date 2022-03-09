@@ -2938,6 +2938,8 @@ steps:
         script: /io/sql/big-test-instances.py
       - name: kill-mjc-deadlocks
         script: /io/sql/kill-mjc-deadlocks.sql
+      - name: turn-off-fk-checks
+        script: /io/sql/turn-off-fk.sql
     inputs:
       - from: /repo/batch/sql
         to: /io/sql
