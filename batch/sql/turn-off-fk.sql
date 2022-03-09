@@ -14,9 +14,6 @@ CREATE PROCEDURE mark_job_complete(
   IN new_timestamp BIGINT
 )
 BEGIN
-
-  SET foreign_key_checks = 0;
-
   DECLARE cur_job_state VARCHAR(40);
   DECLARE cur_instance_state VARCHAR(40);
   DECLARE cur_cores_mcpu INT;
@@ -26,6 +23,8 @@ BEGIN
   DECLARE expected_attempt_id VARCHAR(40);
 
   START TRANSACTION;
+
+  SET foreign_key_checks = 0;
 
   SELECT n_jobs INTO total_jobs_in_batch FROM batches WHERE id = in_batch_id;
 
