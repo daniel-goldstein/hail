@@ -15,7 +15,7 @@ CREATE PROCEDURE mark_job_complete(
 )
 BEGIN
 
-  SET FOREIGN_KEY_CHECKS = 0;
+  SET foreign_key_checks = 0;
 
   DECLARE cur_job_state VARCHAR(40);
   DECLARE cur_instance_state VARCHAR(40);
