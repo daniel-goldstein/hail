@@ -14,6 +14,7 @@ CREATE PROCEDURE mark_job_complete(
   IN new_timestamp BIGINT
 )
 BEGIN
+
   SET FOREIGN_KEY_CHECKS = 0;
 
   DECLARE cur_job_state VARCHAR(40);
