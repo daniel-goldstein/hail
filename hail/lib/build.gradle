@@ -1,0 +1,30 @@
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+}
+
+plugins {
+  id 'java'
+  id 'com.github.johnrengelman.shadow'
+}
+
+import com.github.jengelman.gradle.plugins.shadow.tasks.ConfigureShadowRelocation
+
+repositories {
+    mavenCentral()
+    maven { url "https://repository.cloudera.com/artifactory/cloudera-repos/" }
+}
+
+
+dependencies {
+    compile 'com.azure:azure-storage-blob:12.15.0'
+    compile 'com.azure:azure-identity:1.4.6'
+}
+
+task relocateAzureStorageWrapperShadowJar(type: ConfigureShadowRelocation) {
+    target = tasks.shadowJar
+    prefix = 'is.hail.relocated.azure'
+}
+
+tasks.shadowJar.dependsOn tasks.relocateAzureStorageWrapperShadowJar
