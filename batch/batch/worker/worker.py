@@ -2540,11 +2540,15 @@ class Worker:
         site = web.TCPSite(app_runner, '0.0.0.0', 5000)
         await site.start()
 
+        log.info('Started site')
+
         try:
             await asyncio.wait_for(self.activate(), MAX_IDLE_TIME_MSECS / 1000)
         except asyncio.TimeoutError:
             log.exception(f'could not activate after trying for {MAX_IDLE_TIME_MSECS} ms, exiting')
             return
+
+        log.info('Activated')
 
         try:
             while True:
@@ -2747,7 +2751,9 @@ async def async_main():
 
     port_allocator = PortAllocator()
     network_allocator = NetworkAllocator()
+    log.info('Reserving network namespaces')
     await network_allocator.reserve()
+    log.info('Done reserving network namespaces')
 
     worker = Worker(httpx.client_session())
     try:

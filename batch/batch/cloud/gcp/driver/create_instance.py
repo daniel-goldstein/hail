@@ -264,11 +264,17 @@ sudo service google-fluentd restart
 
 {make_global_config_str}
 
+echo 'Pulling batch image'
+
 # retry once
 docker pull $BATCH_WORKER_IMAGE || \
 (echo 'pull failed, retrying' && sleep 15 && docker pull $BATCH_WORKER_IMAGE)
 
+echo 'Pulled batch image'
+
 BATCH_WORKER_IMAGE_ID=$(docker inspect $BATCH_WORKER_IMAGE --format='{{{{.Id}}}}' | cut -d':' -f2)
+
+echo 'Running worker container'
 
 # So here I go it's my shot.
 docker run \
