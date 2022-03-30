@@ -196,14 +196,6 @@ dependencies {
         exclude group: 'com.fasterxml.jackson.core'
     }
 
-    bundled(group: 'com.azure', name: 'azure-storage-blob', version: '12.15.0') {
-        exclude group: 'com.fasterxml.jackson.core'
-    }
-
-    bundled(group: 'com.azure', name: 'azure-identity', version:'1.4.6') {
-        exclude group: 'com.fasterxml.jackson.core'
-    }
-
     bundled 'com.indeed:lsmtree-core:1.0.7'
     bundled 'com.indeed:util-serialization:1.0.36'
     bundled 'com.indeed:util-mmap:1.0.36'
