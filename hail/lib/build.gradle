@@ -20,6 +20,13 @@ repositories {
 dependencies {
     compile 'com.azure:azure-storage-blob:12.15.0'
     compile 'com.azure:azure-identity:1.4.6'
+    shadow 'com.azure:azure-core-http-netty:1.11.8'
+}
+
+shadowJar {
+    dependencies {
+        exclude(dependency('com.azure:azure-core-http-netty:1.11.8'))
+    }
 }
 
 task relocateAzureStorageWrapperShadowJar(type: ConfigureShadowRelocation) {
