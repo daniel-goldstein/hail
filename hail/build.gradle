@@ -92,6 +92,8 @@ configurations {
             eachDependency { DependencyResolveDetails details ->
                 if (details.requested.group == 'org.apache.spark') {
                     details.useVersion(sparkVersion)
+                } else if (details.requested.group  == 'com.fasterxml.jackson') {
+                    details.useVersion('2.13.1')
                 }
             }
 	    }
