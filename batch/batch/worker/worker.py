@@ -2496,11 +2496,7 @@ class Worker:
         try:
             startup_tasks = asyncio.gather(self.activate(), network_allocator.reserve())
             await asyncio.wait_for(startup_tasks, MAX_IDLE_TIME_MSECS / 1000)
-        except asyncio.TimeoutError:
-            log.exception(f'could not activate after trying for {MAX_IDLE_TIME_MSECS} ms, exiting')
-            return
 
-        try:
             while True:
                 try:
                     await asyncio.wait_for(self.stop_event.wait(), 15)
@@ -2515,6 +2511,8 @@ class Worker:
                         f'n_jobs {len(self.jobs)} free_cores {self.cpu_sem.value / 1000} idle {idle_duration} '
                         f'free worker data disk storage {self.data_disk_space_remaining.value}Gi'
                     )
+        except asyncio.TimeoutError:
+            log.exception(f'could not activate after trying for {MAX_IDLE_TIME_MSECS} ms, exiting')
         finally:
             self.active = False
             log.info('shutting down')
