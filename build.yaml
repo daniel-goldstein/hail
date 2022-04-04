@@ -4882,6 +4882,7 @@ steps:
 
       set +e
       java -Xms7500M -Xmx7500M \
+           -verbose:class \
            -cp hail-test.jar:$SPARK_HOME/jars/* \
            org.testng.TestNG \
            -listener is.hail.LogTestListener \
