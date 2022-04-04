@@ -2495,7 +2495,7 @@ class Worker:
 
         try:
             startup_tasks = asyncio.gather(self.activate(), network_allocator.reserve())
-            await asyncio.wait_for(startup_tasks, MAX_IDLE_TIME_MSECS / 1000)
+            await asyncio.wait_for(startup_tasks, 2 * MAX_IDLE_TIME_MSECS / 1000)
 
             while True:
                 try:
