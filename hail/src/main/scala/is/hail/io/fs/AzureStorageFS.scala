@@ -146,7 +146,7 @@ class AzureStorageFS(val credentialsJSON: Option[String] = None) extends FS {
           return
         }
 
-        client.downloadStreamWithResponse(
+        client.downloadWithResponse(
           outputStreamToBuffer, new BlobRange(pos, count),
           null, null, false, Duration.ofMinutes(1), null)
         pos += count
