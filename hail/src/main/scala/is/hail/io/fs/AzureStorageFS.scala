@@ -1,12 +1,16 @@
 package is.hail.io.fs
 
-import com.azure.core.credential.TokenCredential
+import is.hail.utils._
+
+import com.azure.core.credential.{TokenCredential, TokenRequestContext}
 import com.azure.identity.{ClientSecretCredential, ClientSecretCredentialBuilder, DefaultAzureCredential, DefaultAzureCredentialBuilder}
-import com.azure.storage.blob.models.{BlobProperties, BlobRange, ListBlobsOptions}
+import com.azure.storage.blob.models.{BlobProperties, BlobRange, ListBlobsOptions, BlobItem}
 import com.azure.storage.blob.specialized.AppendBlobClient
 import com.azure.storage.blob.{BlobClient, BlobContainerClient, BlobServiceClient, BlobServiceClientBuilder}
 import is.hail.io.fs.AzureStorageFS.getAccountContainerPath
 import is.hail.io.fs.FSUtil.{containsWildcard, dropTrailingSlash}
+import org.apache.http.client.methods.HttpGet
+import org.apache.http.impl.client.{CloseableHttpClient, HttpClients}
 import org.apache.log4j.Logger
 
 import java.net.URI
@@ -19,6 +23,8 @@ import java.nio.file.FileSystems
 import java.time.Duration
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
+import com.azure.core.credential.AccessToken
+import org.apache.http.HttpEntity
 
 
 object AzureStorageFS {
@@ -72,6 +78,7 @@ object AzureStorageFileStatus {
 class AzureBlobServiceClientCache(credential: TokenCredential) {
   @transient private lazy val clientBuilder: BlobServiceClientBuilder = new BlobServiceClientBuilder()
   @transient private lazy val clients: mutable.Map[String, BlobServiceClient] = mutable.Map()
+  @transient private lazy val httpClient: CloseableHttpClient = HttpClients.custom().build()
 
   def getServiceClient(account: String): BlobServiceClient = {
     clients.get(account) match {
@@ -84,6 +91,13 @@ class AzureBlobServiceClientCache(credential: TokenCredential) {
         clients += (account -> blobServiceClient)
         blobServiceClient
     }
+  }
+
+  def getHttpClient: CloseableHttpClient = httpClient
+  def getAccessToken: AccessToken = {
+    val ctx = new TokenRequestContext()
+    ctx.addScopes("https://storage.azure.com/.default")
+    credential.getToken(ctx).block()
   }
 }
 
@@ -107,6 +121,8 @@ class AzureStorageFS(val credentialsJSON: Option[String] = None) extends FS {
         .clientSecret(password)
         .tenantId(tenant)
         .build()
+      val tokenRequestContext = new TokenRequestContext()
+      tokenRequestContext.addScopes("https://storage.azure.com/.default")
       new AzureBlobServiceClientCache(clientSecretCredential)
   }
 
@@ -120,6 +136,19 @@ class AzureStorageFS(val credentialsJSON: Option[String] = None) extends FS {
 
   def getContainerClient(account: String, container: String): BlobContainerClient = {
     getBlobServiceClient(account).getBlobContainerClient(container)
+  }
+
+  private[this] def getHttpClient = serviceClientCache.getHttpClient
+  private[this] def listBlobsWithPrefix(account: String, container: String, path: String): Unit = {
+    val httpClient = serviceClientCache.getHttpClient
+    val token = serviceClientCache.getAccessToken
+    val req = new HttpGet()
+    req.addHeader("Authorization", s"Bearer: ${token}")
+    using(httpClient.execute(req)) { resp =>
+      val statusCode = resp.getStatusLine.getStatusCode
+      log.info(s"request ${ req.getMethod } ${ req.getURI } response $statusCode")
+      resp.getEntity().getContent()
+    }
   }
 
   def openNoCompression(filename: String): SeekableDataInputStream = {
@@ -206,6 +235,7 @@ class AzureStorageFS(val credentialsJSON: Option[String] = None) extends FS {
       val options = new ListBlobsOptions()
       options.setPrefix(dropTrailingSlash(path) + "/")
       val prefixMatches = blobContainerClient.listBlobs(options, Duration.ofMinutes(1))
+      // val prefixMatches = blobContainerClient.listBlobsByHierarchy(dropTrailingSlash(path) + "/")
 
       prefixMatches.forEach(blobItem => {
         getBlobClient(account, container, blobItem.getName).delete()
@@ -229,6 +259,7 @@ class AzureStorageFS(val credentialsJSON: Option[String] = None) extends FS {
     val prefixMatches = blobContainerClient.listBlobsByHierarchy(prefix)
 
     prefixMatches.forEach(blobItem => {
+      println("LOOP FOREVER")
       val blobFileName = s"hail-az://$account/$container/${blobItem.getName}"
       statList += fileStatus(blobFileName)
     })
@@ -252,8 +283,10 @@ class AzureStorageFS(val credentialsJSON: Option[String] = None) extends FS {
 
     val prefix = dropTrailingSlash(path) + "/"
     val options: ListBlobsOptions = new ListBlobsOptions().setPrefix(prefix)
+    println("BEFORE LISTING")
     val prefixMatches = blobContainerClient.listBlobs(options, null)
     val isDir = prefixMatches.iterator().hasNext
+    println("AFTER LISTING")
 
     val filename = dropTrailingSlash(s"hail-az://$account/$container/$path")
     if (!isDir && !blobClient.exists()) throw new FileNotFoundException(s"File not found: $filename")
