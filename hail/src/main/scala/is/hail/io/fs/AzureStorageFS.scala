@@ -139,15 +139,32 @@ class AzureStorageFS(val credentialsJSON: Option[String] = None) extends FS {
   }
 
   private[this] def getHttpClient = serviceClientCache.getHttpClient
-  private[this] def listBlobsWithPrefix(account: String, container: String, path: String): Unit = {
-    val httpClient = serviceClientCache.getHttpClient
-    val token = serviceClientCache.getAccessToken
-    val req = new HttpGet()
-    req.addHeader("Authorization", s"Bearer: ${token}")
-    using(httpClient.execute(req)) { resp =>
-      val statusCode = resp.getStatusLine.getStatusCode
-      log.info(s"request ${ req.getMethod } ${ req.getURI } response $statusCode")
-      resp.getEntity().getContent()
+  private[this] def listBlobsWithPrefix(account: String, container: String, path: String)(f: BlobItem => Unit): Unit = {
+    // val httpClient = serviceClientCache.getHttpClient
+    // val token = serviceClientCache.getAccessToken
+    // val req = new HttpGet()
+    // req.addHeader("Authorization", s"Bearer: ${token}")
+    // using(httpClient.execute(req)) { resp =>
+    //   val statusCode = resp.getStatusLine.getStatusCode
+    //   log.info(s"request ${ req.getMethod } ${ req.getURI } response $statusCode")
+    //   resp.getEntity().getContent()
+    // }
+    val prefixMatches = getContainerClient(account, container).listBlobsByHierarchy(path).iterator()
+    var firstMatch: BlobItem = null
+    var looped = false
+
+    var i = 0
+    while (prefixMatches.hasNext && !looped && i < 100) {
+      val blobItem = prefixMatches.next
+      if (blobItem.getName.equals(firstMatch.getName)) {
+        looped = true
+      } else {
+        if (firstMatch == null) {
+          firstMatch = blobItem
+        }
+        f(blobItem)
+      }
+      i += 1
     }
   }
 
@@ -225,26 +242,13 @@ class AzureStorageFS(val credentialsJSON: Option[String] = None) extends FS {
 
   def delete(filename: String, recursive: Boolean): Unit = {
     val (account, container, path) = getAccountContainerPath(filename)
-    val blobClient: BlobClient = getBlobClient(account, container, path)
-
-    val fileStatus = this.fileStatus(filename)
-
     if (recursive) {
-      val blobContainerClient = getContainerClient(account, container)
-
-      val options = new ListBlobsOptions()
-      options.setPrefix(dropTrailingSlash(path) + "/")
-      val prefixMatches = blobContainerClient.listBlobs(options, Duration.ofMinutes(1))
-      // val prefixMatches = blobContainerClient.listBlobsByHierarchy(dropTrailingSlash(path) + "/")
-
-      prefixMatches.forEach(blobItem => {
+      listBlobsWithPrefix(account, container, path) { blobItem =>
         getBlobClient(account, container, blobItem.getName).delete()
-      })
-
-      if (fileStatus.isFile) blobClient.delete()
+      }
     }
     else {
-        blobClient.delete()
+        getBlobClient(account, container, path).delete()
     }
   }
 
@@ -254,15 +258,9 @@ class AzureStorageFS(val credentialsJSON: Option[String] = None) extends FS {
     val blobContainerClient: BlobContainerClient = getContainerClient(account, container)
     val statList: ArrayBuffer[FileStatus] = ArrayBuffer()
 
-    val prefix = dropTrailingSlash(path) + "/"
-    // collect all children of this directory (blobs and subdirectories)
-    val prefixMatches = blobContainerClient.listBlobsByHierarchy(prefix)
-
-    prefixMatches.forEach(blobItem => {
-      println("LOOP FOREVER")
-      val blobFileName = s"hail-az://$account/$container/${blobItem.getName}"
-      statList += fileStatus(blobFileName)
-    })
+    listBlobsWithPrefix(account, container, path) { blobItem =>
+      statList += fileStatus(account, container, blobItem.getName)
+    }
     statList.toArray
   }
 
@@ -281,12 +279,11 @@ class AzureStorageFS(val credentialsJSON: Option[String] = None) extends FS {
     val blobClient: BlobClient = getBlobClient(account, container, path)
     val blobContainerClient: BlobContainerClient = getContainerClient(account, container)
 
-    val prefix = dropTrailingSlash(path) + "/"
-    val options: ListBlobsOptions = new ListBlobsOptions().setPrefix(prefix)
-    println("BEFORE LISTING")
-    val prefixMatches = blobContainerClient.listBlobs(options, null)
-    val isDir = prefixMatches.iterator().hasNext
-    println("AFTER LISTING")
+    // TODO GROSS
+    var isDir = false
+    listBlobsWithPrefix(account, container, path) { _ =>
+      isDir = true
+    }
 
     val filename = dropTrailingSlash(s"hail-az://$account/$container/$path")
     if (!isDir && !blobClient.exists()) throw new FileNotFoundException(s"File not found: $filename")
