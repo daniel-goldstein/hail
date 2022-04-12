@@ -25,9 +25,7 @@ check:
 
 .PHONY: build-batch
 build-batch:
-	$(MAKE) -C ../docker service-base
-	python3 ../ci/jinja2_render.py '{"service_base_image":{"image":"'$$(cat ../docker/service-base-image-ref)'"}}' Dockerfile Dockerfile.out
-	../docker-build.sh . Dockerfile.out $(BATCH_IMAGE)
+	../docker-build.sh .. batch/Dockerfile $(BATCH_IMAGE)
 
 jars/junixsocket-selftest-2.3.3-jar-with-dependencies.jar:
 	mkdir jars

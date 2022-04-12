@@ -1,9 +1,7 @@
 FROM {{ service_base_image.image }}
 
-COPY monitoring/monitoring /monitoring/monitoring/
-
 COPY monitoring/setup.py monitoring/MANIFEST.in  /monitoring/
-
-RUN hail-pip-install /monitoring && rm -rf /monitoring
+RUN --mount=src=monitoring/montoring,target=/monitoring/monitoring \
+    hail-pip-install /monitoring
 
 EXPOSE 5000

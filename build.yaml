@@ -148,7 +148,6 @@ steps:
       cpu: "2"
       memory: standard
     dependsOn:
-      - base_image
       - merge_code
     inputs:
       - from: /hail_version
@@ -584,11 +583,11 @@ steps:
   - kind: buildImage2
     name: batch_image
     dockerFile: /io/batch/Dockerfile
-    contextPath: /io/batch/
+    contextPath: /io/repo/
     publishAs: batch
     inputs:
-      - from: /repo/batch
-        to: /io/batch
+      - from: /repo
+        to: /io/repo
     dependsOn:
       - service_base_image
       - merge_code

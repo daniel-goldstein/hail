@@ -33,8 +33,7 @@ hail_version:
 
 .PHONY: service-base service-base-image-ref
 service-base: service-base-image-ref
-service-base-image-ref: base hail_version
-	python3 ../ci/jinja2_render.py '{"base_image":{"image":"'$$(cat base-image-ref)'"}}' Dockerfile.service-base Dockerfile.service-base.out
+service-base-image-ref: hail_version
 	../docker-build.sh .. docker/Dockerfile.service-base.out $(SERVICE_BASE_IMAGE)
 	echo $(SERVICE_BASE_IMAGE) > $@
 

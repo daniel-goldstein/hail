@@ -2,5 +2,5 @@
 
 set -ex
 
-retry python3 -m pip install "$@"
+retry python3 -m pip install --no-cache-dir "$@"
 exec python3 -m pip check
