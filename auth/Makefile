@@ -19,9 +19,7 @@ check:
 
 .PHONY: build
 build:
-	$(MAKE) -C ../docker service-base
-	python3 ../ci/jinja2_render.py '{"service_base_image":{"image":"'$$(cat ../docker/service-base-image-ref)'"}}' Dockerfile Dockerfile.out
-	../docker-build.sh .. auth/Dockerfile.out $(AUTH_IMAGE)
+	../docker-build.sh .. auth/Dockerfile $(AUTH_IMAGE)
 
 .PHONY: deploy
 deploy: build
