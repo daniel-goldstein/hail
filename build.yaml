@@ -124,6 +124,21 @@ steps:
     dependsOn:
       - hail_ubuntu_image
       - merge_code
+  - kind: buildImage2
+    name: base_image_spark_3_2
+    dockerFile: /io/repo/docker/Dockerfile.base-spark-3-2
+    contextPath: /io/repo
+    publishAs: base_spark_3_2
+    resources:
+      storage: 10Gi
+      cpu: "2"
+      memory: standard
+    inputs:
+      - from: /repo
+        to: /io/repo
+    dependsOn:
+      - hail_ubuntu_image
+      - merge_code
   - kind: runImage
     name: check_hail
     image:
@@ -508,6 +523,20 @@ steps:
       - base_image
       - merge_code
   - kind: buildImage2
+    name: hail_build_image_spark_3_2
+    dockerFile:
+      inline: |
+        FROM {{ base_image_spark_3_2.image }}
+        RUN hail-apt-get-install libz4-dev maven
+    contextPath: /io/repo
+    publishAs: hail-build-spark-32
+    inputs:
+      - from: /repo/hail
+        to: /io/hail
+    dependsOn:
+      - base_image
+      - merge_code
+  - kind: buildImage2
     name: hail_run_image
     dockerFile: /io/hail/Dockerfile.hail-run
     contextPath: /io/hail
@@ -722,6 +751,30 @@ steps:
         to: /just-jar/hail.jar
       - from: /io/repo/hail/build/deploy/dist/wheel-container.tar
         to: /just-wheel/wheel-container.tar
+    dependsOn:
+      - hail_build_image
+      - merge_code
+  - kind: runImage
+    name: build_hail_jar_and_wheel_only_spark_3_2
+    image:
+      valueFrom: hail_build_image.image
+    resources:
+      memory: standard
+      cpu: '4'
+    script: |
+      set -ex
+      cd /io/repo/hail
+      chmod 755 ./gradlew
+      time retry ./gradlew --version
+      export SPARK_VERSION="3.2.1" SCALA_VERSION="2.12.12"
+      time retry make shadowJar wheel
+      (cd build/deploy/dist/ && tar -cvf wheel-container.tar hail-*-py3-none-any.whl)
+    inputs:
+      - from: /repo
+        to: /io/repo
+    outputs:
+      - from: /io/repo/hail/build/libs/hail-all-spark.jar
+        to: /just-jar/spark-3-2/hail.jar
     dependsOn:
       - hail_build_image
       - merge_code
@@ -3060,7 +3113,7 @@ steps:
     inputs:
       - from: /resources.tar.gz
         to: /io/resources.tar.gz
-      - from: /hail-test.jar
+      - from: /just-jar/spark-3-2/hail-test.jar
         to: /io/hail-test.jar
       - from: /testng-fs.xml
         to: /io/testng-fs.xml
@@ -3088,6 +3141,7 @@ steps:
       - create_accounts
       - hail_run_tests_image
       - build_hail
+      - build_hail_jar_and_wheel_only_spark_3_2
       - upload_test_resources_to_blob_storage
   - kind: runImage
     name: test_hail_services_java
