@@ -125,6 +125,21 @@ steps:
       - hail_ubuntu_image
       - merge_code
   - kind: buildImage2
+    name: base_image
+    dockerFile: /io/repo/docker/Dockerfile.base-spark-3-1
+    contextPath: /io/repo
+    publishAs: base
+    resources:
+      storage: 10Gi
+      cpu: "2"
+      memory: standard
+    inputs:
+      - from: /repo
+        to: /io/repo
+    dependsOn:
+      - hail_ubuntu_image
+      - merge_code
+  - kind: buildImage2
     name: base_image_spark_3_2
     dockerFile: /io/repo/docker/Dockerfile.base-spark-3-2
     contextPath: /io/repo
