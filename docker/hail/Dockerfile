@@ -1,4 +1,4 @@
-FROM {{ hail_ubuntu_image.image }}
+FROM {{ global.docker_prefix }}/python:3.7-slim
 
 ENV MAKEFLAGS -j2
 
@@ -7,7 +7,6 @@ RUN hail-apt-get-install \
     git \
     liblapack3 \
     openjdk-8-jre-headless \
-    python3 python3-pip \
     rsync \
     unzip bzip2 zip tar tabix lz4 \
     vim pv
@@ -21,8 +20,7 @@ RUN hail-pip-install \
       numpy \
       scikit-learn \
       dill \
-      scipy \
-    && rm -rf hail-*-py3-none-any.whl
+      scipy
 RUN export SPARK_HOME=$(find_spark_home.py) && \
     curl https://storage.googleapis.com/hadoop-lib/gcs/gcs-connector-hadoop2-2.0.1.jar \
          >$SPARK_HOME/jars/gcs-connector-hadoop2-2.0.1.jar && \
