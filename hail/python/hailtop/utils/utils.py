@@ -861,6 +861,7 @@ async def retry_long_running(name, f, *args, **kwargs):
 async def run_if_changed(changed, f, *args, **kwargs):
     while True:
         changed.clear()
+        start = time_msecs()
         should_wait = await f(*args, **kwargs)
         # 0.5 is arbitrary, but should be short enough not to greatly
         # increase latency and long enough to reduce the impact of
