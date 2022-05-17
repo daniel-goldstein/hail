@@ -11,7 +11,8 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 dependencies = []
-with open('requirements.txt', 'r') as f:
+deps_file = 'pinned-requirements.txt' if os.environ.get('HAIL_USE_DEPS_LOCK_FILE') else 'requirements.txt'
+with open(deps_file, 'r') as f:
     for line in f:
         stripped = line.strip()
         if stripped.startswith('#') or len(stripped) == 0:
