@@ -442,8 +442,6 @@ async def schedule_job(app, record, instance):
         )
         raise
 
-    log.info(f'schedule job {id} on {instance}: made job config')
-
     try:
         await client_session.post(
             f'http://{instance.ip_address}:5000/api/v1alpha/batches/jobs/create',
@@ -462,8 +460,6 @@ async def schedule_job(app, record, instance):
         await instance.incr_failed_request_count()
         raise
 
-    log.info(f'schedule job {id} on {instance}: called create job')
-
     try:
         rv = await db.execute_and_fetchone(
             '''
@@ -479,10 +475,6 @@ async def schedule_job(app, record, instance):
     if rv['delta_cores_mcpu'] != 0 and instance.state == 'active':
         instance.adjust_free_cores_in_memory(rv['delta_cores_mcpu'])
 
-    log.info(f'schedule job {id} on {instance}: updated database')
-
     if rv['rc'] != 0:
         log.info(f'could not schedule job {id}, attempt {attempt_id} on {instance}, {rv}')
         return
-
-    log.info(f'success scheduling job {id} on {instance}')
