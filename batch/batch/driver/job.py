@@ -119,7 +119,7 @@ async def mark_job_complete(
                 attempt_id,
                 instance_name,
                 new_state,
-                json.dumps(status) if status is not None else None,
+                orjson.dumps(status) if status is not None else None,
                 start_time,
                 end_time,
                 reason,
