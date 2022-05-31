@@ -1,8 +1,12 @@
 import logging
 
+from collections import defaultdict
+
 from hailtop.utils import secret_alnum_string
 
 log = logging.getLogger('batch.spec_writer')
+
+token_cache = defaultdict(dict)
 
 
 class SpecWriter:
@@ -28,6 +32,10 @@ class SpecWriter:
 
     @staticmethod
     async def get_token_start_id(db, batch_id, job_id):
+        for r in token_cache[batch_id]:
+            if job_id in r:
+                return (token_cache[batch_id][r], r.start)
+
         bunch_record = await db.select_and_fetchone(
             '''
 SELECT start_job_id, token FROM batch_bunches
@@ -40,6 +48,25 @@ LIMIT 1;
         )
         token = bunch_record['token']
         start_job_id = bunch_record['start_job_id']
+
+        next_bunch_start = await db.select_and_fetchone(
+            '''
+SELECT start_job_id FROM batch_bunches
+WHERE batch_id = %s AND start_job_id > %s
+ORDER BY start_job_id ASC
+LIMIT 1;
+''',
+            (batch_id, job_id),
+            'get_token_start_id_next_bunch',
+        )
+        if next_bunch_start is None:
+            next_bunch_start_job_id = 5_000_000 # FIXME
+        else:
+            next_bunch_start_job_id = next_bunch_start['start_job_id']
+
+        bunch_range = range(start_job_id, next_bunch_start_job_id)
+        token_cache[batch_id][bunch_range] = token
+
         return (token, start_job_id)
 
     def __init__(self, file_store, batch_id):
