@@ -1,11 +1,11 @@
 import asyncio
 import base64
-import json
 import logging
 import traceback
 from typing import TYPE_CHECKING, List
 
 import aiohttp
+import orjson
 
 from gear import Database
 from hailtop import httpx
@@ -301,7 +301,7 @@ async def job_config(app, record, attempt_id):
     batch_id = record['batch_id']
     job_id = record['job_id']
 
-    db_spec = json.loads(record['spec'])
+    db_spec = orjson.loads(record['spec'])
 
     if format_version.has_full_spec_in_cloud():
         job_spec = {
@@ -313,7 +313,7 @@ async def job_config(app, record, attempt_id):
 
     job_spec['attempt_id'] = attempt_id
 
-    userdata = json.loads(record['userdata'])
+    userdata = orjson.loads(record['userdata'])
 
     secrets = job_spec.get('secrets', [])
     k8s_secrets = await asyncio.gather(
@@ -432,7 +432,7 @@ async def schedule_job(app, record, instance):
         }
 
         if format_version.has_full_status_in_gcs():
-            await file_store.write_status_file(batch_id, job_id, attempt_id, json.dumps(status))
+            await file_store.write_status_file(batch_id, job_id, attempt_id, orjson.dumps(status))
 
         db_status = format_version.db_status(status)
         resources = []

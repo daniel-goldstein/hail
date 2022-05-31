@@ -1158,7 +1158,7 @@ SELECT instance_id, internal_token, frozen FROM globals;
     app['cancel_ready_state_changed'] = asyncio.Event()
     app['cancel_creating_state_changed'] = asyncio.Event()
     app['cancel_running_state_changed'] = asyncio.Event()
-    app['async_worker_pool'] = AsyncWorkerPool(200, queue_size=200)
+    app['async_worker_pool'] = AsyncWorkerPool(500, queue_size=1000)
 
     credentials_file = '/gsa-key/key.json'
     fs = get_cloud_async_fs(credentials_file=credentials_file)

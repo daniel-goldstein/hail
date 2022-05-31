@@ -269,6 +269,7 @@ SET last_updated = %s,
 WHERE name = %s;
 ''',
             (now, self.name),
+            'mark_healthy',
         )
 
         self.inst_coll.adjust_for_remove_instance(self)
