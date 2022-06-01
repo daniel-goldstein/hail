@@ -106,7 +106,7 @@ async def mark_job_complete(
 
     id = (batch_id, job_id)
 
-    log.info(f'marking job {id} complete new_state {new_state}')
+    # log.info(f'marking job {id} complete new_state {new_state}')
 
     now = time_msecs()
 
@@ -157,7 +157,7 @@ async def mark_job_complete(
         # already complete, do nothing
         return
 
-    log.info(f'job {id} changed state: {rv["old_state"]} => {new_state}')
+    # log.info(f'job {id} changed state: {rv["old_state"]} => {new_state}')
 
     task_manager.ensure_future(notify_batch_job_complete(db, client_session, batch_id));
 
