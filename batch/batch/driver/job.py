@@ -159,7 +159,7 @@ async def mark_job_complete(
 
     # log.info(f'job {id} changed state: {rv["old_state"]} => {new_state}')
 
-    task_manager.ensure_future(notify_batch_job_complete(db, client_session, batch_id));
+    # task_manager.ensure_future(notify_batch_job_complete(db, client_session, batch_id))
 
     if instance and not instance.inst_coll.is_pool and instance.state == 'active':
         task_manager.ensure_future(instance.kill())
