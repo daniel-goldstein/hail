@@ -27,6 +27,8 @@ def configure_logging():
 
 class AccessLogger(AbstractAccessLogger):
     def log(self, request, response, time):
+        if response.status >= 200 and response.status < 300:
+            return
         tz = datetime.timezone(datetime.timedelta(seconds=-timezone))
         now = datetime.datetime.now(tz)
         start_time = now - datetime.timedelta(seconds=time)
