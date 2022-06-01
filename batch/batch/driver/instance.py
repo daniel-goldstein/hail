@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import datetime
 import json
@@ -151,6 +152,8 @@ VALUES (%s, %s);
         self.preemptible = preemptible
         self.instance_config = instance_config
 
+        self.healthy_lock = asyncio.Lock()
+
     @property
     def state(self):
         return self._state
@@ -256,26 +259,27 @@ VALUES (%s, %s);
         if self._state != 'active':
             return
 
-        now = time_msecs()
-        changed = (self._failed_request_count > 1) or (now - self._last_updated) > 5000
-        if not changed:
-            return
+        async with self.healthy_lock:
+            now = time_msecs()
+            changed = (self._failed_request_count > 1) or (now - self._last_updated) > 5000
+            if not changed:
+                return
 
-        await self.db.execute_update(
-            '''
+            await self.db.execute_update(
+                '''
 UPDATE instances
 SET last_updated = %s,
   failed_request_count = 0
 WHERE name = %s;
 ''',
-            (now, self.name),
-            'mark_healthy',
-        )
+                (now, self.name),
+                'mark_healthy',
+            )
 
-        self.inst_coll.adjust_for_remove_instance(self)
-        self._failed_request_count = 0
-        self._last_updated = now
-        self.inst_coll.adjust_for_add_instance(self)
+            self.inst_coll.adjust_for_remove_instance(self)
+            self._failed_request_count = 0
+            self._last_updated = now
+            self.inst_coll.adjust_for_add_instance(self)
 
     async def incr_failed_request_count(self):
         await self.db.execute_update(

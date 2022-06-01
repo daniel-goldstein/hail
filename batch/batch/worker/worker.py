@@ -2615,6 +2615,9 @@ class Worker:
                 del self.jobs[job.id]
                 self.last_updated = time_msecs()
 
+            if not self.active:
+                break
+
             await asyncio.sleep(delay_secs * random.uniform(0.7, 1.3))
             # exponentially back off, up to (expected) max of 2m
             delay_secs = min(delay_secs * 2, 2 * 60.0)
