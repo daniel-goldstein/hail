@@ -1405,7 +1405,7 @@ class Job:
 
         if not self.deleted:
             log.info(f'{self}: marking complete')
-            self.task_manager.ensure_future(self.worker.post_job_complete(self, full_status))
+            self.worker.mjc_futs[self.id] = self.task_manager.ensure_future(self.worker.post_job_complete(self, full_status))
 
     # {
     #   version: int,
@@ -2324,6 +2324,8 @@ class Worker:
         self._jvm_initializer_task = asyncio.ensure_future(self._initialize_jvms())
         self._jvms: SortedSet[JVM] = SortedSet([], key=lambda jvm: jvm.n_cores)
 
+        self.mjc_futs: Dict[Tuple[int, int], asyncio.Future] = dict()
+
     async def _initialize_jvms(self):
         if instance_config.worker_type() in ('standard', 'D', 'highmem', 'E'):
             jvms = await asyncio.gather(
@@ -2555,7 +2557,12 @@ class Worker:
             log.info('deactivated')
 
     async def deactivate(self):
-        # Don't retry.  If it doesn't go through, the driver
+        # Don't try to deactivate while still sending MJC requests.
+        # These should not continue to retry once the worker decided
+        # to deactivate so this should only be awaiting in-flight requests.
+        await asyncio.wait(self.mjc_futs.values())
+
+        # Don't retry. If it doesn't go through, the driver
         # monitoring loops will recover.  If the driver is
         # gone (e.g. testing a PR), this would go into an
         # infinite loop and the instance won't be deleted.
@@ -2592,7 +2599,7 @@ class Worker:
 
         start_time = time_msecs()
         delay_secs = 0.1
-        while True:
+        while self.active:
             try:
                 await self.client_session.post(
                     deploy_config.url('batch-driver', '/api/v1alpha/instances/job_complete'),
@@ -2633,6 +2640,8 @@ class Worker:
             if job.id in self.jobs:
                 del self.jobs[job.id]
                 self.last_updated = time_msecs()
+            assert job.id in self.mjc_futs
+            del self.mjc_futs[job.id]
 
     async def post_job_started_1(self, job):
         full_status = job.status()
