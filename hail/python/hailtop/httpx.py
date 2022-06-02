@@ -108,7 +108,7 @@ class ClientSession:
             *args,
             timeout=timeout,
             raise_for_status=False,
-            connector=aiohttp.TCPConnector(ssl=tls, limit=200),
+            connector=aiohttp.TCPConnector(ssl=tls, limit=500),
             **kwargs
         )
 
