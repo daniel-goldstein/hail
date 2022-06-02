@@ -145,7 +145,7 @@ async def mark_job_complete(
         else:
             log.warning(f'mark_complete for job {id} from unknown {instance}')
 
-    await add_attempt_resources(db, batch_id, job_id, attempt_id, resources)
+    # await add_attempt_resources(db, batch_id, job_id, attempt_id, resources)
 
     if rv['rc'] != 0:
         log.info(f'mark_job_complete returned {rv} for job {id}')
