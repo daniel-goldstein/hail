@@ -30,6 +30,10 @@ deploy: build
 	python3 ../ci/jinja2_render.py '{"code":{"sha":"$(shell git rev-parse --short=12 HEAD)"},"deploy":$(DEPLOY),"default_ns":{"name":"$(NAMESPACE)"},"auth_image":{"image":"$(AUTH_IMAGE)"},"auth_database":{"user_secret_name":"sql-auth-user-config"}}' deployment.yaml deployment.yaml.out
 	kubectl -n $(NAMESPACE) apply -f deployment.yaml.out
 
+.PHONY: generate-pip-lockfile
+generate-pip-lockfile:
+	../generate-linux-pip-lockfile.sh auth
+
 .PHONY:
 clean:
 	rm -f Dockerfile.out deployment.yaml.out

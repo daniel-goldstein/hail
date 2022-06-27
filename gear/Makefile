@@ -8,3 +8,7 @@ check:
 	$(PYTHON) -m pylint --rcfile ../pylintrc gear --score=n
 	$(PYTHON) -m isort . --check-only --diff
 	$(BLACK) --check --diff
+
+.PHONY: generate-pip-lockfile
+generate-pip-lockfile:
+	../generate-linux-pip-lockfile.sh gear
