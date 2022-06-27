@@ -1,11 +1,10 @@
-FROM {{ service_base_image.image }}
+FROM {{ hailgenetics_hailtop_slim_image.image }}
 
-RUN hail-pip-install \
-      google-auth-oauthlib==0.4.6 \
-      google-auth==1.25.0
+COPY auth/pinned-requirements.txt pinned-requirements.txt
+RUN hail-pip-install -r pinned-requirements.txt
 
 COPY auth/setup.py auth/MANIFEST.in /auth/
 COPY auth/auth /auth/auth/
-RUN hail-pip-install /auth && rm -rf /auth
+RUN hail-pip-install /auth
 
 EXPOSE 5000

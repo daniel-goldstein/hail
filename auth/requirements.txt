@@ -1,2 +1,3 @@
 -r ../gear/requirements.txt
 google-auth-oauthlib==0.4.6
+google-auth==1.25.0

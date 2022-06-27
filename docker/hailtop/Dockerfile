@@ -1,4 +1,4 @@
-FROM {{ global.docker_prefix }}/python:3.7-slim
+FROM gcr.io/hail-vdc/python:3.7-slim
 
 COPY docker/hail-ubuntu/retry \
      docker/hail-ubuntu/hail-pip-install \
