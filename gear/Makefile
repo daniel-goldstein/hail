@@ -19,8 +19,9 @@ generate-pip-lockfile:
 	../generate-linux-pip-lockfile.sh gear
 
 .PHONY: gear gear-image-ref
-gear: gear-image-ref
+build: gear-image-ref
 gear-image-ref:
-	python3 ../ci/jinja2_render.py '{"hailgenetics_hailtop_slim_image":{"image":"hailtop-slim"}}' Dockerfile Dockerfile.out
+	$(MAKE) -C ../docker/hailtop build
+	python3 ../ci/jinja2_render.py '{"hailtop_image":{"image":"'$$(cat ../docker/hailtop/hailtop-image-ref)'"}}' Dockerfile Dockerfile.out
 	../docker-build.sh .. gear/Dockerfile.out $(GEAR_IMAGE)
 	echo $(GEAR_IMAGE) > $@

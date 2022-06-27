@@ -19,7 +19,7 @@ check:
 
 .PHONY: build
 build:
-	$(MAKE) -C ../gear gear
+	$(MAKE) -C ../gear build
 	python3 ../ci/jinja2_render.py '{"gear_image":{"image":"'$$(cat ../gear/gear-image-ref)'"}}' Dockerfile Dockerfile.out
 	../docker-build.sh .. auth/Dockerfile.out $(AUTH_IMAGE)
 
