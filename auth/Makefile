@@ -19,8 +19,8 @@ check:
 
 .PHONY: build
 build:
-	$(MAKE) -C ../gear build
-	python3 ../ci/jinja2_render.py '{"gear_image":{"image":"'$$(cat ../gear/gear-image-ref)'"}}' Dockerfile Dockerfile.out
+	$(MAKE) -C ../docker/hailtop build
+	python3 ../ci/jinja2_render.py '{"hailtop_image":{"image":"'$$(cat ../docker/hailtop/hailtop-image-ref)'"}}' Dockerfile Dockerfile.out
 	../docker-build.sh .. auth/Dockerfile.out $(AUTH_IMAGE)
 
 .PHONY: deploy

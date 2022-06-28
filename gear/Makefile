@@ -13,15 +13,3 @@ check:
 	$(PYTHON) -m pylint --rcfile ../pylintrc gear --score=n
 	$(PYTHON) -m isort . --check-only --diff
 	$(BLACK) --check --diff
-
-.PHONY: generate-pip-lockfile
-generate-pip-lockfile:
-	../generate-linux-pip-lockfile.sh gear
-
-.PHONY: gear gear-image-ref
-build: gear-image-ref
-gear-image-ref:
-	$(MAKE) -C ../docker/hailtop build
-	python3 ../ci/jinja2_render.py '{"hailtop_image":{"image":"'$$(cat ../docker/hailtop/hailtop-image-ref)'"}}' Dockerfile Dockerfile.out
-	../docker-build.sh .. gear/Dockerfile.out $(GEAR_IMAGE)
-	echo $(GEAR_IMAGE) > $@
