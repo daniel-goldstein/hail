@@ -127,7 +127,7 @@ numpy==1.21.6
     #   scipy
 oauthlib==3.2.0
     # via requests-oauthlib
-orjson==3.6.4
+orjson==3.7.6
     # via -r python/requirements.txt
 packaging==21.3
     # via
