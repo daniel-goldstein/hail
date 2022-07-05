@@ -286,7 +286,7 @@ pytest-instafail==0.4.2
     # via -r python/dev/requirements.txt
 pytest-metadata==2.0.1
     # via pytest-html
-pytest-xdist==2.2.1
+pytest-xdist==2.5.0
     # via -r python/dev/requirements.txt
 python-dateutil==2.8.2
     # via jupyter-client
