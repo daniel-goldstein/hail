@@ -357,7 +357,7 @@ pyparsing==3.0.9
     # via
     #   httplib2
     #   packaging
-pytest==6.2.5
+pytest==7.1.2
     # via
     #   -r requirements.txt
     #   pytest-asyncio
