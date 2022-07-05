@@ -533,7 +533,7 @@ zope-event==4.5.0
     # via gevent
 zope-interface==5.4.0
     # via gevent
-zulip==0.6.3
+zulip==0.8.2
     # via -r requirements.txt
 
 # The following packages are considered to be unsafe in a requirements file:
