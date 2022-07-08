@@ -2093,7 +2093,7 @@ class JVM:
     async def create_container_and_connect(
         cls,
         index: int,
-        n_cores: int,
+        n_cores: float,
         socket_file: str,
         root_dir: str,
         client_session: httpx.ClientSession,
@@ -2134,7 +2134,7 @@ class JVM:
             raise JVMCreationError from e
 
     @classmethod
-    async def create(cls, index: int, n_cores: int, worker: 'Worker'):
+    async def create(cls, index: int, n_cores: float, worker: 'Worker'):
         token = uuid.uuid4().hex
         root_dir = f'/host/jvm-{token}'
         socket_file = root_dir + '/socket'
@@ -2173,7 +2173,7 @@ class JVM:
     def __init__(
         self,
         index: int,
-        n_cores: int,
+        n_cores: float,
         socket_file: str,
         root_dir: str,
         output_file: str,
@@ -2301,6 +2301,7 @@ class Worker:
             jvms = await asyncio.gather(
                 *[JVM.create(i, 1, self) for i in range(CORES)],
                 *[JVM.create(CORES + i, 8, self) for i in range(CORES // 8)],
+                *[JVM.create(CORES + CORES // 8 + i, 0.5, self) for i in range(2 * CORES)],
             )
             self._jvms.update(jvms)
         log.info(f'JVMs initialized {self._jvms}')
