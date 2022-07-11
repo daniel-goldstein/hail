@@ -2048,7 +2048,7 @@ class JVMContainer:
             image=Image(BATCH_WORKER_IMAGE, JVMUserCredentials(), client_session, pool),
             scratch_dir=f'{root_dir}/container',
             command=command,
-            cpu_in_mcpu=n_cores * 1000,
+            cpu_in_mcpu=int(n_cores * 1000),
             memory_in_bytes=total_memory_bytes,
             env=[f'HAIL_WORKER_OFF_HEAP_MEMORY_PER_CORE_MB={off_heap_memory_per_core_mib}', f'HAIL_CLOUD={CLOUD}'],
             volume_mounts=volume_mounts,
