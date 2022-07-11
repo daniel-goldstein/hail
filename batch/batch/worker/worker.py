@@ -1981,7 +1981,7 @@ class JVMContainer:
     @staticmethod
     async def create_and_start(
         index: int,
-        n_cores: int,
+        n_cores: float,
         socket_file: str,
         root_dir: str,
         client_session: httpx.ClientSession,
@@ -1990,7 +1990,7 @@ class JVMContainer:
         assert os.path.commonpath([socket_file, root_dir]) == root_dir
         assert os.path.isdir(root_dir)
 
-        total_memory_bytes = n_cores * worker_memory_per_core_bytes(CLOUD, instance_config.worker_type())
+        total_memory_bytes = int(n_cores * worker_memory_per_core_bytes(CLOUD, instance_config.worker_type()))
 
         # We allocate 60% of memory per core to off heap memory
         memory_per_core_mib = worker_memory_per_core_mib(CLOUD, instance_config.worker_type())
