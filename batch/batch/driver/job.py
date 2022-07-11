@@ -446,6 +446,7 @@ async def schedule_job(app, record, instance):
         )
         raise
 
+    http_start = time_msecs()
     try:
         await client_session.post(
             f'http://{instance.ip_address}:5000/api/v1alpha/batches/jobs/create',
@@ -464,6 +465,7 @@ async def schedule_job(app, record, instance):
         await instance.incr_failed_request_count()
         raise
 
+    http_end = time_msecs()
     try:
         rv = await db.execute_and_fetchone(
             '''
@@ -475,6 +477,13 @@ CALL schedule_job(%s, %s, %s, %s);
     except Exception:
         log.exception(f'Error while running schedule_job procedure for job {id} attempt {attempt_id}')
         raise
+
+    if 'standard' in instance.name:
+        app['in_progress_gantt'][instance.name] = {
+            'http_start': http_start,
+            'http_end': http_end,
+            'sql_end': time_msecs(),
+        }
 
     if rv['delta_cores_mcpu'] != 0 and instance.state == 'active':
         instance.adjust_free_cores_in_memory(rv['delta_cores_mcpu'])

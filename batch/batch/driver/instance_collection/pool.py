@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import random
+import collections
 from typing import Optional
 
 import prometheus_client as pc
@@ -392,6 +393,9 @@ HAVING n_ready_jobs + n_running_jobs > 0;
             for user, resources in user_resources.items()
         }
 
+        if self.pool.name == 'standard':
+            self.app['in_progress_gantt'] = collections.defaultdict()
+
         async def user_runnable_jobs(user, remaining):
             async for batch in self.db.select_and_fetchall(
                 '''
@@ -482,6 +486,10 @@ LIMIT %s;
         await waitable_pool.wait()
 
         end = time_msecs()
+
+        if self.pool.name == 'standard':
+            self.app['completed_gantt'] = self.app['in_progress_gantt']
+            print(self.app['in_progress_gantt'])
 
         if n_scheduled > 0:
             log.info(f'schedule: attempted to schedule {n_scheduled} jobs in {end - start}ms for {self.pool}')
