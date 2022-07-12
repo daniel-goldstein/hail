@@ -4,6 +4,15 @@
 
 <h1>{{ pool.name }}</h1>
 
+{% if plot_json is not none %}
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<div id="plotly-timeseries"></div>
+<script>
+  var graph = {{ plot_json | safe }};
+  Plotly.plot('plotly-timeseries', graph, {});
+</script>
+{% endif %}
+
 <h2>Configuration</h2>
 <div class="attributes">
   <form action="{{ base_path }}/config-update/pool/{{ pool.name }}" method="POST">

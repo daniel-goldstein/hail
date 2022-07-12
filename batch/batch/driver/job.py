@@ -6,6 +6,8 @@ import logging
 import traceback
 from typing import TYPE_CHECKING, List
 
+import datetime
+
 import aiohttp
 
 from gear import Database
@@ -479,11 +481,15 @@ CALL schedule_job(%s, %s, %s, %s);
         raise
 
     if 'standard' in instance.name:
-        app['in_progress_gantt'][instance.name] = {
-            'http_start': http_start,
-            'http_end': http_end,
-            'sql_end': time_msecs(),
-        }
+        app['in_progress_gantt'].append(
+            {
+                'instance_name': instance.name,
+                'job_id': job_id,
+                'http_start': datetime.datetime.utcfromtimestamp(http_start / 1000).isoformat(),
+                'http_end': datetime.datetime.utcfromtimestamp(http_end / 1000).isoformat(),
+                'sql_end': datetime.datetime.utcfromtimestamp(time_msecs() / 1000).isoformat(),
+            }
+        )
 
     if rv['delta_cores_mcpu'] != 0 and instance.state == 'active':
         instance.adjust_free_cores_in_memory(rv['delta_cores_mcpu'])

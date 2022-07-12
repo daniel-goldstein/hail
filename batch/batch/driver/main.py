@@ -15,6 +15,7 @@ import kubernetes_asyncio.client
 import kubernetes_asyncio.config
 import pandas as pd
 import plotly
+import plotly.express as px
 import plotly.graph_objects as go
 import prometheus_client as pc  # type: ignore
 import uvloop
@@ -720,12 +721,50 @@ async def get_pool(request, userdata):
 
     pool_config_json = json.dumps(pool.config())
 
+    data = app.get('completed_gantt', []).copy()
+    if data:
+        plotting_dicts = []
+        for d in sorted(data, key=lambda e: e['http_start']):
+            plotting_dicts.append(
+                {
+                    'start': d['http_start'],
+                    'end': d['http_end'],
+                    'instance_name': d['instance_name'],
+                    'type': 'http',
+                    'job_id': d['job_id'],
+                }
+            )
+            plotting_dicts.append(
+                {
+                    'start': d['http_end'],
+                    'end': d['sql_end'],
+                    'instance_name': d['instance_name'],
+                    'type': 'sql',
+                    'job_id': d['job_id'],
+                }
+            )
+        df = pd.DataFrame(plotting_dicts)
+        fig = px.timeline(
+            df,
+            x_start='start',
+            x_end='end',
+            y='job_id',
+            color='type',
+            hover_data=['job_id', 'instance_name'],
+            color_discrete_sequence=px.colors.qualitative.Prism,
+        )
+
+        plot_json = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
+    else:
+        plot_json = None
+
     page_context = {
         'pool': pool,
         'pool_config_json': pool_config_json,
         'instances': pool.name_instance.values(),
         'user_resources': user_resources,
         'ready_cores_mcpu': ready_cores_mcpu,
+        'plot_json': plot_json,
     }
 
     return await render_template('batch-driver', request, userdata, 'pool.html', page_context)

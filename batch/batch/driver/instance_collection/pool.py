@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import random
-import collections
 from typing import Optional
 
 import prometheus_client as pc
@@ -394,7 +393,7 @@ HAVING n_ready_jobs + n_running_jobs > 0;
         }
 
         if self.pool.name == 'standard':
-            self.app['in_progress_gantt'] = collections.defaultdict()
+            self.app['in_progress_gantt'] = []
 
         async def user_runnable_jobs(user, remaining):
             async for batch in self.db.select_and_fetchall(
