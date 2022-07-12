@@ -131,7 +131,13 @@ def stop():
 def initialize(config):
     global _initialized, _mt, _init_args
     assert not _initialized
-    _init_args = {'master': f'local[{config.cores}]', 'quiet': not config.hail_verbose, 'log': config.log}
+    _init_args = {
+        # 'master': f'local[{config.cores}]',
+        'backend': 'batch',
+        'driver_cores': config.cores,
+        'quiet': not config.hail_verbose,
+        'log': config.log
+    }
 
     if config.profile is not None:
         if config.prof_fmt == 'html':

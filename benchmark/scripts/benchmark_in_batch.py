@@ -106,6 +106,8 @@ if __name__ == '__main__':
             f'VECLIB_MAXIMUM_THREADS=1'
             f'{benchmark_lower_env_var}'
             f'PYSPARK_SUBMIT_ARGS="--driver-memory 6G pyspark-shell" '
+            f'HAIL_BATCH_BILLING_PROJECT="hail" '
+            f'HAIL_BATCH_REMOTE_TMPDIR="gs://dgoldste/tmp" '
             f'hail-bench run -o {j.ofile} -n {N_ITERS} --data-dir benchmark-resources -t {name}'
         )
         all_output.append(j.ofile)
