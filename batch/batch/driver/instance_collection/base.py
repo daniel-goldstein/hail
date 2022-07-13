@@ -36,7 +36,7 @@ class InstanceCollectionManager:
         self,
         db: Database,  # BORROWED
         machine_name_prefix: str,
-        location_monitor: CloudLocationMonitor,
+        location_monitor: Optional[CloudLocationMonitor],
     ):
         self.db: Database = db
         self.machine_name_prefix = machine_name_prefix
