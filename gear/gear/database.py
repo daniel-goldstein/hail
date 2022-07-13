@@ -188,7 +188,7 @@ class Transaction:
             self.conn = None
             conn_context_manager = self.conn_context_manager
             self.conn_context_manager = None
-            asyncio.ensure_future(_release_connection(conn_context_manager))
+            await _release_connection(conn_context_manager)
 
     async def _aexit(self, exc_type, exc_val, exc_tb):  # pylint: disable=unused-argument
         # cancelling cleanup could leak a connection

@@ -198,9 +198,10 @@ VALUES (%s, %s);
             if self._state in ('inactive', 'deleted'):
                 return
             try:
-                await self.client_session.post(
+                async with await self.client_session.post(
                     f'http://{self.ip_address}:5000/api/v1alpha/kill', timeout=aiohttp.ClientTimeout(total=30)
-                )
+                ):
+                    pass
             except aiohttp.ClientResponseError as err:
                 if err.status == 403:
                     log.info(f'cannot kill {self} -- does not exist at {self.ip_address}')
