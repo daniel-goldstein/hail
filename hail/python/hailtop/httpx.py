@@ -36,7 +36,7 @@ class ClientResponseError(aiohttp.ClientResponseError):
 
 class ClientResponse:
     def __init__(self, client_response: aiohttp.ClientResponse):
-        self.client_response = client_response
+        self.client_response: aiohttp.ClientResponse = client_response
 
     async def release(self) -> None:
         return await self.client_response.release()
@@ -47,9 +47,6 @@ class ClientResponse:
 
     def close(self) -> None:
         return self.client_response.close()
-
-    async def wait_for_close(self) -> None:
-        return await self.wait_for_close()
 
     async def read(self) -> bytes:
         return await self.client_response.read()
