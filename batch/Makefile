@@ -6,6 +6,7 @@ BATCH_IMAGE := $(DOCKER_PREFIX)/batch:$(TOKEN)
 BATCH_WORKER_IMAGE := $(DOCKER_PREFIX)/batch-worker:$(TOKEN)
 
 BATCH_DRIVER_NGINX_IMAGE := $(DOCKER_PREFIX)/batch-driver-nginx:$(TOKEN)
+BATCH_DB_PROXY_IMAGE := $(DOCKER_PREFIX)/dgoldste/db-proxy:$(TOKEN)
 
 EXTRA_PYTHONPATH := ../hail/python:../gear:../web_common
 PYTHON := PYTHONPATH=$${PYTHONPATH:+$${PYTHONPATH}:}$(EXTRA_PYTHONPATH) python3
@@ -46,10 +47,14 @@ build-worker: src/main/java/is/hail/JVMEntryway.class
 	python3 ../ci/jinja2_render.py '{"hail_ubuntu_image":{"image":"'$$(cat ../docker/hail-ubuntu-image-ref)'"},"global":{"cloud":"$(CLOUD)"}}' Dockerfile.worker Dockerfile.worker.out
 	../docker-build.sh .. batch/Dockerfile.worker.out $(BATCH_WORKER_IMAGE)
 
-.PHONY: build
-build: build-batch build-batch-driver-nginx build-worker
+.PHONY: build-db-proxy
+build-db-proxy:
+	../docker-build.sh db-proxy Dockerfile $(BATCH_DB_PROXY_IMAGE)
 
-JINJA_ENVIRONMENT = '{"code":{"sha":"$(shell git rev-parse --short=12 HEAD)"},"deploy":$(DEPLOY),"batch_image":{"image":"$(BATCH_IMAGE)"},"batch_worker_image":{"image":"$(BATCH_WORKER_IMAGE)"},"default_ns":{"name":"$(NAMESPACE)"},"batch_database":{"user_secret_name":"sql-batch-user-config"},"scope":"$(SCOPE)","batch_driver_nginx_image":{"image":"$(BATCH_DRIVER_NGINX_IMAGE)"}}'
+.PHONY: build
+build: build-batch build-batch-driver-nginx build-worker build-db-proxy
+
+JINJA_ENVIRONMENT = '{"code":{"sha":"$(shell git rev-parse --short=12 HEAD)"},"deploy":$(DEPLOY),"batch_image":{"image":"$(BATCH_IMAGE)"},"batch_worker_image":{"image":"$(BATCH_WORKER_IMAGE)"},"default_ns":{"name":"$(NAMESPACE)"},"batch_database":{"user_secret_name":"sql-batch-user-config"},"scope":"$(SCOPE)","batch_driver_nginx_image":{"image":"$(BATCH_DRIVER_NGINX_IMAGE)"},"batch_db_proxy_image":{"image":"$(BATCH_DB_PROXY_IMAGE)"}}'
 
 .PHONY: deploy
 deploy: build

@@ -422,14 +422,9 @@ spec:
          value: "spot"
       containers:
       - name: batch-db-proxy
-        image: {{ batch_image.image }}
+        image: {{ batch_db_proxy_image.image }}
         command:
-{% if not deploy %}
-         - /controller.sh
-{% endif %}
-         - python3
-         - -m
-         - batch.driver.db_proxy
+          - db-proxy
         resources:
           requests:
             cpu: "100m"
