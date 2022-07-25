@@ -93,6 +93,8 @@ if __name__ == '__main__':
         benchmark_lower_env_var = f'{benchmark_lower_env_var} HAIL_DEV_LOWER_ONLY="1" '
 
     for name, replicate, groups in task_fs:
+        if name != 'table_range_force_count':
+            continue
         j = b.new_job(name=f'{name}_{replicate}')
         j.command('mkdir -p benchmark-resources')
         for resource_group in groups:
