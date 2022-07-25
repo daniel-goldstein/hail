@@ -166,7 +166,7 @@ def initialize(config):
     _initialized = True
 
     # make JVM do something to ensure that it is fresh
-    hl.utils.range_table(1)._force_count()
+    # hl.utils.range_table(1)._force_count()
     logging.getLogger('py4j').setLevel(logging.CRITICAL)
     logging.getLogger('py4j.java_gateway').setLevel(logging.CRITICAL)
 
@@ -254,7 +254,8 @@ def _run(benchmark: Benchmark, config: RunConfig, context):
             return
 
     from hail.utils.java import Env
-    peak_task_memory = get_peak_task_memory(Env.hc()._log)
+    # peak_task_memory = get_peak_task_memory(Env.hc()._log)
+    peak_task_memory = 0
     config.handler({'name': benchmark.name,
                     'failed': False,
                     'timed_out': timed_out,
