@@ -9,7 +9,7 @@ RUN hail-apt-get-install \
     iproute2 \
     iptables \
     openjdk-8-jre-headless \
-    liblapack3
+    liblapack3-dev
 
 COPY docker/hail-ubuntu/pip.conf /root/.config/pip/pip.conf
 COPY docker/hail-ubuntu/hail-pip-install /bin/hail-pip-install
