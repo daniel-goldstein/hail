@@ -15,6 +15,8 @@ type Db = mysql_async::Pool;
 use mysql_async;
 use mysql_async::prelude::*;
 
+use console_subscriber;
+
 #[allow(dead_code)]
 #[derive(Deserialize)]
 struct SslConfig {
@@ -353,6 +355,8 @@ ON DUPLICATE KEY UPDATE quantity = quantity;"#
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    console_subscriber::init();
+
     let client = build_client();
     let instances_map = web::Data::new(Mutex::new(HashMap::<String, i32>::new()));
     let db = mysql_async::Pool::new(build_sql_config());
