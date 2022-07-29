@@ -3,18 +3,16 @@ name = "db-proxy"
 version = "0.1.0"
 edition = "2021"
 
-[build]
-rustflags = ["--cfg", "tokio_unstable"]
-
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 actix-web = { version = "4", features = ["openssl"] }
+actix-web-prom = "0.6.0"
 console-subscriber = "0.1.6"
 reqwest = { version = "0.11", features = ["json"] }
 futures = "0.3"
 mysql_async = "0.30.0"
 openssl = { version = "0.10" }
-tokio = { version = "1", features = ["full", "tracing"] }
+tokio = { version = "1", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

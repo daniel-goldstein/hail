@@ -1,5 +1,6 @@
 use actix_web::middleware::Logger;
 use actix_web::{get, post, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
+use actix_web_prom::PrometheusMetricsBuilder;
 use openssl::ssl::{SslAcceptor, SslAcceptorBuilder, SslFiletype, SslMethod};
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -14,8 +15,6 @@ type Db = mysql_async::Pool;
 
 use mysql_async;
 use mysql_async::prelude::*;
-
-use console_subscriber;
 
 #[allow(dead_code)]
 #[derive(Deserialize)]
@@ -355,8 +354,6 @@ ON DUPLICATE KEY UPDATE quantity = quantity;"#
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    console_subscriber::init();
-
     let client = build_client();
     let instances_map = web::Data::new(Mutex::new(HashMap::<String, i32>::new()));
     let db = mysql_async::Pool::new(build_sql_config());
@@ -371,9 +368,15 @@ async fn main() -> std::io::Result<()> {
         }
     });
 
+    let prometheus = PrometheusMetricsBuilder::new("api")
+        .endpoint("/metrics")
+        .build()
+        .unwrap();
+
     HttpServer::new(move || {
         App::new()
             .wrap(Logger::default())
+            .wrap(prometheus.clone())
             .app_data(web::Data::new(db_clone.to_owned()))
             .app_data(instances_map_clone.to_owned())
             .service(greet)
