@@ -1,6 +1,7 @@
 use actix_web::middleware::Logger;
 use actix_web::{get, post, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use actix_web_prom::PrometheusMetricsBuilder;
+use env_logger;
 use openssl::ssl::{SslAcceptor, SslAcceptorBuilder, SslFiletype, SslMethod};
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -354,6 +355,8 @@ ON DUPLICATE KEY UPDATE quantity = quantity;"#
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
+
     let client = build_client();
     let instances_map = web::Data::new(Mutex::new(HashMap::<String, i32>::new()));
     let db = mysql_async::Pool::new(build_sql_config());
@@ -380,6 +383,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(db_clone.to_owned()))
             .app_data(instances_map_clone.to_owned())
             .service(greet)
+            .service(job_started)
             .service(job_complete)
     })
     .bind_openssl(("0.0.0.0", 5000), build_ssl_acceptor_builder())?
