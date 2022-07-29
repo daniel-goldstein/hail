@@ -430,7 +430,7 @@ spec:
             cpu: "100m"
             memory: "1G"
           limits:
-            cpu: "1.5"
+            cpu: "2.5"
             memory: "2.5G"
         env:
          - name: HAIL_DOMAIN

@@ -265,7 +265,7 @@ async fn mark_job_started(
 ) -> Result<i32, Box<dyn std::error::Error>> {
     let mut conn = db.get_conn().await?;
     let (_rc, delta_cores_mcpu): (i32, i32) =
-        r"CALL mark_job_started(:batch_id, :job_id, :attempt_id, :instance_name, :state_time);"
+        r"CALL mark_job_started(:batch_id, :job_id, :attempt_id, :instance_name, :start_time);"
             .with(params! {
                 "batch_id" => batch_id,
                 "job_id" => job_id,
@@ -378,8 +378,8 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(move || {
         App::new()
-            .wrap(Logger::default())
             .wrap(prometheus.clone())
+            .wrap(Logger::default())
             .app_data(web::Data::new(db_clone.to_owned()))
             .app_data(instances_map_clone.to_owned())
             .service(greet)
@@ -387,7 +387,7 @@ async fn main() -> std::io::Result<()> {
             .service(job_complete)
     })
     .bind_openssl(("0.0.0.0", 5000), build_ssl_acceptor_builder())?
-    .workers(1)
+    .workers(2)
     .run()
     .await
     .unwrap();
