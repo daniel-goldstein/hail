@@ -95,6 +95,12 @@ spec:
              value: "{{ hail_buildkit_image.image }}"
            - name: HAIL_DEFAULT_NAMESPACE
              value: "{{ default_ns.name }}"
+           - name: HAIL_INTERNAL_NAMESPACES
+             valueFrom:
+               secretKeyRef:
+                 name: internal-namespaces
+                 key: data.json
+                 optional: true
           ports:
             - containerPort: 5000
           volumeMounts:

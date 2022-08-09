@@ -70,11 +70,12 @@ class Code(abc.ABC):
 
 
 class StepParameters:
-    def __init__(self, code, scope, json, name_step):
+    def __init__(self, code, scope, json, name_step, namespace):
         self.code = code
         self.scope = scope
         self.json = json
         self.name_step = name_step
+        self.namespace = namespace
 
 
 class BuildConfigurationError(Exception):
@@ -82,7 +83,7 @@ class BuildConfigurationError(Exception):
 
 
 class BuildConfiguration:
-    def __init__(self, code, config_str, scope, *, requested_step_names=(), excluded_step_names=()):
+    def __init__(self, namespace, code, config_str, scope, *, requested_step_names=(), excluded_step_names=()):
         if len(excluded_step_names) > 0 and scope != 'dev':
             raise BuildConfigurationError('Excluding build steps is only permitted in a dev scope')
 
@@ -93,7 +94,7 @@ class BuildConfiguration:
         runnable_steps: List[Step] = []
         name_step: Dict[str, Step] = {}
         for step_config in config['steps']:
-            step = Step.from_json(StepParameters(code, scope, step_config, name_step))
+            step = Step.from_json(StepParameters(code, scope, step_config, name_step, namespace))
             if step.name not in excluded_step_names and step.can_run_in_current_cloud():
                 name_step[step.name] = step
                 runnable_steps.append(step)
@@ -567,7 +568,7 @@ class RunImageStep(Step):
 
 
 class CreateNamespaceStep(Step):
-    def __init__(self, params, namespace_name, admin_service_account, public, secrets):
+    def __init__(self, params, namespace_name, admin_service_account, secrets):
         super().__init__(params)
         self.namespace_name = namespace_name
         if admin_service_account:
@@ -579,7 +580,6 @@ class CreateNamespaceStep(Step):
             }
         else:
             self.admin_service_account = None
-        self.public = public
         self.secrets = secrets
         self.job = None
 
@@ -588,14 +588,7 @@ class CreateNamespaceStep(Step):
             self._name = DEFAULT_NAMESPACE
             return
 
-        if params.scope == 'deploy':
-            self._name = namespace_name
-        elif params.scope == 'test':
-            self._name = f'{params.code.short_str()}-{namespace_name}-{self.token}'
-        elif params.scope == 'dev':
-            self._name = params.code.namespace
-        else:
-            raise BuildConfigurationError(f"{params.scope} is not a valid scope for creating namespace")
+        self._name = params.namespace
 
     def wrapped_job(self):
         if self.job:
@@ -609,7 +602,6 @@ class CreateNamespaceStep(Step):
             params,
             json['namespaceName'],
             json.get('adminServiceAccount'),
-            json.get('public', False),
             json.get('secrets'),
         )
 
