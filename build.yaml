@@ -46,21 +46,21 @@ steps:
       - name: registry-push-credentials
       - name: hail-ci-0-1-github-oauth-token
       - name: test-gsa-key
-      - name: test-aws-key
-        clouds:
-          - gcp
-      - name: test-azure-key
-        clouds:
-          - gcp
+      # - name: test-aws-key
+      #   clouds:
+      #     - gcp
+      # - name: test-azure-key
+      #   clouds:
+      #     - gcp
       - name: zulip-config
       - name: benchmark-gsa-key
-      - name: billing-monitor-gsa-key
-        clouds:
-          - gcp
+      # - name: billing-monitor-gsa-key
+      #   clouds:
+      #     - gcp
       - name: hail-ci-0-1-service-account-key
-      - name: test-dataproc-service-account-key
-        clouds:
-          - gcp
+      # - name: test-dataproc-service-account-key
+      #   clouds:
+      #     - gcp
       - name: batch-worker-ssh-public-key
         clouds:
           - azure

@@ -4,11 +4,11 @@ import string
 import json
 import os
 import random
+from datetime import datetime
 
 from typing import Set
 
 from gear import Database
-from hailtop.utils.time import time_msecs
 
 namespace_reservation_lock = asyncio.Lock()
 
@@ -32,8 +32,9 @@ async def allocate_namespace(db: Database) -> str:
         if len(available_namespaces) == 0:
             raise ValueError('No available namespaces')
         ns = random.choice(list(available_namespaces))
+        expiration = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         await db.execute_insertone(
             '''INSERT INTO internal_namespaces (`namespace_name`, `expiration_time`) VALUES (%s, %s)''',
-            (ns, time_msecs()),
+            (ns, expiration),
         )
         return ns

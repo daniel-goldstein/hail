@@ -731,7 +731,19 @@ date
 
 until kubectl delete namespace --ignore-not-found=true {self._name}
 do
-    echo 'failed, will sleep 2 and retry'
+    echo 'failed to delete namespace, will sleep 2 and retry'
+    sleep 2
+done
+
+commands=$(mktemp)
+
+cat >$commands <<EOF
+DELETE FROM internal_namespaces WHERE namespace_name = '{self._name}';
+EOF
+
+until mysql --defaults-extra-file=/sql-config/sql-config.cnf <$commands
+do
+    echo 'failed to remove namespace entry in database, will sleep 2 and retry'
     sleep 2
 done
 
@@ -744,6 +756,13 @@ true
             command=['bash', '-c', script],
             attributes={'name': f'cleanup_{self.name}'},
             service_account={'namespace': DEFAULT_NAMESPACE, 'name': 'ci-agent'},
+            secrets=[
+                {
+                    'namespace': DEFAULT_NAMESPACE,
+                    'name': 'database-server-config',
+                    'mount_path': '/sql-config',
+                }
+            ],
             parents=parents,
             always_run=True,
             network='private',
