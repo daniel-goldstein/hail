@@ -50,6 +50,11 @@ variable "ci_config" {
   default = null
 }
 
+variable "internal_namespaces" {
+  type = list(string)
+  default = []
+}
+
 variable deploy_ukbb {
   type = bool
   description = "Run the UKBB Genetic Correlation browser"
@@ -168,6 +173,12 @@ resource "google_container_node_pool" "vdc_preemptible_pool" {
 
     oauth_scopes = [
       "https://www.googleapis.com/auth/cloud-platform"
+    ]
+  }
+
+  lifecycle {
+    ignore_changes = [
+      initial_node_count
     ]
   }
 }
@@ -642,6 +653,16 @@ resource "kubernetes_secret" "auth_oauth2_client_secret" {
 
   data = {
     "client_secret.json" = file("~/.hail/auth_oauth2_client_secret.json")
+  }
+}
+
+resource "kubernetes_secret" "internal_namespaces" {
+  metadata {
+    name = "internal-namespaces"
+  }
+
+  data = {
+    "data.json" = jsonencode(var.internal_namespaces)
   }
 }
 
