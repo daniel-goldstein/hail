@@ -134,7 +134,7 @@ gevent==21.12.0
     #   gevent-websocket
 gevent-websocket==0.10.1
     # via flask-sockets
-gidgethub==4.1.0
+gidgethub==5.2.0
     # via -r requirements.txt
 google-api-core[grpc]==2.8.2
     # via
