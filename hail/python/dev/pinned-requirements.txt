@@ -233,7 +233,7 @@ platformdirs==2.5.2
     #   virtualenv
 pluggy==1.0.0
     # via pytest
-pre-commit==2.18.1
+pre-commit==2.20.0
     # via -r python/dev/requirements.txt
 prometheus-client==0.14.1
     # via notebook
