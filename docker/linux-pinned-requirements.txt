@@ -251,7 +251,7 @@ msal==1.18.0
     # via
     #   azure-identity
     #   msal-extensions
-msal-extensions==0.3.1
+msal-extensions==1.0.0
     # via azure-identity
 msrest==0.7.1
     # via azure-storage-blob
