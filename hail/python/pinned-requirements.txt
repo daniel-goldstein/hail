@@ -87,7 +87,7 @@ humanize==1.0.0
     # via -r python/requirements.txt
 hurry-filesize==0.9
     # via -r python/requirements.txt
-idna==2.10
+idna==3.3
     # via
     #   requests
     #   yarl
