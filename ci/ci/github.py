@@ -1,5 +1,6 @@
 import asyncio
 import concurrent.futures
+import datetime
 import json
 import logging
 import os
@@ -7,7 +8,7 @@ import random
 import secrets
 from enum import Enum
 from shlex import quote as shq
-from typing import Dict, Optional, Set, Union
+from typing import Dict, List, Optional, Set, Union
 
 import aiohttp
 import gidgethub
@@ -23,7 +24,6 @@ from .build import BuildConfiguration, Code
 from .constants import AUTHORIZED_USERS, COMPILER_TEAM, GITHUB_CLONE_URL, GITHUB_STATUS_CONTEXT, SERVICES_TEAM
 from .environment import DEPLOY_STEPS
 from .globals import is_test_deployment
-from .utils import add_deployed_services
 
 repos_lock = asyncio.Lock()
 
@@ -1013,3 +1013,17 @@ mkdir -p {shq(repo_dir)}
 
 git checkout {shq(self.sha)}
 '''
+
+
+async def add_deployed_services(db: Database, services_per_namespace: Dict[str, List[str]]):
+    tomorrow = datetime.datetime.now() + datetime.timedelta(days=1)
+    expiration = tomorrow.strftime('%Y-%m-%d %H:%M:%S')
+    for namespace, services in services_per_namespace.items():
+        await db.execute_insertone(
+            '''INSERT IGNORE INTO active_namespaces (`namespace`, `expiration_time`) VALUES (%s, %s)''',
+            (namespace, expiration),
+        )
+        await db.execute_many(
+            '''INSERT IGNORE INTO deployed_services (`namespace`, `service`) VALUES (%s, %s)''',
+            [(namespace, service) for service in services],
+        )
