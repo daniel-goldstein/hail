@@ -152,16 +152,17 @@ You can now install Hail:
   $HAIL/batch/gcp-create-worker-image.sh
   ```
 
-- Download the global-config to be used by `bootstrap.py`.
+- Download the global-config and database-config to be used by `bootstrap.py`.
 
   ```
-  mkdir /global-config
-  kubectl -n default get secret global-config -o json | jq -r '.data | map_values(@base64d) | to_entries|map("echo -n \(.value) > /global-config/\(.key)") | .[]' | bash
+  download-secret global-config && sudo cp -r contents /global-config
+  download-secret database-server-config && sudo cp -r contents /sql-config
   ```
 
 - Bootstrap the cluster.
 
   ```
+  cd ~/hail/infra/gcp
   ./bootstrap.sh bootstrap <REPO>/hail:<BRANCH> deploy_batch
   ```
 
