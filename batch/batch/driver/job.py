@@ -144,15 +144,6 @@ async def mark_job_complete(
 
     instance = inst_coll_manager.get_instance(instance_name)
 
-    if instance_name:
-        instance = inst_coll_manager.get_instance(instance_name)
-        if instance:
-            if rv['delta_cores_mcpu'] != 0 and instance.state == 'active':
-                # may also create scheduling opportunities, set above
-                instance.adjust_free_cores_in_memory(rv['delta_cores_mcpu'])
-        else:
-            log.warning(f'mark_complete for job {id} from unknown {instance}')
-
     await add_attempt_resources(db, batch_id, job_id, attempt_id, resources)
 
     if rv['rc'] != 0:
@@ -189,9 +180,6 @@ CALL mark_job_started(%s, %s, %s, %s, %s);
     except Exception:
         log.info(f'error while marking job {id} started on {instance}')
         raise
-
-    if rv['delta_cores_mcpu'] != 0 and instance.state == 'active':
-        instance.adjust_free_cores_in_memory(rv['delta_cores_mcpu'])
 
     await add_attempt_resources(db, batch_id, job_id, attempt_id, resources)
 
@@ -268,11 +256,6 @@ async def unschedule_job(app, record):
         log.warning(f'unschedule job {id}, attempt {attempt_id}: unknown instance {instance_name}')
         return
 
-    if rv['delta_cores_mcpu'] and instance.state == 'active':
-        instance.adjust_free_cores_in_memory(rv['delta_cores_mcpu'])
-        scheduler_state_changed.notify()
-        log.info(f'unschedule job {id}, attempt {attempt_id}: updated {instance} free cores')
-
     url = f'http://{instance.ip_address}:5000/api/v1alpha/batches/{batch_id}/jobs/{job_id}/delete'
 
     async def make_request():
@@ -296,6 +279,7 @@ async def unschedule_job(app, record):
     if not instance.inst_coll.is_pool:
         await instance.kill()
 
+    scheduler_state_changed.notify()
     log.info(f'unschedule job {id}, attempt {attempt_id}: called delete job')
 
 
@@ -478,11 +462,8 @@ CALL schedule_job(%s, %s, %s, %s);
         log.exception(f'Error while running schedule_job procedure for job {id} attempt {attempt_id}')
         raise
 
-    if rv['delta_cores_mcpu'] != 0 and instance.state == 'active':
-        instance.adjust_free_cores_in_memory(rv['delta_cores_mcpu'])
-
     if rv['rc'] != 0:
         log.info(f'could not schedule job {id}, attempt {attempt_id} on {instance} in the db, {rv}')
-        return
+        raise ValueError('schedule job failed')
 
     log.info(f'success scheduling job {id} on {instance}')

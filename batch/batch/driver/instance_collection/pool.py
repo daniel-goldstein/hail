@@ -296,7 +296,7 @@ class PoolScheduler:
         self.app = app
         self.scheduler_state_changed = pool.scheduler_state_changed
         self.db: Database = app['db']
-        self.pool = pool
+        self.pool: Pool = pool
         self.async_worker_pool = async_worker_pool
         self.exceeded_shares_counter = ExceededSharesCounter()
         task_manager.ensure_future(
@@ -387,6 +387,28 @@ HAVING n_ready_jobs + n_running_jobs > 0;
         start = time_msecs()
         SCHEDULING_LOOP_RUNS.labels(pool_name=self.pool.name).inc()
         n_scheduled = 0
+
+        # TODO We should set a limit on how many machines we draw from
+        # here and cycle through them on each scheduling loop.
+        # I think this should work out nicely in practice.
+        current_mcpu = {
+            r['name']: r['free_cores_mcpu']
+            async for r in self.db.select_and_fetchall(
+                '''
+SELECT instances.name, free_cores_mcpu
+FROM instances
+LEFT JOIN instances_free_cores_mcpu
+ON instances.name = instances_free_cores_mcpu.name
+WHERE NOT removed;
+    ''',
+                (),
+                'refresh_cores_mcpu',
+            )
+        }
+        for instance_name, free_cores_mcpu in current_mcpu.items():
+            instance = self.pool.inst_coll_manager.get_instance(instance_name)
+            if instance:
+                instance.set_free_cores_mcpu(free_cores_mcpu)
 
         user_resources = await self.compute_fair_share()
 

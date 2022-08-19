@@ -229,7 +229,13 @@ VALUES (%s, %s);
     def free_cores_mcpu(self):
         return self._free_cores_mcpu
 
+    def set_free_cores_mcpu(self, free_cores_mcpu: int):
+        self._free_cores_mcpu = free_cores_mcpu
+
     def adjust_free_cores_in_memory(self, delta_mcpu):
+        # We only reserve in memory CPU and whole-sale update from the database
+        # instead of incrementally adding back
+        assert delta_mcpu < 0
         self.inst_coll.adjust_for_remove_instance(self)
         self._free_cores_mcpu += delta_mcpu
         self.inst_coll.adjust_for_add_instance(self)
