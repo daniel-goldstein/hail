@@ -2042,6 +2042,9 @@ steps:
       - kind: Service
         name: batch-driver
         for: alive
+      - kind: Service
+        name: batch-db-proxy
+        for: alive
     dependsOn:
       - default_ns
       - deploy_batch_sa

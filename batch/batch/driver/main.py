@@ -5,7 +5,6 @@ import logging
 import re
 import signal
 from collections import defaultdict, namedtuple
-from functools import wraps
 from typing import Dict, List
 
 import aiohttp_session
@@ -55,12 +54,12 @@ from ..exceptions import BatchUserError
 from ..file_store import FileStore
 from ..globals import HTTP_CLIENT_MAX_SIZE
 from ..inst_coll_config import InstanceCollectionConfigs, PoolConfig
-from ..utils import authorization_token, batch_only, query_billing_projects
+from ..utils import batch_only, query_billing_projects
 from .canceller import Canceller
 from .driver import CloudDriver
 from .instance_collection import InstanceCollectionManager, JobPrivateInstanceManager, Pool
-from .job import mark_job_complete, mark_job_started
 from .k8s_cache import K8sCache
+from .utils import activating_instances_only, active_instances_only
 
 uvloop.install()
 
@@ -81,83 +80,6 @@ def ignore_failed_to_collect_and_upload_profile(record):
 
 
 googlecloudprofiler.logger.addFilter(ignore_failed_to_collect_and_upload_profile)
-
-
-def instance_name_from_request(request):
-    instance_name = request.headers.get('X-Hail-Instance-Name')
-    if instance_name is None:
-        raise ValueError(f'request is missing required header X-Hail-Instance-Name: {request}')
-    return instance_name
-
-
-def instance_from_request(request):
-    instance_name = instance_name_from_request(request)
-    inst_coll_manager: InstanceCollectionManager = request.app['driver'].inst_coll_manager
-    return inst_coll_manager.get_instance(instance_name)
-
-
-def activating_instances_only(fun):
-    @wraps(fun)
-    async def wrapped(request):
-        instance = instance_from_request(request)
-        if not instance:
-            instance_name = instance_name_from_request(request)
-            log.info(f'instance {instance_name} not found')
-            raise web.HTTPUnauthorized()
-
-        if instance.state != 'pending':
-            log.info(f'instance {instance.name} not pending')
-            raise web.HTTPUnauthorized()
-
-        activation_token = authorization_token(request)
-        if not activation_token:
-            log.info(f'activation token not found for instance {instance.name}')
-            raise web.HTTPUnauthorized()
-
-        db = request.app['db']
-        record = await db.select_and_fetchone(
-            'SELECT state FROM instances WHERE name = %s AND activation_token = %s;', (instance.name, activation_token)
-        )
-        if not record:
-            log.info(f'instance {instance.name}, activation token not found in database')
-            raise web.HTTPUnauthorized()
-
-        resp = await fun(request, instance)
-
-        return resp
-
-    return wrapped
-
-
-def active_instances_only(fun):
-    @wraps(fun)
-    async def wrapped(request):
-        instance = instance_from_request(request)
-        if not instance:
-            instance_name = instance_name_from_request(request)
-            log.info(f'instance not found {instance_name}')
-            raise web.HTTPUnauthorized()
-
-        if instance.state != 'active':
-            log.info(f'instance not active {instance.name}')
-            raise web.HTTPUnauthorized()
-
-        token = authorization_token(request)
-        if not token:
-            log.info(f'token not found for instance {instance.name}')
-            raise web.HTTPUnauthorized()
-
-        inst_coll_manager: InstanceCollectionManager = request.app['driver'].inst_coll_manager
-        retrieved_token: str = await inst_coll_manager.name_token_cache.lookup(instance.name)
-        if token != retrieved_token:
-            log.info('authorization token does not match')
-            raise web.HTTPUnauthorized()
-
-        await instance.mark_healthy()
-
-        return await fun(request, instance)
-
-    return wrapped
 
 
 @routes.get('/healthcheck')
@@ -302,74 +224,13 @@ async def kill_instance(request, userdata):  # pylint: disable=unused-argument
     return web.HTTPFound(deploy_config.external_url('batch-driver', pool_url_path))
 
 
-async def job_complete_1(request, instance):
-    body = await request.json()
-    job_status = body['status']
-
-    batch_id = job_status['batch_id']
-    job_id = job_status['job_id']
-    attempt_id = job_status['attempt_id']
-
-    state = job_status['state']
-    if state == 'succeeded':
-        new_state = 'Success'
-    elif state == 'error':
-        new_state = 'Error'
-    else:
-        assert state == 'failed', state
-        new_state = 'Failed'
-
-    start_time = job_status['start_time']
-    end_time = job_status['end_time']
-    status = job_status['status']
-    resources = job_status.get('resources')
-
-    await mark_job_complete(
-        request.app,
-        batch_id,
-        job_id,
-        attempt_id,
-        instance.name,
-        new_state,
-        status,
-        start_time,
-        end_time,
-        'completed',
-        resources,
-    )
-
-    await instance.mark_healthy()
-
+# TODO I need to make a @batch_db_proxy_only or something
+@routes.post('/api/v1alpha/notify-state-changed')
+async def adjust_cores(request):
+    app = request.app
+    app['scheduler_state_changed'].notify()
+    app['cancel_ready_state_changed'].set()
     return web.Response()
-
-
-@routes.post('/api/v1alpha/instances/job_complete')
-@active_instances_only
-async def job_complete(request, instance):
-    return await asyncio.shield(job_complete_1(request, instance))
-
-
-async def job_started_1(request, instance):
-    body = await request.json()
-    job_status = body['status']
-
-    batch_id = job_status['batch_id']
-    job_id = job_status['job_id']
-    attempt_id = job_status['attempt_id']
-    start_time = job_status['start_time']
-    resources = job_status.get('resources')
-
-    await mark_job_started(request.app, batch_id, job_id, attempt_id, instance, start_time, resources)
-
-    await instance.mark_healthy()
-
-    return web.Response()
-
-
-@routes.post('/api/v1alpha/instances/job_started')
-@active_instances_only
-async def job_started(request, instance):
-    return await asyncio.shield(job_started_1(request, instance))
 
 
 @routes.get('/')

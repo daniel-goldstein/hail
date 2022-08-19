@@ -142,7 +142,7 @@ async def mark_job_complete(
     scheduler_state_changed.notify()
     cancel_ready_state_changed.set()
 
-    instance = None
+    instance = inst_coll_manager.get_instance(instance_name)
 
     if instance_name:
         instance = inst_coll_manager.get_instance(instance_name)
@@ -179,7 +179,7 @@ async def mark_job_started(app, batch_id, job_id, attempt_id, instance, start_ti
     log.info(f'mark job {id} started')
 
     try:
-        rv = await db.execute_and_fetchone(
+        await db.execute_and_fetchone(
             '''
 CALL mark_job_started(%s, %s, %s, %s, %s);
 ''',
