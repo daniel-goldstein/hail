@@ -104,12 +104,10 @@ ON DUPLICATE KEY UPDATE quantity = quantity;
 async def mark_job_complete(
     app, batch_id, job_id, attempt_id, instance_name, new_state, status, start_time, end_time, reason, resources
 ):
-    scheduler_state_changed: Notice = app['scheduler_state_changed']
-    cancel_ready_state_changed: asyncio.Event = app['cancel_ready_state_changed']
     db: Database = app['db']
     client_session: httpx.ClientSession = app['client_session']
 
-    inst_coll_manager: 'InstanceCollectionManager' = app['driver'].inst_coll_manager
+    # inst_coll_manager: 'InstanceCollectionManager' = app['driver'].inst_coll_manager
     task_manager: BackgroundTaskManager = app['task_manager']
 
     id = (batch_id, job_id)
@@ -139,10 +137,7 @@ async def mark_job_complete(
         log.exception(f'error while marking job {id} complete on instance {instance_name}')
         raise
 
-    scheduler_state_changed.notify()
-    cancel_ready_state_changed.set()
-
-    instance = inst_coll_manager.get_instance(instance_name)
+    # instance = inst_coll_manager.get_instance(instance_name)
 
     await add_attempt_resources(db, batch_id, job_id, attempt_id, resources)
 
@@ -158,8 +153,8 @@ async def mark_job_complete(
 
     await notify_batch_job_complete(db, client_session, batch_id)
 
-    if instance and not instance.inst_coll.is_pool and instance.state == 'active':
-        task_manager.ensure_future(instance.kill())
+    # if instance and not instance.inst_coll.is_pool and instance.state == 'active':
+    #     task_manager.ensure_future(instance.kill())
 
 
 async def mark_job_started(app, batch_id, job_id, attempt_id, instance, start_time, resources):

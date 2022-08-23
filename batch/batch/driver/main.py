@@ -225,7 +225,7 @@ async def kill_instance(request, userdata):  # pylint: disable=unused-argument
 
 
 # TODO I need to make a @batch_db_proxy_only or something
-@routes.post('/api/v1alpha/notify-state-changed')
+@routes.post('/api/v1alpha/scheduler-state-changed')
 async def adjust_cores(request):
     app = request.app
     app['scheduler_state_changed'].notify()

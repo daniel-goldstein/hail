@@ -38,7 +38,7 @@ async def notify_driver_open_cores(app):
     event: asyncio.Event = app['state_changed']
     await event.wait()
     async with client_session.post(
-        deploy_config.url('batch-driver', '/api/v1alpha/instances/scheduler-state-changed'),
+        deploy_config.url('batch-driver', '/api/v1alpha/scheduler-state-changed'),
     ):
         pass
 
