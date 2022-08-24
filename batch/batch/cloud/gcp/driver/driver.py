@@ -8,6 +8,7 @@ from hailtop.utils import RateLimit, periodically_call
 
 from ....driver.driver import CloudDriver, process_outstanding_events
 from ....driver.instance_collection import InstanceCollectionManager, JobPrivateInstanceManager, Pool
+from ....driver.scheduler import PoolScheduler
 from ....inst_coll_config import InstanceCollectionConfigs
 from .activity_logs import process_activity_log_events_since
 from .billing_manager import GCPBillingManager
@@ -60,13 +61,12 @@ class GCPDriver(CloudDriver):
                 resource_manager,
                 machine_name_prefix,
                 config,
-                app['async_worker_pool'],
                 task_manager,
             )
             for config in inst_coll_configs.name_pool_config.values()
         ]
 
-        jpim, *_ = await asyncio.gather(
+        jpim, *pools = await asyncio.gather(
             JobPrivateInstanceManager.create(
                 app,
                 db,
@@ -78,6 +78,8 @@ class GCPDriver(CloudDriver):
             ),
             *create_pools_coros
         )
+        for pool in pools:
+            PoolScheduler(app, pool, app['async_worker_pool']).ensure_scheduling_loop(task_manager)
 
         driver = GCPDriver(
             db,
