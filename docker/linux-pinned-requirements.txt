@@ -6,7 +6,7 @@
 #
 aiodns==2.0.0
     # via -r requirements.txt
-aiodocker==0.17.0
+aiodocker==0.21.0
     # via -r requirements.txt
 aiohttp==3.8.1
     # via
