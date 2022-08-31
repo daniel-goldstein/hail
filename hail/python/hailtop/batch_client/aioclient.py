@@ -523,9 +523,7 @@ class BatchBuilder:
     def __init__(self, client, *, attributes=None, callback=None, token=None, cancel_after_n_failures=None,
                  batch=None, update_token=None):
         self._client = client
-        self._job_idx = 0
         self._unsubmitted_jobs: List[Job] = []
-        self._submitted = False
         self.attributes = attributes
         self.callback = callback
         self._batch = batch
@@ -731,8 +729,6 @@ class BatchBuilder:
                      ) -> Batch:
         assert max_bunch_bytesize > 0
         assert max_bunch_size > 0
-        if self._submitted:
-            raise ValueError("cannot submit an already submitted batch")
         byte_job_specs = [json.dumps(j._job._spec.to_json()).encode('utf-8')
                           for j in self._unsubmitted_jobs]
         byte_job_specs_bunches: List[List[bytes]] = []
@@ -810,9 +806,6 @@ class BatchBuilder:
             j._job = j._job._submit(self._batch, j._spec.relative_job_id + start_job_id - 1)
 
         self._unsubmitted_jobs = []
-        self._job_idx = 0
-
-        self._submitted = True
         return self._batch
 
 
