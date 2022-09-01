@@ -12,6 +12,7 @@ DROP PROCEDURE IF EXISTS mark_job_complete;
 DROP PROCEDURE IF EXISTS add_attempt;
 
 DROP TRIGGER IF EXISTS batches_before_insert;
+DROP TRIGGER IF EXISTS batches_after_insert;
 DROP TRIGGER IF EXISTS batches_before_update;
 DROP TRIGGER IF EXISTS batches_after_update;
 DROP TRIGGER IF EXISTS batches_inst_coll_staging_before_insert;
@@ -21,6 +22,7 @@ DROP TRIGGER IF EXISTS batch_inst_coll_cancellable_resources_before_update;
 DROP TRIGGER IF EXISTS instances_before_update;
 DROP TRIGGER IF EXISTS attempts_before_update;
 DROP TRIGGER IF EXISTS attempts_after_update;
+DROP TRIGGER IF EXISTS jobs_before_insert;
 DROP TRIGGER IF EXISTS jobs_after_update;
 DROP TRIGGER IF EXISTS attempt_resources_after_insert;
 DROP TRIGGER IF EXISTS attempt_resources_before_insert;  # deprecated
@@ -28,7 +30,8 @@ DROP TRIGGER IF EXISTS attempt_resources_before_insert;  # deprecated
 DROP TABLE IF EXISTS `aggregated_job_resources_by_date`;
 DROP TABLE IF EXISTS `aggregated_batch_resources_by_date`;
 DROP TABLE IF EXISTS `aggregated_billing_project_user_resources_by_date`;
-DROP TABLE IF EXISTS `batch_updates`;
+DROP TABLE IF EXISTS `batch_updates_inst_coll_staging`;
+DROP TABLE IF EXISTS `batch_inst_coll_cancellable_resources_staging`;
 
 DROP TABLE IF EXISTS `aggregated_billing_project_resources`;
 DROP TABLE IF EXISTS `aggregated_billing_project_user_resources_v2`;
@@ -53,6 +56,7 @@ DROP TABLE IF EXISTS `jobs`;
 DROP TABLE IF EXISTS `batches_cancelled`;
 DROP TABLE IF EXISTS `batches_staging`;  # deprecated
 DROP TABLE IF EXISTS `batches_inst_coll_staging`;
+DROP TABLE IF EXISTS `batch_updates`;
 DROP TABLE IF EXISTS `batches_n_jobs_in_complete_states`;
 DROP TABLE IF EXISTS `batches`;
 DROP TABLE IF EXISTS `user_resources`;  # deprecated
