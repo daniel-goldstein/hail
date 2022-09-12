@@ -282,6 +282,9 @@ resource "kubernetes_secret" "global_config" {
     gcp_region = var.gcp_region
     gcp_zone = var.gcp_zone
     docker_prefix = local.docker_prefix
+    batch_container_repositories = jsonencode(
+      {for region, repo in module.worker_images_artifact_registry : region => repo.name}
+    )
     internal_ip = google_compute_address.internal_gateway.address
     ip = google_compute_address.gateway.address
     kubernetes_server_url = "https://${google_container_cluster.vdc.endpoint}"
@@ -341,11 +344,28 @@ END
   }
 }
 
+# For internal development / CI use
 module "artifact_regsitry" {
   source  = "./artifact_registry"
   project       = var.gcp_project
   region        = var.gcp_region
   repository_id = "hail"
+
+  reader_gsa_emails = tomap({
+    batch = google_service_account.batch_agent.email
+    ci    = module.ci_gsa_secret.email
+  })
+  admin_gsa_email = google_service_account.gcr_push.email
+}
+
+# For mirroring DockerHub images used on batch workers + the batch worker image
+module "worker_images_artifact_registry" {
+  source  = "./artifact_registry"
+  for_each = toset(var.batch_gcp_regions)
+
+  project = var.gcp_project
+  region  = each.key
+  repository_id = "hail-worker-images"
 
   reader_gsa_emails = tomap({
     batch = google_service_account.batch_agent.email
