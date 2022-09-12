@@ -33,7 +33,6 @@ variable "hail_test_gcs_bucket_location" {}
 variable "hail_test_gcs_bucket_storage_class" {}
 variable "gcp_region" {}
 variable "gcp_zone" {}
-variable "gcp_location" {}
 variable "domain" {}
 variable "organization_domain" {}
 variable "github_organization" {}
@@ -340,14 +339,20 @@ END
   }
 }
 
-resource "google_container_registry" "registry" {
+module "artifact_regsitry" {
+  source  = "./artifact_registry"
+  project       = var.gcp_project
+  region        = var.gcp_region
+  repository_id = "hail"
+
+  reader_gsa_emails = tomap({
+    batch = google_service_account.batch_agent.email
+    ci    = module.ci_gsa_secret.email
+  })
+  admin_gsa_email = google_service_account.gcr_push.email
 }
 
-resource "google_artifact_registry_repository" "repository" {
-  provider = google-beta
-  format = "DOCKER"
-  repository_id = "hail"
-  location = var.gcp_location
+resource "google_container_registry" "registry" {
 }
 
 resource "google_service_account" "gcr_push" {
@@ -359,36 +364,9 @@ resource "google_service_account_key" "gcr_push_key" {
   service_account_id = google_service_account.gcr_push.name
 }
 
-resource "google_artifact_registry_repository_iam_member" "artifact_registry_batch_agent_viewer" {
-  provider = google-beta
-  project = var.gcp_project
-  repository = google_artifact_registry_repository.repository.name
-  location = var.gcp_location
-  role = "roles/artifactregistry.reader"
-  member = "serviceAccount:${google_service_account.batch_agent.email}"
-}
-
-resource "google_artifact_registry_repository_iam_member" "artifact_registry_ci_viewer" {
-  provider = google-beta
-  project = var.gcp_project
-  repository = google_artifact_registry_repository.repository.name
-  location = var.gcp_location
-  role = "roles/artifactregistry.reader"
-  member = "serviceAccount:${module.ci_gsa_secret.email}"
-}
-
 resource "google_storage_bucket_iam_member" "gcr_push_admin" {
   bucket = google_container_registry.registry.id
   role = "roles/storage.admin"
-  member = "serviceAccount:${google_service_account.gcr_push.email}"
-}
-
-resource "google_artifact_registry_repository_iam_member" "artifact_registry_push_admin" {
-  provider = google-beta
-  project = var.gcp_project
-  repository = google_artifact_registry_repository.repository.name
-  location = var.gcp_location
-  role = "roles/artifactregistry.admin"
   member = "serviceAccount:${google_service_account.gcr_push.email}"
 }
 
@@ -448,15 +426,6 @@ module "ci_gsa_secret" {
   source = "./gsa_k8s_secret"
   name = "ci"
   project = var.gcp_project
-}
-
-resource "google_artifact_registry_repository_iam_member" "artifact_registry_viewer" {
-  provider = google-beta
-  project = var.gcp_project
-  repository = google_artifact_registry_repository.repository.name
-  location = var.gcp_location
-  role = "roles/artifactregistry.reader"
-  member = "serviceAccount:${module.ci_gsa_secret.email}"
 }
 
 module "monitoring_gsa_secret" {
@@ -661,7 +630,7 @@ locals {
 module "ci" {
   source = "./ci"
   count = local.ci_config != null ? 1 : 0
-  
+
   github_oauth_token = local.ci_config.data["github_oauth_token"]
   github_user1_oauth_token = local.ci_config.data["github_user1_oauth_token"]
   watched_branches = jsondecode(local.ci_config.raw).watched_branches

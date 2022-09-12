@@ -67,8 +67,8 @@ Instructions:
    # The storage class for the batch logs bucket.  It should span the
    # batch regions and be compatible with the bucket location.
    batch_logs_bucket_storage_class = "MULTI_REGIONAL"
-   
-   # Similarly, bucket locations and storage classes are specified 
+
+   # Similarly, bucket locations and storage classes are specified
    # for other services:
    hail_query_bucket_location = "<bucket-location>"
    hail_query_bucket_storage_class = "MULTI_REGIONAL"
@@ -78,8 +78,6 @@ Instructions:
    gcp_region = "<gcp-region>"
 
    gcp_zone = "<gcp-zone>"
-
-   gcp_location = "<gcp-region>"
 
    domain = "<domain>"
 
@@ -164,7 +162,7 @@ Instructions:
   ```
 
 - Install terraform.
-  
+
 - Run `terraform init`.
 
 - Run `terraform apply -var-file=$GITHUB_ORGANIZATION/global.tfvars`.  At the
