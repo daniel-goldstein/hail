@@ -23,7 +23,9 @@ variable "k8s_nonpreemptible_node_pool_name" {
   type    = string
   default = "nonpreemptible-pool"
 }
-variable "batch_gcp_regions" {}
+variable "batch_gcp_regions" {
+  type = list(string)
+}
 variable "gcp_project" {}
 variable "batch_logs_bucket_location" {}
 variable "batch_logs_bucket_storage_class" {}
@@ -266,7 +268,7 @@ resource "kubernetes_secret" "global_config" {
 
   data = {
     cloud = "gcp"
-    batch_gcp_regions = var.batch_gcp_regions
+    batch_gcp_regions = jsonencode(var.batch_gcp_regions)
     batch_logs_bucket = module.batch_logs.name  # Deprecated
     batch_logs_storage_uri = "gs://${module.batch_logs.name}"
     hail_query_gcs_path = "gs://${module.hail_query.name}" # Deprecated
