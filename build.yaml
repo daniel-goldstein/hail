@@ -931,6 +931,7 @@ steps:
     dockerFile: /io/repo/batch/Dockerfile.worker
     contextPath: /io/repo
     publishAs: batch-worker
+    mirrorInRegionalRepositories: true
     inputs:
       - from: /repo
         to: /io/repo
