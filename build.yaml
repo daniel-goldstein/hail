@@ -2675,7 +2675,7 @@ steps:
       - create_ci_test_repo
   - kind: buildImage2
     name: hailgenetics_hail_image
-    dockerFile: /io/docker/hail/Dockerfile
+    dockerFile: /io/docker/hailgenetics/hail/Dockerfile
     contextPath: /io/docker/hail/
     publishAs: hailgenetics/hail
     inputs:
@@ -3052,6 +3052,23 @@ steps:
       - make_docs
     clouds:
       - gcp
+  - kind: runImage
+    name: mirror_hailgenetics_images
+    image:
+      valueFrom: ci_utils_image.image
+    inputs:
+      - from: /repo/docker
+        to: /io/docker
+      - from: /repo/hail/python/hail/hail_pip_version
+        to: /hail_pip_version
+    code: |
+      export HAIL_PIP_VERSION=$(cat /hail_pip_version)
+      export DOCKER_PREFIX={{ global.docker_prefix }}
+      bash /io/docker/hailgenetics/mirror_images.sh
+    scope:
+      - deploy
+    dependsOn:
+      - merge_code
   - kind: buildImage2
     name: website_image
     dockerFile: /io/website/Dockerfile
