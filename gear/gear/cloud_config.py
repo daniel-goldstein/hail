@@ -37,13 +37,15 @@ class GCPConfig:
             region,
             global_config['gcp_zone'],
             regions,
+            json.loads(global_config['batch_container_repositories']),
         )
 
-    def __init__(self, project, region, zone, regions):
+    def __init__(self, project, region, zone, regions, batch_container_repositories):
         self.project = project
         self.region = region
         self.zone = zone
         self.regions = regions
+        self.batch_container_repositories: Dict[str, str] = batch_container_repositories
 
     def __str__(self):
         data = {

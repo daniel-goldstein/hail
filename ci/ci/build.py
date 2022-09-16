@@ -8,7 +8,7 @@ from typing import Dict, List
 import jinja2
 import yaml
 
-from gear.cloud_config import get_global_config
+from gear.cloud_config import get_global_config, get_gcp_config
 from hailtop.utils import RETRY_FUNCTION_SCRIPT, flatten
 
 from .environment import BUILDKIT_IMAGE, CI_UTILS_IMAGE, CLOUD, DEFAULT_NAMESPACE, DOCKER_PREFIX, DOMAIN, STORAGE_URI
@@ -239,7 +239,14 @@ class Step(abc.ABC):
 
 class BuildImage2Step(Step):
     def __init__(
-        self, params: StepParameters, dockerfile, context_path, publish_as, inputs, resources
+        self,
+        params: StepParameters,
+        dockerfile,
+        context_path,
+        publish_as,
+        mirror_in_regional_repositories,
+        inputs,
+        resources,
     ):  # pylint: disable=unused-argument
         super().__init__(params)
         self.dockerfile = dockerfile
@@ -268,6 +275,12 @@ class BuildImage2Step(Step):
             pr_number = params.code.config()['number']
             self.cache_repository = f'{self.base_image}:cache-pr-{pr_number}'
 
+        self.push_targets = [self.image]
+        if mirror_in_regional_repositories and CLOUD == 'gcp':
+            batch_container_repositories = get_gcp_config().batch_container_repositories
+            for repository in batch_container_repositories.values():
+                self.push_targets.append(f'{repository}{self.image[len(DOCKER_PREFIX):]}')
+
         self.job = None
 
     def wrapped_job(self):
@@ -283,6 +296,7 @@ class BuildImage2Step(Step):
             json['dockerFile'],
             json.get('contextPath'),
             json.get('publishAs'),
+            json.get('mirrorInRegionalRepositories', False),
             json.get('inputs'),
             json.get('resources'),
         )
@@ -337,7 +351,7 @@ retry buildctl-daemonless.sh \
      --frontend dockerfile.v0 \
      --local context={shq(context)} \
      --local dockerfile=/home/user \
-     --output 'type=image,"name={shq(self.image)},{shq(self.cache_repository)}",push=true' \
+     --output 'type=image,"name={",".join(shq(target) for target in self.push_targets)},{shq(self.cache_repository)}",push=true' \
      --export-cache type=inline \
      --import-cache type=registry,ref={shq(self.cache_repository)} \
      --import-cache type=registry,ref={shq(self.main_branch_cache_repository)} \
@@ -408,11 +422,13 @@ true
             script = f'''
 set -x
 date
-
+'''
+            for image in self.push_targets:
+                script += f'''
 gcloud -q auth activate-service-account \
   --key-file=/secrets/registry-push-credentials/credentials.json
 
-until gcloud -q container images untag {shq(self.image)} || ! gcloud -q container images describe {shq(self.image)}
+until gcloud -q container images untag {shq(image)} || ! gcloud -q container images describe {shq(image)}
 do
     echo 'failed, will sleep 2 and retry'
     sleep 2

@@ -44,6 +44,8 @@ build-batch-driver-nginx:
 .PHONY: build-worker
 build-worker: src/main/java/is/hail/JVMEntryway.class
 	python3 ../ci/jinja2_render.py '{"hail_ubuntu_image":{"image":"'$$(cat ../docker/hail-ubuntu-image-ref)'"},"global":{"cloud":"$(CLOUD)"}}' Dockerfile.worker Dockerfile.worker.out
+	DOCKER_PREFIX=$(DOCKER_PREFIX) \
+	MIRROR_IN_REGIONAL_REPOSITORIES=1 \
 	../docker-build.sh .. batch/Dockerfile.worker.out $(BATCH_WORKER_IMAGE)
 
 .PHONY: build
