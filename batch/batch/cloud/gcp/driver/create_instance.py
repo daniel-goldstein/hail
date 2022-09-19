@@ -5,7 +5,7 @@ import os
 from shlex import quote as shq
 from typing import Dict
 
-from gear.cloud_config import get_global_config
+from gear.cloud_config import get_global_config, get_gcp_config
 
 from ....batch_configuration import DEFAULT_NAMESPACE, DOCKER_PREFIX, DOCKER_ROOT_IMAGE, INTERNAL_GATEWAY_IP
 from ....file_store import FileStore
@@ -40,6 +40,10 @@ def create_vm_config(
     instance_config: InstanceConfig,
 ) -> dict:
     _, cores = gcp_machine_type_to_worker_type_and_cores(machine_type)
+
+    region = instance_config.region_for(zone)
+    container_repository = get_gcp_config().batch_container_repositories[region]
+    in_region_worker_image = f'{container_repository}{BATCH_WORKER_IMAGE[len(DOCKER_PREFIX):]}'
 
     if local_ssd_data_disk:
         worker_data_disk = {
@@ -197,7 +201,7 @@ ZONE=$(curl -s http://metadata.google.internal/computeMetadata/v1/instance/zone 
 
 BATCH_WORKER_IMAGE=$(curl -s -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/attributes/batch_worker_image")
 DOCKER_ROOT_IMAGE=$(curl -s -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/attributes/docker_root_image")
-DOCKER_PREFIX=$(curl -s -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/attributes/docker_prefix")
+IN_REGION_CONTAINER_REPOSITORY=$(curl -s -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/attributes/in_region_container_repository")
 
 INTERNAL_GATEWAY_IP=$(curl -s -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/attributes/internal_ip")
 
@@ -288,7 +292,7 @@ docker run \
 -e INSTANCE_ID=$INSTANCE_ID \
 -e PROJECT=$PROJECT \
 -e ZONE=$ZONE \
--e DOCKER_PREFIX=$DOCKER_PREFIX \
+-e IN_REGION_CONTAINER_REPOSITORY=$IN_REGION_CONTAINER_REPOSITORY \
 -e DOCKER_ROOT_IMAGE=$DOCKER_ROOT_IMAGE \
 -e INSTANCE_CONFIG=$INSTANCE_CONFIG \
 -e MAX_IDLE_TIME_MSECS=$MAX_IDLE_TIME_MSECS \
@@ -341,9 +345,9 @@ journalctl -u docker.service > dockerd.log
 ''',
                 },
                 {'key': 'activation_token', 'value': activation_token},
-                {'key': 'batch_worker_image', 'value': BATCH_WORKER_IMAGE},
+                {'key': 'batch_worker_image', 'value': in_region_worker_image},
                 {'key': 'docker_root_image', 'value': DOCKER_ROOT_IMAGE},
-                {'key': 'docker_prefix', 'value': DOCKER_PREFIX},
+                {'key': 'in_region_container_repository', 'value': container_repository},
                 {'key': 'namespace', 'value': DEFAULT_NAMESPACE},
                 {'key': 'internal_ip', 'value': INTERNAL_GATEWAY_IP},
                 {'key': 'batch_logs_storage_uri', 'value': file_store.batch_logs_storage_uri},

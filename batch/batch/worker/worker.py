@@ -156,8 +156,8 @@ IP_ADDRESS = os.environ['IP_ADDRESS']
 INTERNAL_GATEWAY_IP = os.environ['INTERNAL_GATEWAY_IP']
 BATCH_LOGS_STORAGE_URI = os.environ['BATCH_LOGS_STORAGE_URI']
 INSTANCE_ID = os.environ['INSTANCE_ID']
-DOCKER_PREFIX = os.environ['DOCKER_PREFIX']
-PUBLIC_IMAGES = publicly_available_images(DOCKER_PREFIX)
+IN_REGION_CONTAINER_REPOSITORY = os.environ['IN_REGION_CONTAINER_REPOSITORY']
+PUBLIC_IMAGES = publicly_available_images(IN_REGION_CONTAINER_REPOSITORY)
 INSTANCE_CONFIG = json.loads(base64.b64decode(os.environ['INSTANCE_CONFIG']).decode())
 MAX_IDLE_TIME_MSECS = int(os.environ['MAX_IDLE_TIME_MSECS'])
 BATCH_WORKER_IMAGE = os.environ['BATCH_WORKER_IMAGE']
@@ -178,7 +178,7 @@ log.info(f'NAMESPACE {NAMESPACE}')
 log.info(f'IP_ADDRESS {IP_ADDRESS}')
 log.info(f'BATCH_LOGS_STORAGE_URI {BATCH_LOGS_STORAGE_URI}')
 log.info(f'INSTANCE_ID {INSTANCE_ID}')
-log.info(f'DOCKER_PREFIX {DOCKER_PREFIX}')
+log.info(f'IN_REGION_CONTAINER_REPOSITORY {IN_REGION_CONTAINER_REPOSITORY}')
 log.info(f'INSTANCE_CONFIG {INSTANCE_CONFIG}')
 log.info(f'CLOUD_WORKER_API {CLOUD_WORKER_API}')
 log.info(f'MAX_IDLE_TIME_MSECS {MAX_IDLE_TIME_MSECS}')
@@ -397,8 +397,8 @@ class Image:
             # * gcr.io/hail-vdc/hailgenetics/python-dill
             # * us-central1-docker.pkg.dev/hail-vdc/hail/hailgenetics/python-dill
             image_ref.path = image_ref.name()
-            image_ref.domain = DOCKER_PREFIX.split('/', maxsplit=1)[0]
-            image_ref.path = '/'.join(DOCKER_PREFIX.split('/')[1:] + [image_ref.path])
+            image_ref.domain = IN_REGION_CONTAINER_REPOSITORY.split('/', maxsplit=1)[0]
+            image_ref.path = '/'.join(IN_REGION_CONTAINER_REPOSITORY.split('/')[1:] + [image_ref.path])
 
         self.image_ref = image_ref
         self.image_ref_str = str(image_ref)
