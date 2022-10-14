@@ -808,19 +808,19 @@ class BatchClient:
 
     async def _get(self, path, params=None):
         return await request_retry_transient_errors(
-            self.session(), 'GET', self.url + path, params=params, headers=self._headers
+            await self.session(), 'GET', self.url + path, params=params, headers=self._headers
         )
 
     async def _post(self, path, data=None, json=None):
         return await request_retry_transient_errors(
-            self.session(), 'POST', self.url + path, data=data, json=json, headers=self._headers
+            await self.session(), 'POST', self.url + path, data=data, json=json, headers=self._headers
         )
 
     async def _patch(self, path):
-        return await request_retry_transient_errors(self.session(), 'PATCH', self.url + path, headers=self._headers)
+        return await request_retry_transient_errors(await self.session(), 'PATCH', self.url + path, headers=self._headers)
 
     async def _delete(self, path):
-        return await request_retry_transient_errors(self.session(), 'DELETE', self.url + path, headers=self._headers)
+        return await request_retry_transient_errors(await self.session(), 'DELETE', self.url + path, headers=self._headers)
 
     async def list_batches(self, q=None, last_batch_id=None, limit=2 ** 64):
         n = 0

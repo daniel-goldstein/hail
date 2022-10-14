@@ -36,7 +36,7 @@ def _get_local_tmpdir(local_tmpdir):
     return urlunparse(r)
 
 
-def _get_log(log):
+def _get_log(log: Optional[str]) -> str:
     if log is None:
         py_version = version()
         log_dir = os.environ.get('HAIL_LOG_DIR')
@@ -504,7 +504,7 @@ def init_batch(
         tmpdir = backend.remote_tmpdir + 'tmp/hail/' + secret_alnum_string()
     local_tmpdir = _get_local_tmpdir(local_tmpdir)
 
-    HailContext.async_create(
+    HailContext.create(
         log, quiet, append, tmpdir, local_tmpdir, default_reference,
         global_seed, backend)
 
