@@ -768,17 +768,15 @@ class BatchBuilder:
 
 class BatchClient:
     @staticmethod
-    async def create(billing_project: str,
-                     deploy_config: Optional[DeployConfig] = None,
-                     session: Optional[httpx.ClientSession] = None,
-                     headers: Optional[Dict[str, str]] = None,
-                     _token: Optional[str] = None,
-                     token_file: Optional[str] = None):
+    def create(billing_project: str,
+               deploy_config: Optional[DeployConfig] = None,
+               session: Optional[httpx.ClientSession] = None,
+               headers: Optional[Dict[str, str]] = None,
+               _token: Optional[str] = None,
+               token_file: Optional[str] = None):
         if not deploy_config:
             deploy_config = get_deploy_config()
         url = deploy_config.base_url('batch')
-        if session is None:
-            session = httpx.client_session()
         if headers is None:
             headers = {}
         if _token:
@@ -794,28 +792,35 @@ class BatchClient:
     def __init__(self,
                  billing_project: str,
                  url: str,
-                 session: httpx.ClientSession,
+                 session: Optional[httpx.ClientSession],
                  headers: Dict[str, str]):
         self.billing_project = billing_project
         self.url = url
         self._session = session
         self._headers = headers
 
+    # This is async because an aiohttp.ClientSession must be created
+    # inside a running event loop
+    async def session(self):
+        if self._session is None:
+            self._session = httpx.client_session()
+        return self._session
+
     async def _get(self, path, params=None):
         return await request_retry_transient_errors(
-            self._session, 'GET', self.url + path, params=params, headers=self._headers
+            self.session(), 'GET', self.url + path, params=params, headers=self._headers
         )
 
     async def _post(self, path, data=None, json=None):
         return await request_retry_transient_errors(
-            self._session, 'POST', self.url + path, data=data, json=json, headers=self._headers
+            self.session(), 'POST', self.url + path, data=data, json=json, headers=self._headers
         )
 
     async def _patch(self, path):
-        return await request_retry_transient_errors(self._session, 'PATCH', self.url + path, headers=self._headers)
+        return await request_retry_transient_errors(self.session(), 'PATCH', self.url + path, headers=self._headers)
 
     async def _delete(self, path):
-        return await request_retry_transient_errors(self._session, 'DELETE', self.url + path, headers=self._headers)
+        return await request_retry_transient_errors(self.session(), 'DELETE', self.url + path, headers=self._headers)
 
     async def list_batches(self, q=None, last_batch_id=None, limit=2 ** 64):
         n = 0
@@ -915,8 +920,9 @@ class BatchClient:
         return await resp.json()
 
     async def close(self):
-        await self._session.close()
-        self._session = None
+        if self._session is not None:
+            await self._session.close()
+            self._session = None
 
     async def __aenter__(self):
         return self

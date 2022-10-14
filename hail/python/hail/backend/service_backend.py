@@ -192,19 +192,19 @@ class ServiceBackend(Backend):
     IMPORT_FAM = 10
 
     @staticmethod
-    async def create(*,
-                     billing_project: Optional[str] = None,
-                     batch_client: Optional[aiohb.BatchClient] = None,
-                     disable_progress_bar: Optional[bool] = None,
-                     remote_tmpdir: Optional[str] = None,
-                     flags: Optional[Dict[str, str]] = None,
-                     jar_url: Optional[str] = None,
-                     driver_cores: Optional[Union[int, str]] = None,
-                     driver_memory: Optional[str] = None,
-                     worker_cores: Optional[Union[int, str]] = None,
-                     worker_memory: Optional[str] = None,
-                     name_prefix: Optional[str] = None,
-                     token: Optional[str] = None):
+    def create(*,
+               billing_project: Optional[str] = None,
+               batch_client: Optional[aiohb.BatchClient] = None,
+               disable_progress_bar: Optional[bool] = None,
+               remote_tmpdir: Optional[str] = None,
+               flags: Optional[Dict[str, str]] = None,
+               jar_url: Optional[str] = None,
+               driver_cores: Optional[Union[int, str]] = None,
+               driver_memory: Optional[str] = None,
+               worker_cores: Optional[Union[int, str]] = None,
+               worker_memory: Optional[str] = None,
+               name_prefix: Optional[str] = None,
+               token: Optional[str] = None):
         billing_project = configuration_of('batch', 'billing_project', billing_project, None)
         if billing_project is None:
             raise ValueError(
@@ -216,7 +216,7 @@ class ServiceBackend(Backend):
         async_fs = RouterAsyncFS('file')
         sync_fs = RouterFS(async_fs)
         if batch_client is None:
-            batch_client = await aiohb.BatchClient.create(billing_project, _token=token)
+            batch_client = aiohb.BatchClient.create(billing_project, _token=token)
         bc = hb.BatchClient.from_async(batch_client)
         batch_attributes: Dict[str, str] = dict()
         user_local_reference_cache_dir = Path(get_user_local_cache_dir(), 'references', version())
