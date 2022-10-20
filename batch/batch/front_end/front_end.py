@@ -1164,15 +1164,22 @@ async def create_batch_fast(request, userdata):
     batch_and_bunch = await request.json()
     batch_spec = batch_and_bunch['batch']
     bunch = batch_and_bunch['bunch']
-    batch_id = await _create_batch(batch_spec, userdata, db)
-    update_id, _ = await _create_batch_update(batch_id, batch_spec['token'], batch_spec['n_jobs'], user, db)
-    try:
-        await _create_jobs(userdata, bunch, batch_id, update_id, app)
-    except web.HTTPBadRequest as e:
-        if f'update {update_id} is already committed' == e.reason:
-            return web.json_response({'id': batch_id})
-        raise
-    await _commit_update(app, batch_id, update_id, user, db)
+    with app['tracer'].new_trace(sampled=True) as span:
+        span.name("create-fast")
+
+        span.annotate('create_batch')
+        batch_id = await _create_batch(batch_spec, userdata, db)
+        span.annotate('create_batch_update')
+        update_id, _ = await _create_batch_update(batch_id, batch_spec['token'], batch_spec['n_jobs'], user, db)
+        try:
+            span.annotate('create_jobs')
+            await _create_jobs(userdata, bunch, batch_id, update_id, app)
+        except web.HTTPBadRequest as e:
+            if f'update {update_id} is already committed' == e.reason:
+                return web.json_response({'id': batch_id})
+            raise
+        span.annotate('commit_update')
+        await _commit_update(app, batch_id, update_id, user, db)
     return web.json_response({'id': batch_id})
 
 
@@ -2579,6 +2586,7 @@ async def on_startup(app):
     endpoint = aiozipkin.create_endpoint("batch", ipv4="batch", port=443)
     tracer = await aiozipkin.create('https://zipkin/api/v2/spans', endpoint, sample_rate=1.0)
     aiozipkin.setup(app, tracer)
+    app['tracer'] = tracer
 
     db = Database()
     await db.async_init()
