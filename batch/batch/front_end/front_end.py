@@ -14,6 +14,7 @@ from typing import Dict, Optional, Tuple, Union
 
 import aiohttp
 import aiohttp_session
+import aiozipkin
 import humanize
 import pandas as pd
 import plotly
@@ -2574,6 +2575,10 @@ class BatchFrontEndAccessLogger(AccessLogger):
 async def on_startup(app):
     app['task_manager'] = aiotools.BackgroundTaskManager()
     app['client_session'] = httpx.client_session()
+
+    endpoint = aiozipkin.create_endpoint("batch", ipv4="batch", port=443)
+    tracer = await aiozipkin.create('https://zipkin/api/v2/spans', endpoint, sample_rate=1.0)
+    aiozipkin.setup(app, tracer)
 
     db = Database()
     await db.async_init()
