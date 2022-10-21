@@ -50,7 +50,7 @@ psutil>=5.9.0,<6
 pyjwt>=2.4.0,<3
 pylint==2.15.4
 PyMySQL>=1,<2
-pytest>=6.2.5,<7
+pytest>=6.2.5,<8
 pytest-asyncio>=0.14.0,<1
 pytest-html>=1.20.0,<2
 pytest-instafail>=0.4.2,<1
