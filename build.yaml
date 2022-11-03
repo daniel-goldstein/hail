@@ -2168,6 +2168,14 @@ steps:
       export HAIL_SHUFFLE_MAX_BRANCH=4
       export HAIL_SHUFFLE_CUTOFF=1000000
 
+      COPY_PASTE_TOKEN=$(hailctl curl {{ default_ns.name }} \
+                         auth /api/v1alpha/copy-paste-token \
+                         -fsSL \
+                         --retry 3 \
+                         --retry-delay 5 \
+                         -XPOST)
+      hailctl auth copy-paste-login "$COPY_PASTE_TOKEN" --namespace {{ default_ns.name }}
+
       hailctl config set query/backend batch
       hailctl config set batch/billing_project test
       hailctl config set batch/remote_tmpdir {{ global.test_storage_uri }}
