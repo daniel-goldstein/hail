@@ -642,6 +642,21 @@ steps:
     dependsOn:
       - service_base_image
       - merge_code
+  - kind: buildImage2
+    name: hailgenetics_hailtop_image
+    dockerFile: /io/repo/docker/hailgenetics/hailtop/Dockerfile
+    contextPath: /io/repo
+    publishAs: hailgenetics/hailtop
+    inputs:
+      - from: /repo/docker/hailgenetics/hailtop
+        to: /io/repo/docker/hailgenetics/hailtop
+      - from: /repo/hail/python/hailtop
+        to: /io/repo/hail/python/hailtop
+      - from: /hail_version
+        to: /io/repo/hail_version
+    dependsOn:
+      - merge_code
+      - hail_ubuntu_image
   - kind: runImage
     name: build_hail_jar_and_wheel_only
     image:
