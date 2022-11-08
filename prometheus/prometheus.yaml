@@ -315,13 +315,8 @@ spec:
             name: prometheus-storage
          resources:
            requests:
-{% if deploy %}
-             cpu: "50m"
-             memory: 4G
-{% else %}
              cpu: "20m"
              memory: "0.75G"
-{% endif %}
            limits:
              cpu: "1"
              memory: 10G
