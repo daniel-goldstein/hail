@@ -933,7 +933,7 @@ steps:
   - kind: runImage
     name: upload_test_resources_to_blob_storage
     image:
-      valueFrom: hail_pip_installed_image.image
+      valueFrom: hailgenetics_hailtop_image.image
     script: |
       set -ex
       cd /io/repo/hail/
@@ -957,7 +957,7 @@ steps:
         to: /io/repo/hail/python/hail/docs/data
     dependsOn:
       - default_ns
-      - hail_pip_installed_image
+      - hailgenetics_hailtop_image
       - merge_code
   - kind: runImage
     name: test_hail_java
@@ -2118,7 +2118,7 @@ steps:
   - kind: runImage
     name: upload_query_jar
     image:
-      valueFrom: hail_pip_installed_image.image
+      valueFrom: hailgenetics_hailtop_image.image
     script: |
       set -ex
       export GOOGLE_APPLICATION_CREDENTIALS=/batch-gsa-key/key.json
@@ -2148,7 +2148,7 @@ steps:
     dependsOn:
       - default_ns
       - deploy_batch
-      - hail_pip_installed_image
+      - hailgenetics_hailtop_image
       - build_hail_jar_and_wheel_only_spark_3_2
       - merge_code
       - create_test_gsa_keys
@@ -2914,6 +2914,7 @@ steps:
                              /io/repo/hail/build/deploy/dist/hail-*-py3-none-any.whl \
                              /io/github-oauth \
                              docker://{{ hailgenetics_hail_image.image }} \
+                             docker://{{ hailgenetics_hailtop_slim_image.image }} \
                              /io/wheel-for-azure/hail-*-py3-none-any.whl \
                              /io/www.tar.gz
     inputs:
