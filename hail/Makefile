@@ -63,7 +63,7 @@ PYTHON_JAR := python/hail/backend/hail-all-spark.jar
 WHEEL := build/deploy/dist/hail-$(HAIL_PIP_VERSION)-py3-none-any.whl
 EGG := build/deploy/dist/hail-$(HAIL_PIP_VERSION)-py3.6.egg
 
-GRADLE_ARGS += -Dscala.version=$(SCALA_VERSION) -Dspark.version=$(SPARK_VERSION) -Delasticsearch.major-version=$(ELASTIC_MAJOR_VERSION)
+GRADLE_ARGS += -Dscala.version=$(SCALA_VERSION) -Dspark.version=$(SPARK_VERSION) -Delasticsearch.major-version=$(ELASTIC_MAJOR_VERSION) -Dtest.single=AzureStorageFSSuite.testSeekMoreThanMaxInt
 
 QUERY_STORAGE_URI = $(shell kubectl get secret global-config --template={{.data.query_storage_uri}} | base64 --decode)
 TEST_STORAGE_URI = $(shell kubectl get secret global-config --template={{.data.test_storage_uri}} | base64 --decode)
@@ -120,6 +120,14 @@ services-jvm-test: native-lib-prebuilt
 endif
 services-jvm-test: $(SCALA_BUILD_INFO) $(JAR_SOURCES) $(JAR_TEST_SOURCES)
 	+./pgradle testServices $(GRADLE_ARGS) $(GRADLE_TEST_ARGS)
+
+.PHONY: fs-jvm-test
+ifdef HAIL_COMPILE_NATIVES
+fs-jvm-test: native-lib-prebuilt
+endif
+fs-jvm-test: SPARK_VERSION := 3.2.1
+fs-jvm-test: $(SCALA_BUILD_INFO) $(JAR_SOURCES)
+	+./pgradle testFS $(GRADLE_ARGS) $(GRADLE_TEST_ARGS)
 
 # javac args from compileJava in build.gradle
 $(BUILD_DEBUG_PREFIX)/%.class: src/debug/scala/%.java

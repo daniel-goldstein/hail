@@ -13,12 +13,12 @@ import java.io.FileInputStream
 class AzureStorageFSSuite extends TestNGSuite with FSSuite {
   @BeforeClass
   def beforeclass(): Unit = {
-    if (System.getenv("HAIL_CLOUD") != "azure") {
-      throw new SkipException("This test suite is only run in Azure.");
-    } else {
-      assert(hail_test_storage_uri != null)
-      assert(fsResourcesRoot != null)
-    }
+    // if (System.getenv("HAIL_CLOUD") != "azure") {
+    //   throw new SkipException("This test suite is only run in Azure.");
+    // } else {
+    //   assert(hail_test_storage_uri != null)
+    //   assert(fsResourcesRoot != null)
+    // }
   }
 
   val hail_test_storage_uri: String = System.getenv("HAIL_TEST_STORAGE_URI")
