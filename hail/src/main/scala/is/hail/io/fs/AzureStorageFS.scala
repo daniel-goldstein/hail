@@ -152,24 +152,28 @@ class AzureStorageFS(val credentialsJSON: Option[String] = None) extends FS {
         }
         val response = retryTransientErrors {
           bb.clear()
-          client.downloadStreamWithResponse(
+          log.warn(s"About to download stream with response: trying to download ${count} bytes at pos ${pos}")
+          val res = client.downloadStreamWithResponse(
             outputStreamToBuffer, new BlobRange(pos, count),
             null, null, false, timeout, null)
+          log.warn(s"Completed download stream with response: ${res}")
+          log.warn(s"AzureStorageFS.openNoCompression SeekableInputStream: pos=$pos blobSize=$blobSize count=$count response.getStatusCode()=${res.getStatusCode()}")
+          res
         }
 
         if (response.getStatusCode >= 200 && response.getStatusCode < 300) {
           bb.flip()
           assert(bb.position() == 0 && bb.remaining() > 0)
 
-          if (_debug) {
-            val byteContents = bb.array().map("%02X" format _).mkString
-            log.info(s"AzureStorageFS.openNoCompression SeekableInputStream: pos=$pos blobSize=$blobSize count=$count response.getStatusCode()=${response.getStatusCode()} bb.toString()=${bb} byteContents=${byteContents}")
-          }
+          // if (_debug) {
+          //   val byteContents = bb.array().map("%02X" format _).mkString
+          //   log.warn(s"AzureStorageFS.openNoCompression SeekableInputStream: pos=$pos blobSize=$blobSize count=$count response.getStatusCode()=${response.getStatusCode()} bb.toString()=${bb} byteContents=${byteContents}")
+          // }
 
           bb.remaining()
         } else {
           if (_debug) {
-            log.info(s"AzureStorageFS.openNoCompression SeekableInputStream: pos=$pos blobSize=$blobSize count=$count response.getStatusCode()=${response.getStatusCode()}")
+            log.warn(s"AzureStorageFS.openNoCompression SeekableInputStream: pos=$pos blobSize=$blobSize count=$count response.getStatusCode()=${response.getStatusCode()}")
           }
           -1
         }
@@ -283,6 +287,7 @@ class AzureStorageFS(val credentialsJSON: Option[String] = None) extends FS {
       val blobProperties: BlobProperties = blobClient.getProperties
       AzureStorageFileStatus(blobProperties, path = filename, isDir = false)
     }
+    return new BlobStorageFileStatus(s"hail-az://$account/$container", null, 0, true)
   }
 
   def fileStatus(filename: String): FileStatus = retryTransientErrors {

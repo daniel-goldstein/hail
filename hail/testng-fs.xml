@@ -1,7 +1,7 @@
 <suite name="SuiteAll" verbose="1">
   <test name="testSeekMoreThanMaxInt">
     <packages>
-      <package name="is.hail.fs.*"></package>
+      <package name="is.hail.fs.azure.*"></package>
     </packages>
   </test>
 </suite>
