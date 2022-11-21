@@ -330,9 +330,6 @@ class SparkBackend(Py4JBackend):
         return pyspark.sql.DataFrame(self._jbackend.pyToDF(self._to_java_table_ir(t._tir)),
                                      Env.spark_session()._wrapped)
 
-    def add_reference(self, config):
-        self.hail_package().variant.ReferenceGenome.fromJSON(orjson.dumps(config).decode('utf-8'))
-
     def load_references_from_dataset(self, path):
         return orjson.loads(self.hail_package().variant.ReferenceGenome.fromHailDataset(self.fs._jfs, path))
 
@@ -342,9 +339,6 @@ class SparkBackend(Py4JBackend):
 
     def remove_reference(self, name):
         self.hail_package().variant.ReferenceGenome.removeReference(name)
-
-    def _get_non_builtin_reference(self, name):
-        return orjson.loads(self.hail_package().variant.ReferenceGenome.getReference(name).toJSONString())
 
     def add_sequence(self, name, fasta_file, index_file):
         self._jbackend.pyAddSequence(name, fasta_file, index_file)

@@ -248,9 +248,6 @@ class LocalBackend(Py4JBackend):
         jir = self._to_java_blockmatrix_ir(bmir)
         return tblockmatrix._from_java(jir.typ())
 
-    def add_reference(self, config):
-        self._hail_package.variant.ReferenceGenome.fromJSON(orjson.dumps(config).decode('utf-8'))
-
     def load_references_from_dataset(self, path):
         return orjson.loads(self._jbackend.pyLoadReferencesFromDataset(path))
 
@@ -260,9 +257,6 @@ class LocalBackend(Py4JBackend):
 
     def remove_reference(self, name):
         self._hail_package.variant.ReferenceGenome.removeReference(name)
-
-    def _get_non_builtin_reference(self, name):
-        return orjson.loads(self._hail_package.variant.ReferenceGenome.getReference(name).toJSONString())
 
     def add_sequence(self, name, fasta_file, index_file):
         self._jbackend.pyAddSequence(name, fasta_file, index_file)

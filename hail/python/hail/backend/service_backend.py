@@ -34,6 +34,7 @@ from ..fs.router_fs import RouterFS
 from ..ir import BaseIR
 from ..context import version
 from ..utils import frozendict
+from ..genetics import ReferenceGenome
 
 
 log = logging.getLogger('backend.service_backend')
@@ -272,6 +273,7 @@ class ServiceBackend(Backend):
         self.worker_memory = worker_memory
         self.name_prefix = name_prefix
         self._persisted_locations: Dict[Any, _TemporaryFilenameManager] = dict()
+        self._custom_reference_configs: List[str] = []
 
     def debug_info(self) -> Dict[str, Any]:
         return {
@@ -321,6 +323,10 @@ class ServiceBackend(Backend):
                         if v is not None:
                             await write_str(infile, k)
                             await write_str(infile, v)
+                    custom_reference_count = len(self._custom_reference_configs)
+                    await write_int(infile, custom_reference_count)
+                    for reference_config in self._custom_reference_configs:
+                        await write_str(infile, reference_config)
                     await write_str(infile, str(self.worker_cores))
                     await write_str(infile, str(self.worker_memory))
                     await inputs(infile, token)
@@ -494,7 +500,7 @@ class ServiceBackend(Backend):
         return tblockmatrix._from_json(orjson.loads(resp))
 
     def add_reference(self, config):
-        raise NotImplementedError("ServiceBackend does not support 'add_reference'")
+        self._custom_reference_configs.append(orjson.dumps(config).decode('utf-8'))
 
     def from_fasta_file(self, name, fasta_file, index_file, x_contigs, y_contigs, mt_contigs, par):
         raise NotImplementedError("ServiceBackend does not support 'from_fasta_file'")

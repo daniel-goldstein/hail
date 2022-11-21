@@ -1,5 +1,6 @@
 from typing import Mapping, Union, Tuple, List
 import abc
+import orjson
 
 import py4j
 import py4j.java_gateway
@@ -50,6 +51,7 @@ class Py4JBackend(Backend):
         # By default, py4j's version of this function does extra
         # work to support python 2. This eliminates that.
         py4j.protocol.decode_bytearray = decode_bytearray
+
 
     @abc.abstractmethod
     def jvm(self):
@@ -108,6 +110,12 @@ class Py4JBackend(Backend):
 
     async def _async_execute_many(self, *irs, timed=False):
         raise NotImplementedError('no async available in Py4JBackend')
+
+    def add_reference(self, config):
+        self.hail_package().variant.ReferenceGenome.fromJSON(orjson.dumps(config).decode('utf-8'))
+
+    def _get_non_builtin_reference(self, name):
+        return orjson.loads(self.hail_package().variant.ReferenceGenome.getReference(name).toJSONString())
 
     def persist_expression(self, expr):
         return construct_expr(

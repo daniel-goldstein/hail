@@ -542,6 +542,12 @@ class ServiceBackendSocketAPI2(
       flagsMap.update(flagName, flagValue)
       nFlagsRemaining -= 1
     }
+    val nCustomReferences = readInt()
+    val customReferences = new Array[ReferenceGenome](nCustomReferences)
+    var i = 0
+    while (i < nCustomReferences) {
+      customReferences(i) = ReferenceGenome.fromJSON(readString())
+    }
     val workerCores = readString()
     val workerMemory = readString()
 
