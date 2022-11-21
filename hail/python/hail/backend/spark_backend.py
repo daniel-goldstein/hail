@@ -1,7 +1,7 @@
 import pkg_resources
 import sys
 import os
-import json
+import orjson
 import socket
 import socketserver
 from threading import Thread
@@ -331,10 +331,10 @@ class SparkBackend(Py4JBackend):
                                      Env.spark_session()._wrapped)
 
     def add_reference(self, config):
-        self.hail_package().variant.ReferenceGenome.fromJSON(json.dumps(config))
+        self.hail_package().variant.ReferenceGenome.fromJSON(orjson.dumps(config).decode('utf-8'))
 
     def load_references_from_dataset(self, path):
-        return json.loads(self.hail_package().variant.ReferenceGenome.fromHailDataset(self.fs._jfs, path))
+        return orjson.loads(self.hail_package().variant.ReferenceGenome.fromHailDataset(self.fs._jfs, path))
 
     def from_fasta_file(self, name, fasta_file, index_file, x_contigs, y_contigs, mt_contigs, par):
         self._jbackend.pyFromFASTAFile(
@@ -344,7 +344,7 @@ class SparkBackend(Py4JBackend):
         self.hail_package().variant.ReferenceGenome.removeReference(name)
 
     def _get_non_builtin_reference(self, name):
-        return json.loads(self.hail_package().variant.ReferenceGenome.getReference(name).toJSONString())
+        return orjson.loads(self.hail_package().variant.ReferenceGenome.getReference(name).toJSONString())
 
     def add_sequence(self, name, fasta_file, index_file):
         self._jbackend.pyAddSequence(name, fasta_file, index_file)
@@ -360,13 +360,13 @@ class SparkBackend(Py4JBackend):
             name, dest_reference_genome)
 
     def parse_vcf_metadata(self, path):
-        return json.loads(self._jhc.pyParseVCFMetadataJSON(self.fs._jfs, path))
+        return orjson.loads(self._jhc.pyParseVCFMetadataJSON(self.fs._jfs, path))
 
     def index_bgen(self, files, index_file_map, referenceGenomeName, contig_recoding, skip_invalid_loci):
         self._jbackend.pyIndexBgen(files, index_file_map, referenceGenomeName, contig_recoding, skip_invalid_loci)
 
     def import_fam(self, path: str, quant_pheno: bool, delimiter: str, missing: str):
-        return json.loads(self._jbackend.pyImportFam(path, quant_pheno, delimiter, missing))
+        return orjson.loads(self._jbackend.pyImportFam(path, quant_pheno, delimiter, missing))
 
     def register_ir_function(self, name, type_parameters, argument_names, argument_types, return_type, body):
 
@@ -389,7 +389,7 @@ class SparkBackend(Py4JBackend):
             'intervalPointType': intervals_type.element_type.point_type._parsable_string(),
         }
 
-        results = self._jhc.backend().pyReadMultipleMatrixTables(json.dumps(json_repr))
+        results = self._jhc.backend().pyReadMultipleMatrixTables(orjson.dumps(json_repr).decode('utf-8'))
         return [MatrixTable._from_java(jm) for jm in results]
 
     @property

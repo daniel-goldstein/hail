@@ -1,4 +1,4 @@
-import json
+import orjson
 import re
 from hail.typecheck import typecheck_method, sequenceof, dictof, oneof, \
     sized_tupleof, nullable, transformed, lazy
@@ -293,7 +293,7 @@ class ReferenceGenome(object):
         :class:`.ReferenceGenome`
         """
         with hl.hadoop_open(path) as f:
-            return ReferenceGenome._from_config(json.load(f))
+            return ReferenceGenome._from_config(orjson.loads(f.read()))
 
     @typecheck_method(output=str)
     def write(self, output):
@@ -316,8 +316,8 @@ class ReferenceGenome(object):
         output : :class:`str`
             Path of JSON file to write.
         """
-        with hl.utils.hadoop_open(output, 'w') as f:
-            json.dump(self._config, f)
+        with hl.hadoop_open(output, 'w') as f:
+            f.write(orjson.dumps(self._config))
 
     @typecheck_method(fasta_file=str,
                       index_file=nullable(str))
