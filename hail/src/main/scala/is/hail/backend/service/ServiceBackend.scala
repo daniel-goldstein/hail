@@ -543,10 +543,11 @@ class ServiceBackendSocketAPI2(
       nFlagsRemaining -= 1
     }
     val nCustomReferences = readInt()
-    val customReferences = new Array[ReferenceGenome](nCustomReferences)
+    val customReferences = mutable.Map[String, ReferenceGenome]()
     var i = 0
     while (i < nCustomReferences) {
-      customReferences(i) = ReferenceGenome.fromJSON(readString())
+      val reference = ReferenceGenome.fromJSON(readString())
+      customReferences(reference.name) = reference
     }
     val workerCores = readString()
     val workerMemory = readString()
