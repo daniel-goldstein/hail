@@ -2998,7 +2998,7 @@ steps:
       hailctl curl {{ default_ns.name }} www / \
               -vvv \
               -fsSL \
-              --retry 3 \
+              --retry 24 \
               --retry-delay 5
     secrets:
       - name: test-tokens
