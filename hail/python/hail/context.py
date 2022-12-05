@@ -148,7 +148,7 @@ class HailContext(object):
         ReferenceGenome._references = {}
 
 
-@typecheck(sc=nullable(SparkContext),
+@typecheck(sc=nullable(int),
            app_name=nullable(str),
            master=nullable(str),
            local=str,
@@ -374,7 +374,7 @@ def init(sc=None,
     raise ValueError(f'unknown Hail Query backend: {backend}')
 
 
-@typecheck(sc=nullable(SparkContext),
+@typecheck(sc=nullable(int),
            app_name=nullable(str),
            master=nullable(str),
            local=str,
