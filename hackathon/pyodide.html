@@ -15,6 +15,8 @@
         await micropip.install('http://localhost:8000/hail-0.2.105-py3-none-any.whl', keep_going=true);
         pyodide.runPython("import hail as hl");
         pyodide.runPython("print(1 + 2)");
+        pyodide.runPython("import sys");
+        pyodide.runPython("print(sys.platform)");
       }
       main();
     </script>
