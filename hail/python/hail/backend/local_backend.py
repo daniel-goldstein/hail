@@ -7,7 +7,6 @@ import sys
 from threading import Thread
 
 import pkg_resources
-import py4j
 from py4j.java_gateway import JavaGateway, GatewayParameters, launch_gateway
 
 from hail.expr.blockmatrix_type import tblockmatrix
@@ -25,6 +24,8 @@ from hailtop.utils import find_spark_home
 
 _installed = False
 _original = None
+
+py4j = object()
 
 
 def install_exception_handler():

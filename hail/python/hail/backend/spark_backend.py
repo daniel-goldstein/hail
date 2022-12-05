@@ -5,7 +5,8 @@ import json
 import socket
 import socketserver
 from threading import Thread
-import py4j
+
+py4j = object()
 
 from typing import List, Optional
 
@@ -24,10 +25,6 @@ from .py4j_backend import Py4JBackend, handle_java_exception
 from ..hail_logging import Logger
 
 pyspark = object()
-
-if pyspark.__version__ < '3' and sys.version_info > (3, 8):
-    raise EnvironmentError('Hail with spark {} requires Python 3.7, found {}.{}'.format(
-        pyspark.__version__, sys.version_info.major, sys.version_info.minor))
 
 _installed = False
 _original = None

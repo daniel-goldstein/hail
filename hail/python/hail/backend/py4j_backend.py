@@ -1,8 +1,7 @@
 from typing import Mapping, Union, Tuple, List
 import abc
 
-import py4j
-import py4j.java_gateway
+py4j = object()
 
 import hail
 from hail.expr import construct_expr
@@ -38,7 +37,7 @@ def handle_java_exception(f):
 
 
 class Py4JBackend(Backend):
-    _jbackend: py4j.java_gateway.JavaObject
+    _jbackend: None
 
     @abc.abstractmethod
     def __init__(self):
