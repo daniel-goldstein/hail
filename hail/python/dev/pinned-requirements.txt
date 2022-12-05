@@ -54,9 +54,9 @@ black==22.12.0
     # via -r python/dev/requirements.txt
 bleach==5.0.1
     # via nbconvert
-boto3==1.26.26
+boto3==1.26.28
     # via -r python/dev/../hailtop/requirements.txt
-botocore==1.29.26
+botocore==1.29.28
     # via
     #   -r python/dev/../hailtop/requirements.txt
     #   boto3
@@ -189,7 +189,7 @@ ipywidgets==8.0.3
     # via jupyter
 isodate==0.6.1
     # via msrest
-isort==5.10.1
+isort==5.11.2
     # via
     #   -r python/dev/requirements.txt
     #   pylint
@@ -327,7 +327,7 @@ parso==0.8.3
     # via jedi
 parsy==1.1.0
     # via curlylint
-pathspec==0.10.2
+pathspec==0.10.3
     # via
     #   black
     #   curlylint
@@ -527,7 +527,7 @@ tornado==6.2
     #   nbclassic
     #   notebook
     #   terminado
-traitlets==5.7.0
+traitlets==5.7.1
     # via
     #   ipykernel
     #   ipython
