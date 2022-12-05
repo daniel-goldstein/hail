@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+  <head>
+      <script src="https://cdn.jsdelivr.net/pyodide/v0.21.3/full/pyodide.js"></script>
+  </head>
+  <body>
+    Pyodide test page <br>
+    Open your browser console to see Pyodide output
+    <script type="text/javascript">
+      async function main(){
+        let pyodide = await loadPyodide();
+        await pyodide.loadPackage("micropip");
+        const micropip = pyodide.pyimport("micropip");
+        await micropip.install("ssl");
+        await micropip.install('http://localhost:8000/hail-0.2.105-py3-none-any.whl', keep_going=true);
+        pyodide.runPython("import hail as hl");
+        pyodide.runPython("print(1 + 2)");
+      }
+      main();
+    </script>
+  </body>
+</html>
