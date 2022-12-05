@@ -1,7 +1,7 @@
 from typing import Optional, Dict, Any, TypeVar, Generic, List, Union
 import sys
 import abc
-import orjson
+import json
 import os
 import subprocess as sp
 import uuid
@@ -194,7 +194,7 @@ class LocalBackend(Backend[None]):
         copied_input_resource_files = set()
         os.makedirs(tmpdir + '/inputs/', exist_ok=True)
 
-        requester_pays_project_json = orjson.dumps(batch.requester_pays_project).decode('utf-8')
+        requester_pays_project_json = json.dumps(batch.requester_pays_project)
 
         def copy_input(job, r):
             if isinstance(r, resource.InputResourceFile):
@@ -204,8 +204,8 @@ class LocalBackend(Backend[None]):
                     assert r._input_path
                     input_scheme = url_scheme(r._input_path)
                     if input_scheme != '':
-                        transfers_bytes = orjson.dumps([{"from": r._input_path, "to": r._get_path(tmpdir)}])
-                        transfers = transfers_bytes.decode('utf-8')
+                        transfers_bytes = json.dumps([{"from": r._input_path, "to": r._get_path(tmpdir)}])
+                        transfers = transfers_bytes
                         return [f'python3 -m hailtop.aiotools.copy {shq(requester_pays_project_json)} {shq(transfers)}']
 
                     absolute_input_path = os.path.realpath(os.path.expanduser(r._input_path))
@@ -249,7 +249,7 @@ class LocalBackend(Backend[None]):
                 for transfer_dict in transfer_dicts_for_resource_file(input_resource)]
 
             if input_transfer_dicts:
-                input_transfers = orjson.dumps(input_transfer_dicts).decode('utf-8')
+                input_transfers = json.dumps(input_transfer_dicts)
                 code = new_code_block()
                 code += ["# Write input resources to output destinations"]
                 code += [f'python3 -m hailtop.aiotools.copy {shq(requester_pays_project_json)} {shq(input_transfers)}']
@@ -324,7 +324,7 @@ class LocalBackend(Backend[None]):
                     for transfer_dict in transfer_dicts_for_resource_file(output_resource)]
 
                 if output_transfer_dicts:
-                    output_transfers = orjson.dumps(output_transfer_dicts).decode('utf-8')
+                    output_transfers = json.dumps(output_transfer_dicts)
                     code += [f'python3 -m hailtop.aiotools.copy {shq(requester_pays_project_json)} {shq(output_transfers)}']
                 code += ['\n']
 
@@ -608,10 +608,10 @@ class ServiceBackend(Backend[bc.Batch]):
 
         write_external_inputs = [x for r in batch._input_resources for x in copy_external_output(r)]
         if write_external_inputs:
-            transfers_bytes = orjson.dumps([
+            transfers_bytes = json.dumps([
                 {"from": src, "to": dest}
                 for src, dest in write_external_inputs])
-            transfers = transfers_bytes.decode('utf-8')
+            transfers = transfers_bytes
             write_cmd = ['python3', '-m', 'hailtop.aiotools.copy', 'null', transfers]
             if dry_run:
                 commands.append(' '.join(shq(x) for x in write_cmd))

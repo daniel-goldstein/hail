@@ -7,7 +7,7 @@ import sys
 import logging
 import asyncio
 import urllib.parse
-import aiohttp
+from hailtop import httpx
 from hailtop.utils import (
     secret_alnum_string, OnlineBoundedGather2,
     TransientError, retry_transient_errors)
@@ -57,7 +57,7 @@ class PageIterator:
 class InsertObjectStream(WritableStream):
     def __init__(self,
                  it: FeedableAsyncIterable[bytes],
-                 request_task: asyncio.Future):  # in Python 3.9: asyncio.Future[aiohttp.ClientResponse]
+                 request_task: asyncio.Future):  # in Python 3.9: asyncio.Future[httpx.ClientResponse]
         super().__init__()
         self._it = it
         self._request_task = request_task
@@ -205,7 +205,7 @@ class ResumableInsertObjectStream(WritableStream):
         it: FeedableAsyncIterable[bytes] = FeedableAsyncIterable()
         async with _TaskManager(
                 self._session.put(self._session_url,
-                                  data=aiohttp.AsyncIterablePayload(it),
+                                  data=httpx.AsyncIterablePayload(it),
                                   headers={
                                       'Content-Length': f'{n}',
                                       'Content-Range': range
@@ -263,10 +263,10 @@ class ResumableInsertObjectStream(WritableStream):
 
 
 class GetObjectStream(ReadableStream):
-    def __init__(self, resp: aiohttp.ClientResponse):
+    def __init__(self, resp: httpx.ClientResponse):
         super().__init__()
-        self._resp: Optional[aiohttp.ClientResponse] = resp
-        self._content: Optional[aiohttp.StreamReader] = resp.content
+        self._resp: Optional[httpx.ClientResponse] = resp
+        self._content: Optional[httpx.StreamReader] = resp.content
 
     # https://docs.aiohttp.org/en/stable/streams.html#aiohttp.StreamReader.read
     # Read up to n bytes. If n is not provided, or set to -1, read until EOF
@@ -300,7 +300,7 @@ class GoogleStorageClient(GoogleBaseClient):
     def __init__(self, **kwargs):
         if 'timeout' not in kwargs and 'http_session' not in kwargs:
             # Around May 2022, GCS started timing out a lot with our default 5s timeout
-            kwargs['timeout'] = aiohttp.ClientTimeout(total=20)
+            kwargs['timeout'] = httpx.ClientTimeout(total=20)
         super().__init__('https://storage.googleapis.com/storage/v1', **kwargs)
 
     # docs:
@@ -327,7 +327,7 @@ class GoogleStorageClient(GoogleBaseClient):
 
         if upload_type == 'media':
             it: FeedableAsyncIterable[bytes] = FeedableAsyncIterable()
-            kwargs['data'] = aiohttp.AsyncIterablePayload(it)
+            kwargs['data'] = httpx.AsyncIterablePayload(it)
             request_task: asyncio.Future = asyncio.ensure_future(self._session.post(
                 f'https://storage.googleapis.com/upload/storage/v1/b/{bucket}/o',
                 retry=False,
@@ -360,7 +360,7 @@ class GoogleStorageClient(GoogleBaseClient):
             resp = await self._session.get(
                 f'https://storage.googleapis.com/storage/v1/b/{bucket}/o/{urllib.parse.quote(name, safe="")}', **kwargs)
             return GetObjectStream(resp)
-        except aiohttp.ClientResponseError as e:
+        except httpx.ClientResponseError as e:
             if e.status == 404:
                 raise FileNotFoundError from e
             if e.status == 416:
@@ -628,7 +628,7 @@ class GoogleStorageAsyncFS(AsyncFS):
         try:
             bucket, name = self.get_bucket_and_name(url)
             return GetObjectFileStatus(await self._storage_client.get_object_metadata(bucket, name))
-        except aiohttp.ClientResponseError as e:
+        except httpx.ClientResponseError as e:
             if e.status == 404:
                 raise FileNotFoundError(url) from e
             raise
@@ -720,7 +720,7 @@ class GoogleStorageAsyncFS(AsyncFS):
                 return False
             await self._storage_client.get_object_metadata(bucket, name)
             return True
-        except aiohttp.ClientResponseError as e:
+        except httpx.ClientResponseError as e:
             if e.status == 404:
                 return False
             raise
@@ -744,7 +744,7 @@ class GoogleStorageAsyncFS(AsyncFS):
         bucket, name = self.get_bucket_and_name(url)
         try:
             await self._storage_client.delete_object(bucket, name)
-        except aiohttp.ClientResponseError as e:
+        except httpx.ClientResponseError as e:
             if e.status == 404:
                 raise FileNotFoundError(url) from e
             raise

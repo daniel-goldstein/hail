@@ -1,8 +1,8 @@
 import uuid
 from typing import Mapping, Any, Optional, MutableMapping, List, Dict
 import logging
-import aiohttp
 
+from hailtop import httpx
 from hailtop.utils import retry_transient_errors, sleep_and_backoff
 
 from .base_client import GoogleBaseClient
@@ -103,7 +103,7 @@ class GoogleComputeClient(GoogleBaseClient):
             delay = 2
             while True:
                 result = await self.post(f'/zones/{zone}/operations/{operation_id}/wait',
-                                         timeout=aiohttp.ClientTimeout(total=150))
+                                         timeout=httpx.ClientTimeout(total=150))
                 if result['status'] == 'DONE':
                     error = result.get('error')
                     if error:

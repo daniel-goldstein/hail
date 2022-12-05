@@ -1,6 +1,7 @@
 from typing import Optional
 
-import aiohttp
+
+from hailtop import httpx
 
 from ..session import AzureSession
 from .base_client import AzureBaseClient
@@ -20,7 +21,7 @@ class AzureNetworkClient(AzureBaseClient):
     async def delete_nic(self, nic_name: str, ignore_not_found: bool = False):
         try:
             await self.delete(f'/networkInterfaces/{nic_name}')
-        except aiohttp.ClientResponseError as e:
+        except httpx.ClientResponseError as e:
             if ignore_not_found and e.status == 404:
                 pass
             raise
@@ -28,7 +29,7 @@ class AzureNetworkClient(AzureBaseClient):
     async def delete_public_ip(self, public_ip_name: str, ignore_not_found: bool = False):
         try:
             await self.delete(f'/publicIPAddresses/{public_ip_name}')
-        except aiohttp.ClientResponseError as e:
+        except httpx.ClientResponseError as e:
             if ignore_not_found and e.status == 404:
                 pass
             raise

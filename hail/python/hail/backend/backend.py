@@ -1,6 +1,6 @@
 from typing import Mapping, List, Union, Tuple, Dict, Optional, Any
 import abc
-import orjson
+import json
 import pkg_resources
 import zipfile
 from ..fs.fs import FS
@@ -73,7 +73,7 @@ class Backend(abc.ABC):
         if name in BUILTIN_REFERENCE_RESOURCE_PATHS:
             path_in_jar = BUILTIN_REFERENCE_RESOURCE_PATHS[name]
             jar_path = pkg_resources.resource_filename(__name__, 'hail-all-spark.jar')
-            return orjson.loads(zipfile.ZipFile(jar_path).open(path_in_jar).read())
+            return json.loads(zipfile.ZipFile(jar_path).open(path_in_jar).read())
         return self._get_non_builtin_reference(name)
 
     @abc.abstractmethod

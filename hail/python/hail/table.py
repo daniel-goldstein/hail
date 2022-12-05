@@ -2,7 +2,6 @@ import collections
 import itertools
 import pandas
 import numpy as np
-import pyspark
 from typing import Optional, Dict, Callable, Sequence
 
 from hail.expr.expressions import Expression, StructExpression, \
@@ -3402,8 +3401,6 @@ class Table(ExprContainer):
         return self._row.drop(*self.key.keys())
 
     @staticmethod
-    @typecheck(df=pyspark.sql.DataFrame,
-               key=table_key_type)
     def from_spark(df, key=[]) -> 'Table':
         """Convert PySpark SQL DataFrame to a table.
 

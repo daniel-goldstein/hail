@@ -311,8 +311,6 @@ notebook-shim==0.2.2
     # via nbclassic
 oauthlib==3.2.2
     # via requests-oauthlib
-orjson==3.8.2
-    # via -r python/dev/../hailtop/requirements.txt
 packaging==21.3
     # via
     #   ipykernel

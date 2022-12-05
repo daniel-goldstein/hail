@@ -13,15 +13,12 @@ import errno
 import random
 import logging
 import asyncio
-import aiohttp
-from aiohttp import web
 import urllib
 import urllib3
 import secrets
 import socket
 import requests
 import google.auth.exceptions
-import google.api_core.exceptions
 import botocore.exceptions
 import time
 import weakref
@@ -622,7 +619,7 @@ def is_transient_error(e):
     # https://hail.zulipchat.com/#narrow/stream/223457-Batch-support/topic/ssl.20error
     import hailtop.aiocloud.aiogoogle.client.compute_client  # pylint: disable=import-outside-toplevel,cyclic-import
     import hailtop.httpx  # pylint: disable=import-outside-toplevel,cyclic-import
-    if isinstance(e, aiohttp.ClientResponseError) and (
+    if isinstance(e, httpx.ClientResponseError) and (
             e.status in RETRYABLE_HTTP_STATUS_CODES):
         # nginx returns 502 if it cannot connect to the upstream server
         # 408 request timeout, 500 internal server error, 502 bad gateway
@@ -637,18 +634,18 @@ def is_transient_error(e):
             (e.status in RETRYABLE_HTTP_STATUS_CODES) or (
                 e.status == 403 and 'rateLimitExceeded' in e.body)):
         return True
-    if isinstance(e, aiohttp.ServerTimeoutError):
+    if isinstance(e, httpx.ServerTimeoutError):
         return True
-    if isinstance(e, aiohttp.ServerDisconnectedError):
+    if isinstance(e, httpx.ServerDisconnectedError):
         return True
     if isinstance(e, asyncio.TimeoutError):
         return True
-    if isinstance(e, aiohttp.client_exceptions.ClientConnectorError):
+    if isinstance(e, httpx.client_exceptions.ClientConnectorError):
         return hasattr(e, 'os_error') and is_transient_error(e.os_error)
     # appears to happen when the connection is lost prematurely, see:
     # https://github.com/aio-libs/aiohttp/issues/4581
     # https://github.com/aio-libs/aiohttp/blob/v3.7.4/aiohttp/client_proto.py#L85
-    if (isinstance(e, aiohttp.ClientPayloadError)
+    if (isinstance(e, httpx.ClientPayloadError)
             and e.args[0] == "Response payload is not completed"):
         return True
     if (isinstance(e, OSError)
@@ -661,7 +658,7 @@ def is_transient_error(e):
                             errno.ETIMEDOUT
                             )):
         return True
-    if isinstance(e, aiohttp.ClientOSError):
+    if isinstance(e, httpx.ClientOSError):
         # aiohttp/client_reqrep.py wraps all OSError instances with a ClientOSError
         return is_transient_error(e.__cause__)
     if isinstance(e, urllib3.exceptions.ReadTimeoutError):
@@ -678,6 +675,7 @@ def is_transient_error(e):
         return e.errno in (socket.EAI_AGAIN, socket.EAI_NONAME)
     if isinstance(e, google.auth.exceptions.TransportError):
         return is_transient_error(e.__cause__)
+    import google.api_core.exceptions
     if isinstance(e, google.api_core.exceptions.GatewayTimeout):
         return True
     if isinstance(e, google.api_core.exceptions.ServiceUnavailable):
@@ -804,7 +802,7 @@ async def request_retry_transient_errors(
         method: str,
         url,
         **kwargs
-) -> aiohttp.ClientResponse:
+):
     return await retry_transient_errors(session.request, method, url, **kwargs)
 
 
@@ -813,7 +811,7 @@ async def request_raise_transient_errors(
         method: str,
         url,
         **kwargs
-) -> aiohttp.ClientResponse:
+):
     try:
         return await session.request(method, url, **kwargs)
     except KeyboardInterrupt:
@@ -821,7 +819,8 @@ async def request_raise_transient_errors(
     except Exception as e:
         if is_transient_error(e):
             log.exception('request failed with transient exception: {method} {url}')
-            raise web.HTTPServiceUnavailable()
+            from hailtop import httpx
+            raise httpx.HTTPServiceUnavailable()
         raise
 
 

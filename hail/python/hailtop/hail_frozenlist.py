@@ -1,5 +1,7 @@
 from typing import TypeVar, Sequence, List
-from frozenlist import FrozenList as _FrozenList
+
+class _FrozenList:
+    pass
 
 
 T = TypeVar('T')

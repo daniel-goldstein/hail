@@ -3,9 +3,6 @@ import os
 import re
 from typing import List
 
-import avro.schema
-from avro.datafile import DataFileReader
-from avro.io import DatumReader
 import hail as hl
 from hail import ir
 from hail.expr import StructExpression, LocusExpression, \
@@ -2970,8 +2967,3 @@ def import_avro(paths, *, key=None, intervals=None):
         raise ValueError('import_avro requires at least one path')
     if (key is None) != (intervals is None):
         raise ValueError('key and intervals must either be both defined or both undefined')
-
-    with hl.current_backend().fs.open(paths[0], 'rb') as avro_file:
-        with DataFileReader(avro_file, DatumReader()) as data_file_reader:
-            tr = ir.AvroTableReader(avro.schema.parse(data_file_reader.schema), paths, key, intervals)
-    return Table(ir.TableRead(tr))

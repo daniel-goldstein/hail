@@ -1,5 +1,5 @@
 import asyncio
-import orjson
+import json
 import os
 import sys
 from shlex import quote as shq
@@ -71,7 +71,7 @@ async def async_main(args):
         print(f'Submitted batch {batch_handle.id}, see {url}')
     else:
         assert args.o == 'json'
-        print(orjson.dumps({'id': batch_handle.id}).decode('utf-8'))
+        print(json.dumps({'id': batch_handle.id}))
 
 
 def main(args, pass_through_args, client):  # pylint: disable=unused-argument

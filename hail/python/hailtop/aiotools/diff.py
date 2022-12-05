@@ -1,7 +1,7 @@
 from typing import Optional, Tuple, TypeVar, List
 import argparse
 import asyncio
-import orjson
+import json
 import logging
 import sys
 
@@ -182,7 +182,7 @@ async def main() -> None:
         print(exc.args[0], file=sys.stderr)
         sys.exit(1)
     else:
-        sys.stdout.buffer.write(orjson.dumps(different))
+        sys.stdout.buffer.write(json.dumps(different).encode('utf-8'))
 
 
 if __name__ == '__main__':

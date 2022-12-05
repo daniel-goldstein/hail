@@ -2,7 +2,7 @@ from typing import Dict, Optional, Callable, Awaitable, Mapping, Any, List, Unio
 import abc
 import struct
 from hail.expr.expressions.base_expression import Expression
-import orjson
+import json
 import logging
 
 from hail.context import TemporaryDirectory, tmp_dir, TemporaryFilename, revision
@@ -384,7 +384,7 @@ class ServiceBackend(Backend):
                         result_bytes = await read_bytes(outfile)
                         try:
                             return token, result_bytes, timings
-                        except orjson.JSONDecodeError as err:
+                        except json.JSONDecodeError as err:
                             raise FatalError('Hail internal error. Please contact the Hail team and provide the following information.\n\n' + yamlx.dump({
                                 'service_backend_debug_info': self.debug_info(),
                                 'batch_debug_info': await self._batch.debug_info()
@@ -441,7 +441,7 @@ class ServiceBackend(Backend):
             await write_str(infile, self.remote_tmpdir)
             await write_str(infile, self.render(ir))
         _, resp, _ = await self._rpc('value_type(...)', inputs, progress=progress)
-        return dtype(orjson.loads(resp))
+        return dtype(json.loads(resp))
 
     def table_type(self, tir):
         return async_to_blocking(self._async_table_type(tir))
@@ -454,7 +454,7 @@ class ServiceBackend(Backend):
             await write_str(infile, self.remote_tmpdir)
             await write_str(infile, self.render(tir))
         _, resp, _ = await self._rpc('table_type(...)', inputs, progress=progress)
-        return ttable._from_json(orjson.loads(resp))
+        return ttable._from_json(json.loads(resp))
 
     def matrix_type(self, mir):
         return async_to_blocking(self._async_matrix_type(mir))
@@ -467,7 +467,7 @@ class ServiceBackend(Backend):
             await write_str(infile, self.remote_tmpdir)
             await write_str(infile, self.render(mir))
         _, resp, _ = await self._rpc('matrix_type(...)', inputs, progress=progress)
-        return tmatrix._from_json(orjson.loads(resp))
+        return tmatrix._from_json(json.loads(resp))
 
     def blockmatrix_type(self, bmir):
         return async_to_blocking(self._async_blockmatrix_type(bmir))
@@ -480,7 +480,7 @@ class ServiceBackend(Backend):
             await write_str(infile, self.remote_tmpdir)
             await write_str(infile, self.render(bmir))
         _, resp, _ = await self._rpc('blockmatrix_type(...)', inputs, progress=progress)
-        return tblockmatrix._from_json(orjson.loads(resp))
+        return tblockmatrix._from_json(json.loads(resp))
 
     def add_reference(self, config):
         raise NotImplementedError("ServiceBackend does not support 'add_reference'")
@@ -505,7 +505,7 @@ class ServiceBackend(Backend):
             await write_str(infile, self.remote_tmpdir)
             await write_str(infile, path)
         _, resp, _ = await self._rpc('load_references_from_dataset(...)', inputs, progress=progress)
-        return orjson.loads(resp)
+        return json.loads(resp)
 
     def add_sequence(self, name, fasta_file, index_file):
         raise NotImplementedError("ServiceBackend does not support 'add_sequence'")
@@ -530,7 +530,7 @@ class ServiceBackend(Backend):
             await write_str(infile, self.remote_tmpdir)
             await write_str(infile, path)
         _, resp, _ = await self._rpc('parse_vcf_metadata(...)', inputs, progress=progress)
-        return orjson.loads(resp)
+        return json.loads(resp)
 
     def index_bgen(self,
                    files: List[str],
@@ -601,7 +601,7 @@ class ServiceBackend(Backend):
             await write_str(infile, delimiter)
             await write_str(infile, missing)
         _, resp, _ = await self._rpc('import_fam(...)', inputs, progress=progress)
-        return orjson.loads(resp)
+        return json.loads(resp)
 
     def register_ir_function(self,
                              name: str,

@@ -1,6 +1,5 @@
 from types import TracebackType
 from typing import Optional, Type, TypeVar, Mapping
-import aiohttp
 import abc
 from hailtop import httpx
 from hailtop.utils import request_retry_transient_errors, RateLimit, RateLimiter
@@ -11,22 +10,22 @@ SessionType = TypeVar('SessionType', bound='BaseSession')
 
 class BaseSession(abc.ABC):
     @abc.abstractmethod
-    async def request(self, method: str, url: str, **kwargs) -> aiohttp.ClientResponse:
+    async def request(self, method: str, url: str, **kwargs) -> httpx.ClientResponse:
         pass
 
-    async def get(self, url: str, **kwargs) -> aiohttp.ClientResponse:
+    async def get(self, url: str, **kwargs) -> httpx.ClientResponse:
         return await self.request('GET', url, **kwargs)
 
-    async def post(self, url: str, **kwargs) -> aiohttp.ClientResponse:
+    async def post(self, url: str, **kwargs) -> httpx.ClientResponse:
         return await self.request('POST', url, **kwargs)
 
-    async def put(self, url: str, **kwargs) -> aiohttp.ClientResponse:
+    async def put(self, url: str, **kwargs) -> httpx.ClientResponse:
         return await self.request('PUT', url, **kwargs)
 
-    async def delete(self, url: str, **kwargs) -> aiohttp.ClientResponse:
+    async def delete(self, url: str, **kwargs) -> httpx.ClientResponse:
         return await self.request('DELETE', url, **kwargs)
 
-    async def head(self, url: str, **kwargs) -> aiohttp.ClientResponse:
+    async def head(self, url: str, **kwargs) -> httpx.ClientResponse:
         return await self.request('HEAD', url, **kwargs)
 
     async def close(self) -> None:
@@ -79,7 +78,7 @@ class Session(BaseSession):
             self._http_session = httpx.ClientSession(**kwargs)
         self._credentials = credentials
 
-    async def request(self, method: str, url: str, **kwargs) -> aiohttp.ClientResponse:
+    async def request(self, method: str, url: str, **kwargs) -> httpx.ClientResponse:
         auth_headers = await self._credentials.auth_headers()
         if auth_headers:
             if 'headers' in kwargs:

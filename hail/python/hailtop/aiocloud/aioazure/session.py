@@ -1,6 +1,6 @@
 from typing import Mapping, Optional, List, Union
 
-import aiohttp
+from hailtop import httpx
 
 from ..common import Session, AnonymousCloudCredentials
 from .credentials import AzureCredentials
@@ -17,5 +17,5 @@ class AzureSession(Session):
             else:
                 credentials = AzureCredentials.default_credentials(scopes=scopes)
         if 'timeout' not in kwargs:
-            kwargs['timeout'] = aiohttp.ClientTimeout(total=30)
+            kwargs['timeout'] = httpx.ClientTimeout(total=30)
         super().__init__(credentials=credentials, params=params, **kwargs)

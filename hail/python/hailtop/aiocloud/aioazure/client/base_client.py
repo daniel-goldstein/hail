@@ -1,7 +1,7 @@
 from typing import Optional, AsyncGenerator, Any
 
-import aiohttp
 from hailtop.utils import RateLimit, sleep_and_backoff, url_and_params
+from hailtop import httpx
 
 from ...common import CloudBaseClient
 from ..session import AzureSession
@@ -28,14 +28,14 @@ class AzureBaseClient(CloudBaseClient):
                 yield v
             next_link = page.get('nextLink')
 
-    async def delete(self, path: Optional[str] = None, *, url: Optional[str] = None, **kwargs) -> aiohttp.ClientResponse:
+    async def delete(self, path: Optional[str] = None, *, url: Optional[str] = None, **kwargs) -> httpx.ClientResponse:
         if url is None:
             assert path
             url = f'{self._base_url}{path}'
         async with await self._session.delete(url, **kwargs) as resp:
             return resp
 
-    async def delete_and_wait(self, path: Optional[str] = None, *, url: Optional[str] = None, **kwargs) -> aiohttp.ClientResponse:
+    async def delete_and_wait(self, path: Optional[str] = None, *, url: Optional[str] = None, **kwargs) -> httpx.ClientResponse:
         delay = 5
         while True:
             resp = await self.delete(path, url=url, **kwargs)

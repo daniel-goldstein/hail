@@ -1,8 +1,6 @@
 import abc
 import json
 
-import avro.schema
-
 import hail as hl
 
 from hail.ir.utils import make_filter_and_replace, default_row_uid
@@ -133,10 +131,6 @@ class TableFromBlockMatrixNativeReader(TableReader):
 
 
 class AvroTableReader(TableReader):
-    @typecheck_method(schema=avro.schema.Schema,
-                      paths=sequenceof(str),
-                      key=nullable(sequenceof(str)),
-                      intervals=nullable(sequenceof(anytype)))
     def __init__(self, schema, paths, key, intervals):
         assert (key is None) == (intervals is None)
         self.schema = schema

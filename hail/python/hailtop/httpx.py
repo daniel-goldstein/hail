@@ -1,11 +1,12 @@
 from typing import Any, Tuple, Optional, Type, TypeVar, Generic, Callable, Union
 from types import TracebackType
-import orjson
-import aiohttp
+import json
 
 from .utils import async_to_blocking
 from .tls import internal_client_ssl_context, external_client_ssl_context
 from .config.deploy_config import get_deploy_config
+
+aiohttp = object()
 
 
 class ClientResponseError(aiohttp.ClientResponseError):
@@ -68,7 +69,7 @@ class ClientResponse:
 
         content_type = self.client_response.headers.get(aiohttp.hdrs.CONTENT_TYPE, None)
         assert content_type is None or content_type == 'application/json', self.client_response
-        return orjson.loads(await self.read())
+        return json.loads(await self.read())
 
     async def __aenter__(self) -> "ClientResponse":
         return self
@@ -124,10 +125,7 @@ class ClientSession:
                     raise ValueError(
                         'data and json parameters cannot be used at the same time')
                 kwargs['data'] = aiohttp.BytesPayload(
-                    value=orjson.dumps(json_data),
-                    # https://github.com/ijl/orjson#serialize
-                    #
-                    # "The output is a bytes object containing UTF-8"
+                    value=json.dumps(json_data).encode('utf-8'),
                     encoding="utf-8",
                     content_type="application/json",
                 )

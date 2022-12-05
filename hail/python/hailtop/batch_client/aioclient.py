@@ -5,7 +5,6 @@ import logging
 import json
 import functools
 import asyncio
-import aiohttp
 import secrets
 
 from hailtop.config import get_deploy_config, DeployConfig
@@ -620,7 +619,7 @@ class BatchBuilder:
         b.append(ord('}'))
         resp = await self._client._post(
             '/api/v1alpha/batches/create-fast',
-            data=aiohttp.BytesPayload(b, content_type='application/json', encoding='utf-8'),
+            data=httpx.BytesPayload(b, content_type='application/json', encoding='utf-8'),
         )
         batch_json = await resp.json()
         progress_task.update(n_jobs)
@@ -645,7 +644,7 @@ class BatchBuilder:
         b.append(ord('}'))
         resp = await self._client._post(
             f'/api/v1alpha/batches/{self._batch.id}/update-fast',
-            data=aiohttp.BytesPayload(b, content_type='application/json', encoding='utf-8'),
+            data=httpx.BytesPayload(b, content_type='application/json', encoding='utf-8'),
         )
         update_json = await resp.json()
         progress_task.update(len(byte_job_specs))
@@ -669,7 +668,7 @@ class BatchBuilder:
 
         await self._client._post(
             f'/api/v1alpha/batches/{batch_id}/updates/{update_id}/jobs/create',
-            data=aiohttp.BytesPayload(b, content_type='application/json', encoding='utf-8'),
+            data=httpx.BytesPayload(b, content_type='application/json', encoding='utf-8'),
         )
         progress_task.update(n_jobs)
 
@@ -853,23 +852,23 @@ class BatchClient:
         self._session: Optional[httpx.ClientSession] = session
         self._headers = headers
 
-    async def _get(self, path, params=None) -> aiohttp.client_reqrep.ClientResponse:
+    async def _get(self, path, params=None) -> httpx.ClientResponse:
         assert self._session
         return await request_retry_transient_errors(
             self._session, 'GET', self.url + path, params=params, headers=self._headers
         )
 
-    async def _post(self, path, data=None, json=None) -> aiohttp.client_reqrep.ClientResponse:
+    async def _post(self, path, data=None, json=None) -> httpx.ClientResponse:
         assert self._session
         return await request_retry_transient_errors(
             self._session, 'POST', self.url + path, data=data, json=json, headers=self._headers
         )
 
-    async def _patch(self, path) -> aiohttp.client_reqrep.ClientResponse:
+    async def _patch(self, path) -> httpx.ClientResponse:
         assert self._session
         return await request_retry_transient_errors(self._session, 'PATCH', self.url + path, headers=self._headers)
 
-    async def _delete(self, path) -> aiohttp.client_reqrep.ClientResponse:
+    async def _delete(self, path) -> httpx.ClientResponse:
         assert self._session
         return await request_retry_transient_errors(self._session, 'DELETE', self.url + path, headers=self._headers)
 

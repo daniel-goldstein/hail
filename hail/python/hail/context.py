@@ -7,7 +7,6 @@ from urllib.parse import urlparse, urlunparse
 from random import Random
 
 import pkg_resources
-from pyspark import SparkContext
 
 import hail
 from hail.genetics.reference_genome import ReferenceGenome

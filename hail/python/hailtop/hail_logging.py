@@ -1,7 +1,7 @@
 import logging
 import sys
 from pythonjsonlogger import jsonlogger
-from aiohttp.abc import AbstractAccessLogger
+from abc import ABC, abstractmethod
 import datetime
 from time import timezone
 
@@ -23,6 +23,18 @@ def configure_logging():
     stream_handler.setFormatter(fmt)
 
     logging.basicConfig(handlers=[stream_handler], level=logging.INFO)
+
+
+class AbstractAccessLogger(ABC):
+    """Abstract writer to access log."""
+
+    def __init__(self, logger: logging.Logger, log_format: str) -> None:
+        self.logger = logger
+        self.log_format = log_format
+
+    @abstractmethod
+    def log(self, request, response, time: float) -> None:
+        """Emit log to logger."""
 
 
 class AccessLogger(AbstractAccessLogger):

@@ -4,8 +4,6 @@ import stat
 from enum import Enum, auto
 from typing import Dict, NamedTuple, Optional, Union, Any
 
-import hurry.filesize
-
 
 class FileType(Enum):
     DIRECTORY = auto()
@@ -37,4 +35,4 @@ class StatResult(NamedTuple):
 
     def to_legacy_dict(self) -> Dict[str, Any]:
         return dict(path=self.path, owner=self.owner, is_dir=self.is_dir(), size_bytes=self.size,
-                    size=hurry.filesize.size(self.size), modification_time=self.modification_time)
+                    size=str(self.size), modification_time=self.modification_time)
