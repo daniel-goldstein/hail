@@ -11,7 +11,7 @@
         let pyodide = await loadPyodide();
         await pyodide.loadPackage("micropip");
         const micropip = pyodide.pyimport("micropip");
-        await micropip.install('http://localhost:8000/hail-0.2.105-py3-none-any.whl');
+        await micropip.install('http://localhost:8000/build/deploy/dist/hail-0.2.105-py3-none-any.whl');
         await pyodide.runPythonAsync(`
             import hail as hl
             import sys

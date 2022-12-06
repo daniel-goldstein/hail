@@ -74,3 +74,6 @@ src/test/resources/random.bgen.idx*
 src/test/resources/skip_invalid_loci.bgen.idx*
 env/
 www/docs
+
+_output
+.jupyterlite.doit.db

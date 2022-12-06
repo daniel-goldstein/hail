@@ -247,6 +247,17 @@ $(WHEEL): copy-py-files
 	# Clear the bdist build cache before building the wheel
 	cd build/deploy; rm -rf build; $(HAIL_PYTHON3) setup.py -q sdist bdist_wheel
 
+
+
+.PHONY: pyodide
+pyodide: $(WHEEL)
+	python3 -m http.server 8000
+
+jupyterlite: $(WHEEL)
+	rm -rf _output
+	jupyter lite build --piplite-wheels $(WHEEL)
+	jupyter lite serve --port 8888
+
 .PHONY: egg
 egg: $(EGG)
 
