@@ -254,7 +254,7 @@ pyodide: $(WHEEL)
 	python3 -m http.server 8000
 
 jupyterlite: $(WHEEL)
-	rm -rf _output
+	rm -rf _output .jupyterlite.doit.db
 	jupyter lite build --piplite-wheels $(WHEEL)
 	jupyter lite serve --port 8888
 

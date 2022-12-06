@@ -321,6 +321,9 @@ def init(sc=None,
         )
         backend = 'batch'
 
+    if sys.platform == 'emscripten':
+        backend = 'batch'
+
     if backend == 'batch':
         import nest_asyncio
         nest_asyncio.apply()
@@ -506,6 +509,7 @@ async def init_batch(
         tmpdir = backend.remote_tmpdir + 'tmp/hail/' + secret_alnum_string()
     local_tmpdir = _get_local_tmpdir(local_tmpdir)
 
+    print('Creating hail context...')
     HailContext.create(
         log, quiet, append, tmpdir, local_tmpdir, default_reference,
         global_seed, backend)

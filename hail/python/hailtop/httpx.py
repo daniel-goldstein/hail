@@ -6,70 +6,56 @@ from .utils import async_to_blocking
 from .tls import internal_client_ssl_context, external_client_ssl_context
 from .config.deploy_config import get_deploy_config
 
-aiohttp = object()
+import pyodide.http
 
 
-class ClientResponseError(aiohttp.ClientResponseError):
+class ClientTimeout:
+    def __init__(self, total: int):
+        self.total = total
+
+
+class ClientResponseError:
     def __init__(self,
-                 request_info: aiohttp.RequestInfo,
-                 history: Tuple[aiohttp.ClientResponse, ...],
-                 body: str = "",
-                 **kwargs):
-        super().__init__(request_info, history, **kwargs)
-        self.body = body
+                 resp: pyodide.http.FetchResponse):
+        self.resp = resp
+        self.status = resp.status
+        self.message = resp.status_text
+        self.url = resp.url
+        self.body = ''
 
     def __str__(self) -> str:
         return (f"{self.status}, message={self.message!r}, "
-                f"url={self.request_info.real_url!r} body={self.body!r}")
+                f"url={self.url!r} body={self.body!r}")
 
     def __repr__(self) -> str:
-        args = f"{self.request_info!r}, {self.history!r}"
-        if self.status != 0:
-            args += f", status={self.status!r}"
-        if self.message != "":
-            args += f", message={self.message!r}"
-        if self.headers is not None:
-            args += f", headers={self.headers!r}"
-        if self.body is not None:
-            args += f", body={self.body!r}"
-        return f"{type(self).__name__}({args})"
+        return f"{type(self).__name__}({self.__str__()})"
 
 
 class ClientResponse:
-    def __init__(self, client_response: aiohttp.ClientResponse):
+    def __init__(self, client_response: pyodide.http.FetchResponse):
         self.client_response = client_response
 
     async def release(self) -> None:
-        return await self.client_response.release()
+        pass
 
     @property
     def closed(self) -> bool:
-        return self.client_response.closed
+        return True
 
     def close(self) -> None:
-        return self.client_response.close()
-
-    async def wait_for_close(self) -> None:
-        return await self.wait_for_close()
+        pass
 
     async def read(self) -> bytes:
-        return await self.client_response.read()
+        return await self.client_response.bytes()
 
     def get_encoding(self) -> str:
         return self.client_response.get_encoding()
 
     async def text(self, encoding: Optional[str] = None, errors: str = 'strict'):
-        return await self.client_response.text(encoding=encoding, errors=errors)
+        return await self.client_response.string()
 
     async def json(self):
-        encoding = self.get_encoding()
-
-        if encoding != 'utf-8':
-            return await self.client_response.json()
-
-        content_type = self.client_response.headers.get(aiohttp.hdrs.CONTENT_TYPE, None)
-        assert content_type is None or content_type == 'application/json', self.client_response
-        return json.loads(await self.read())
+        return await self.client_response.json()
 
     async def __aenter__(self) -> "ClientResponse":
         return self
@@ -87,31 +73,9 @@ class ClientSession:
     def __init__(self,
                  *args,
                  raise_for_status: bool = True,
-                 timeout: Union[aiohttp.ClientTimeout, float, None] = None,
+                 timeout: Union[ClientTimeout, float, None] = None,
                  **kwargs):
-        location = get_deploy_config().location()
-        if location == 'external':
-            tls = external_client_ssl_context()
-        elif location == 'k8s':
-            tls = internal_client_ssl_context()
-        else:
-            assert location in ('gce', 'azure')
-            # no encryption on the internal gateway
-            tls = external_client_ssl_context()
-
-        assert 'connector' not in kwargs
-
-        if timeout is None:
-            timeout = aiohttp.ClientTimeout(total=5)
-
-        self.raise_for_status = raise_for_status
-        self.client_session = aiohttp.ClientSession(
-            *args,
-            timeout=timeout,
-            raise_for_status=False,
-            connector=aiohttp.TCPConnector(ssl=tls),
-            **kwargs
-        )
+        pass
 
     def request(
         self, method: str, url: aiohttp.client.StrOrURL, **kwargs: Any
