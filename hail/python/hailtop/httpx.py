@@ -101,17 +101,17 @@ class ClientSession:
         # raise_for_status = kwargs.pop('raise_for_status', self.raise_for_status)
 
         async def request_and_raise_for_status():
-            # json_data = kwargs.pop('json', None)
-            # if json_data is not None:
-            #     if kwargs.get('data') is not None:
-            #         raise ValueError(
-            #             'data and json parameters cannot be used at the same time')
-            #     kwargs['data'] = aiohttp.BytesPayload(
-            #         value=json.dumps(json_data).encode('utf-8'),
-            #         encoding="utf-8",
-            #         content_type="application/json",
-            #     )
-            resp = await pyodide.http.pyfetch(url, method=method)
+            json_data = kwargs.pop('json', None)
+            if json_data is not None:
+                if kwargs.get('data') is not None:
+                    raise ValueError(
+                        'data and json parameters cannot be used at the same time')
+                kwargs['body'] = json.dumps(json_data).encode('utf-8')
+                kwargs['headers']['Content-Type'] = 'application/json'
+            if 'data' in kwargs:
+                kwargs['body'] = ...
+
+            resp = await pyodide.http.pyfetch(url, method=method, **kwargs)
             if not resp.ok:
                 raise ClientResponseError(resp)
             return ClientResponse(resp)
