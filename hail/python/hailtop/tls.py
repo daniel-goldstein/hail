@@ -2,8 +2,8 @@ from typing import Dict
 import logging
 import json
 import os
-import ssl
-from ssl import Purpose
+# import ssl
+# from ssl import Purpose
 
 log = logging.getLogger('hailtop.tls')
 _server_ssl_context = None
@@ -37,7 +37,7 @@ def check_ssl_config(ssl_config: Dict[str, str]):
     log.info('using tls and verifying client and server certificates')
 
 
-def internal_server_ssl_context() -> ssl.SSLContext:
+def internal_server_ssl_context():
     global _server_ssl_context
     if _server_ssl_context is None:
         ssl_config = _get_ssl_config()
@@ -54,7 +54,7 @@ def internal_server_ssl_context() -> ssl.SSLContext:
     return _server_ssl_context
 
 
-def internal_client_ssl_context() -> ssl.SSLContext:
+def internal_client_ssl_context():
     global _client_ssl_context
     if _client_ssl_context is None:
         ssl_config = _get_ssl_config()
@@ -73,5 +73,5 @@ def internal_client_ssl_context() -> ssl.SSLContext:
     return _client_ssl_context
 
 
-def external_client_ssl_context() -> ssl.SSLContext:
+def external_client_ssl_context():
     return ssl.create_default_context(purpose=Purpose.SERVER_AUTH)

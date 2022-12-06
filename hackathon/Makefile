@@ -1,7 +1,12 @@
-.PHONY: wheel
+.PHONY: wheel build-jupyterlite serve run
 wheel:
-	$(MAKE) -C ../hail/hail wheel
-	cp ../hail/build/deploy/dist/*.whl ./
+	$(MAKE) -C ../hail wheel
 
-run:
-	python3 -m http.server
+build-jupyterlite:
+	rm -rf _output
+	jupyter lite build --piplite-wheels ../hail/build/deploy/dist/*.whl
+
+serve:
+	jupyter lite serve
+
+run: wheel build-jupyterlite serve
