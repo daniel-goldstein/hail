@@ -7,6 +7,6 @@ build-jupyterlite:
 	jupyter lite build --piplite-wheels ../hail/build/deploy/dist/*.whl
 
 serve:
-	jupyter lite serve
+	jupyter lite serve --port 8888
 
 run: wheel build-jupyterlite serve
