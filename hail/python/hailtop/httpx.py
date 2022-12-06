@@ -3,7 +3,6 @@ from types import TracebackType
 import json
 
 from .utils import async_to_blocking
-from .tls import internal_client_ssl_context, external_client_ssl_context
 from .config.deploy_config import get_deploy_config
 
 import pyodide.http
@@ -14,7 +13,7 @@ class ClientTimeout:
         self.total = total
 
 
-class ClientResponseError:
+class ClientResponseError(BaseException):
     def __init__(self,
                  resp: pyodide.http.FetchResponse):
         self.resp = resp
@@ -69,86 +68,93 @@ class ClientResponse:
         await self.release()
 
 
+class _RequestContextManager:
+    def __init__(self, coro):
+        self._coro = coro
+
+    def __await__(self):
+        ret = self._coro.__await__()
+        return ret
+
+    async def __aenter__(self):
+        resp = await self._coro
+        return resp
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> None:
+        pass
+
+
 class ClientSession:
     def __init__(self,
                  *args,
                  raise_for_status: bool = True,
                  timeout: Union[ClientTimeout, float, None] = None,
                  **kwargs):
-        pass
+        self.raise_for_status = raise_for_status
 
-    def request(
-        self, method: str, url: aiohttp.client.StrOrURL, **kwargs: Any
-    ) -> aiohttp.client._RequestContextManager:
-        raise_for_status = kwargs.pop('raise_for_status', self.raise_for_status)
+    def request(self, method: str, url, **kwargs: Any):
+        # raise_for_status = kwargs.pop('raise_for_status', self.raise_for_status)
 
         async def request_and_raise_for_status():
-            json_data = kwargs.pop('json', None)
-            if json_data is not None:
-                if kwargs.get('data') is not None:
-                    raise ValueError(
-                        'data and json parameters cannot be used at the same time')
-                kwargs['data'] = aiohttp.BytesPayload(
-                    value=json.dumps(json_data).encode('utf-8'),
-                    encoding="utf-8",
-                    content_type="application/json",
-                )
-            resp = await self.client_session._request(method, url, **kwargs)
-            if raise_for_status:
-                if resp.status >= 400:
-                    # reason should always be not None for a started response
-                    assert resp.reason is not None
-                    body = (await resp.read()).decode()
-                    await resp.release()
-                    raise ClientResponseError(
-                        resp.request_info,
-                        resp.history,
-                        status=resp.status,
-                        message=resp.reason,
-                        headers=resp.headers,
-                        body=body
-                    )
-            return resp
-        return aiohttp.client._RequestContextManager(request_and_raise_for_status())
+            # json_data = kwargs.pop('json', None)
+            # if json_data is not None:
+            #     if kwargs.get('data') is not None:
+            #         raise ValueError(
+            #             'data and json parameters cannot be used at the same time')
+            #     kwargs['data'] = aiohttp.BytesPayload(
+            #         value=json.dumps(json_data).encode('utf-8'),
+            #         encoding="utf-8",
+            #         content_type="application/json",
+            #     )
+            resp = await pyodide.http.pyfetch(url, method=method)
+            if not resp.ok:
+                raise ClientResponseError(resp)
+            return ClientResponse(resp)
+        return _RequestContextManager(request_and_raise_for_status())
 
     def ws_connect(
         self, *args, **kwargs
-    ) -> aiohttp.client._WSRequestContextManager:
-        return self.client_session.ws_connect(*args, **kwargs)
+    ):
+        pass
 
     def get(
-        self, url: aiohttp.client.StrOrURL, *, allow_redirects: bool = True, **kwargs: Any
-    ) -> aiohttp.client._RequestContextManager:
+        self, url, *, allow_redirects: bool = True, **kwargs: Any
+    ):
         return self.request('GET', url, allow_redirects=allow_redirects, **kwargs)
 
     def options(
-        self, url: aiohttp.client.StrOrURL, *, allow_redirects: bool = True, **kwargs: Any
-    ) -> aiohttp.client._RequestContextManager:
+        self, url, *, allow_redirects: bool = True, **kwargs: Any
+    ):
         return self.request('OPTIONS', url, allow_redirects=allow_redirects, **kwargs)
 
     def head(
-        self, url: aiohttp.client.StrOrURL, *, allow_redirects: bool = False, **kwargs: Any
-    ) -> aiohttp.client._RequestContextManager:
+        self, url, *, allow_redirects: bool = False, **kwargs: Any
+    ):
         return self.request('HEAD', url, allow_redirects=allow_redirects, **kwargs)
 
     def post(
-        self, url: aiohttp.client.StrOrURL, *, data: Any = None, **kwargs: Any
-    ) -> aiohttp.client._RequestContextManager:
+        self, url, *, data: Any = None, **kwargs: Any
+    ):
         return self.request('POST', url, data=data, **kwargs)
 
     def put(
-        self, url: aiohttp.client.StrOrURL, *, data: Any = None, **kwargs: Any
-    ) -> aiohttp.client._RequestContextManager:
+        self, url, *, data: Any = None, **kwargs: Any
+    ):
         return self.request('PUT', url, data=data, **kwargs)
 
     def patch(
-        self, url: aiohttp.client.StrOrURL, *, data: Any = None, **kwargs: Any
-    ) -> aiohttp.client._RequestContextManager:
+        self, url, *, data: Any = None, **kwargs: Any
+    ):
         return self.request('PATCH', url, data=data, **kwargs)
 
     def delete(
-        self, url: aiohttp.client.StrOrURL, **kwargs: Any
-    ) -> aiohttp.client._RequestContextManager:
+        self, url, **kwargs: Any
+    ):
         return self.request('DELETE', url, **kwargs)
 
     async def close(self) -> None:
@@ -159,7 +165,7 @@ class ClientSession:
         return self.client_session.closed
 
     @property
-    def cookie_jar(self) -> aiohttp.abc.AbstractCookieJar:
+    def cookie_jar(self):
         return self.client_session.cookie_jar
 
     @property
@@ -187,7 +193,7 @@ def blocking_client_session(*args, **kwargs) -> 'BlockingClientSession':
 
 
 class BlockingClientResponse:
-    def __init__(self, client_response: aiohttp.ClientResponse):
+    def __init__(self, client_response):
         self.client_response = client_response
 
     def read(self) -> bytes:
@@ -199,7 +205,7 @@ class BlockingClientResponse:
 
     def json(self, *,
              encoding: Optional[str] = None,
-             loads: aiohttp.typedefs.JSONDecoder = aiohttp.typedefs.DEFAULT_JSON_DECODER,
+             loads,
              content_type: Optional[str] = 'application/json') -> Any:
         return async_to_blocking(self.client_response.json(
             encoding=encoding, loads=loads, content_type=content_type))
@@ -207,7 +213,7 @@ class BlockingClientResponse:
     def __del__(self):
         self.client_response.__del__()
 
-    def history(self) -> Tuple[aiohttp.ClientResponse, ...]:
+    def history(self):
         return self.client_response.history
 
     def __repr__(self) -> str:
@@ -222,7 +228,7 @@ class BlockingClientResponse:
 
 
 class BlockingClientWebSocketResponse:
-    def __init__(self, ws: aiohttp.ClientWebSocketResponse):
+    def __init__(self, ws):
         self.ws = ws
 
     @property
@@ -267,13 +273,13 @@ class BlockingClientWebSocketResponse:
 
     def send_json(self, data: Any,
                   compress: Optional[int] = None,
-                  *, dumps: aiohttp.typedefs.JSONEncoder = aiohttp.typedefs.DEFAULT_JSON_ENCODER) -> None:
+                  *, dumps) -> None:
         return async_to_blocking(self.ws.send_json(data, compress, dumps=dumps))
 
     def close(self, *, code: int = 1000, message: bytes = b'') -> bool:
         return async_to_blocking(self.ws.close(code=code, message=message))
 
-    def receive(self, timeout: Optional[float] = None) -> aiohttp.WSMessage:
+    def receive(self, timeout: Optional[float] = None):
         return async_to_blocking(self.ws.receive(timeout))
 
     def receive_str(self, *, timeout: Optional[float] = None) -> str:
@@ -283,14 +289,14 @@ class BlockingClientWebSocketResponse:
         return async_to_blocking(self.ws.receive_bytes(timeout=timeout))
 
     def receive_json(self,
-                     *, loads: aiohttp.typedefs.JSONDecoder = aiohttp.typedefs.DEFAULT_JSON_DECODER,
+                     *, loads,
                      timeout: Optional[float] = None) -> Any:
         return async_to_blocking(self.ws.receive_json(loads=loads, timeout=timeout))
 
     def __iter__(self) -> 'BlockingClientWebSocketResponse':
         return self
 
-    def __next__(self) -> aiohttp.WSMessage:
+    def __next__(self):
         try:
             return async_to_blocking(self.ws.__anext__())
         except StopAsyncIteration as exc:
@@ -332,19 +338,19 @@ class BlockingClientSession:
 
     def request(self,
                 method: str,
-                url: aiohttp.typedefs.StrOrURL,
+                url,
                 **kwargs: Any) -> BlockingClientResponseContextManager:
         return BlockingClientResponseContextManager(
             self.session.request(method, url, **kwargs))
 
     def ws_connect(self,
-                   url: aiohttp.typedefs.StrOrURL,
+                   url,
                    **kwargs: Any) -> BlockingClientWebSocketResponseContextManager:
         return BlockingClientWebSocketResponseContextManager(
             self.session.ws_connect(url, **kwargs))
 
     def get(self,
-            url: aiohttp.typedefs.StrOrURL,
+            url,
             *,
             allow_redirects: bool = True,
             **kwargs: Any) -> BlockingClientResponseContextManager:
@@ -352,7 +358,7 @@ class BlockingClientSession:
             self.session.get(url, allow_redirects=allow_redirects, **kwargs))
 
     def options(self,
-                url: aiohttp.typedefs.StrOrURL,
+                url,
                 *,
                 allow_redirects: bool = True,
                 **kwargs: Any) -> BlockingClientResponseContextManager:
@@ -360,7 +366,7 @@ class BlockingClientSession:
             self.session.options(url, allow_redirects=allow_redirects, **kwargs))
 
     def head(self,
-             url: aiohttp.typedefs.StrOrURL,
+             url,
              *,
              allow_redirects: bool = False,
              **kwargs: Any) -> BlockingClientResponseContextManager:
@@ -368,14 +374,14 @@ class BlockingClientSession:
             url, allow_redirects=allow_redirects, **kwargs))
 
     def post(self,
-             url: aiohttp.typedefs.StrOrURL,
+             url,
              *,
              data: Any = None, **kwargs: Any) -> BlockingClientResponseContextManager:
         return BlockingClientResponseContextManager(self.session.post(
             url, data=data, **kwargs))
 
     def put(self,
-            url: aiohttp.typedefs.StrOrURL,
+            url,
             *,
             data: Any = None,
             **kwargs: Any) -> BlockingClientResponseContextManager:
@@ -383,7 +389,7 @@ class BlockingClientSession:
             url, data=data, **kwargs))
 
     def patch(self,
-              url: aiohttp.typedefs.StrOrURL,
+              url,
               *,
               data: Any = None,
               **kwargs: Any) -> BlockingClientResponseContextManager:
@@ -391,7 +397,7 @@ class BlockingClientSession:
             url, data=data, **kwargs))
 
     def delete(self,
-               url: aiohttp.typedefs.StrOrURL,
+               url,
                **kwargs: Any) -> BlockingClientResponseContextManager:
         return BlockingClientResponseContextManager(self.session.delete(
             url, **kwargs))
@@ -404,7 +410,7 @@ class BlockingClientSession:
         return self.session.closed
 
     @property
-    def cookie_jar(self) -> aiohttp.abc.AbstractCookieJar:
+    def cookie_jar(self):
         return self.session.cookie_jar
 
     @property

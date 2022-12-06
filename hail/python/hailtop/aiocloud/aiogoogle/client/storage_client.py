@@ -2,7 +2,6 @@ import os
 from typing import (Tuple, Any, Set, Optional, MutableMapping, Dict, AsyncIterator, cast, Type,
                     List, Coroutine)
 from types import TracebackType
-from multidict import CIMultiDictProxy  # pylint: disable=unused-import
 import sys
 import logging
 import asyncio
@@ -282,7 +281,7 @@ class GetObjectStream(ReadableStream):
         except asyncio.IncompleteReadError as e:
             raise UnexpectedEOFError() from e
 
-    def headers(self) -> 'CIMultiDictProxy[str]':
+    def headers(self):
         assert self._resp is not None
 
         return self._resp.headers

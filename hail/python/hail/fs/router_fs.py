@@ -2,7 +2,6 @@ from typing import List, AsyncContextManager, BinaryIO, Optional
 import asyncio
 import io
 from hailtop.aiotools.local_fs import LocalAsyncFSURL
-import nest_asyncio
 import os
 import functools
 import glob
@@ -164,7 +163,6 @@ def _stat_result(is_dir: bool, size_bytes: int, path: str) -> StatResult:
 
 class RouterFS(FS):
     def __init__(self, afs: RouterAsyncFS):
-        nest_asyncio.apply()
         self.afs = afs
 
     def open(self, path: str, mode: str = 'r', buffer_size: int = 8192) -> io.IOBase:

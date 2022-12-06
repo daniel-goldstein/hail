@@ -2,7 +2,7 @@ from typing import Any, Optional, List, Set, AsyncIterator, Dict, AsyncContextMa
 import asyncio
 import urllib
 
-from ..aiocloud import aioaws, aioazure, aiogoogle
+from ..aiocloud import aioazure, aiogoogle
 from .fs import (AsyncFS, MultiPartCreate, FileStatus, FileListEntry, ReadableStream,
                  WritableStream, AsyncFSURL)
 from .local_fs import LocalAsyncFS
@@ -57,8 +57,6 @@ class RouterAsyncFS(AsyncFS):
             fs = aiogoogle.GoogleStorageAsyncFS(**self._gcs_kwargs)
         elif scheme in aioazure.AzureAsyncFS.schemes:
             fs = aioazure.AzureAsyncFS(**self._azure_kwargs)
-        elif scheme in aioaws.S3AsyncFS.schemes:
-            fs = aioaws.S3AsyncFS(**self._s3_kwargs)
         else:
             raise ValueError(f'no file system found for scheme {scheme}')
 
