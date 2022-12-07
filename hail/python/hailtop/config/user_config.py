@@ -3,6 +3,7 @@ import os
 import re
 import configparser
 import warnings
+import sys
 
 from pathlib import Path
 
@@ -17,6 +18,8 @@ def xdg_config_home() -> Path:
 
 
 def get_user_config_path() -> Path:
+    if sys.platform == 'emscripten':
+        return Path('/drive/config.ini')
     return Path(xdg_config_home(), 'hail', 'config.ini')
 
 

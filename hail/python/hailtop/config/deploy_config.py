@@ -29,7 +29,9 @@ class DeployConfig:
             config_file,
             os.environ.get('HAIL_DEPLOY_CONFIG_FILE'),
             os.path.expanduser('~/.hail/deploy-config.json'),
-            '/deploy-config/deploy-config.json')
+            '/deploy-config/deploy-config.json',
+            '/drive/deploy-config.json',
+        )
         if config_file is not None:
             log.info(f'deploy config file found at {config_file}')
             with open(config_file, 'r', encoding='utf-8') as f:

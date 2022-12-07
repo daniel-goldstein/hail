@@ -22,8 +22,7 @@ class CloudCredentials(abc.ABC):
 
 class AnonymousCloudCredentials(CloudCredentials):
     async def auth_headers(self) -> Dict[str, str]:
-        token = 'GET THE TOKEN FROM SOME PLACE BETTER'
-        return {'Authorization': f'Bearer {token}'}
+        return {}
 
     async def close(self):
         pass

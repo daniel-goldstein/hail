@@ -27,6 +27,7 @@ class Tokens(collections.abc.MutableMapping):
             os.environ.get('HAIL_TOKENS_FILE'),
             default_enduser_token_file,
             '/user-tokens/tokens.json',
+            '/drive/tokens.json',
         ) or default_enduser_token_file
 
     @staticmethod

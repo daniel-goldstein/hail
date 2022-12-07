@@ -89,6 +89,27 @@ class _RequestContextManager:
         pass
 
 
+class AsyncIterablePayload:
+    def __init__(self, value, *args: Any, **kwargs: Any) -> None:
+        if "content_type" not in kwargs:
+            kwargs["content_type"] = "application/octet-stream"
+
+        super().__init__(value, *args, **kwargs)
+
+        self._iter = value.__aiter__()
+
+    async def write(self, buf) -> None:
+        if self._iter:
+            try:
+                # iter is not None check prevents rare cases
+                # when the case iterable is used twice
+                while True:
+                    chunk = await self._iter.__anext__()
+                    await buf.extend(chunk)
+            except StopAsyncIteration:
+                self._iter = None
+
+
 class ClientSession:
     def __init__(self,
                  *args,
@@ -109,7 +130,13 @@ class ClientSession:
                 kwargs['body'] = json.dumps(json_data).encode('utf-8')
                 kwargs['headers']['Content-Type'] = 'application/json'
             if 'data' in kwargs:
-                kwargs['body'] = ...
+                data = kwargs['data']
+                if isinstance(data, AsyncIterablePayload):
+                    buf = bytes()
+                    while data._iter is not None:
+                        await data.write(buf)
+                else:
+                    kwargs['body'] = kwargs['data']
 
             resp = await pyodide.http.pyfetch(url, method=method, **kwargs)
             if not resp.ok:

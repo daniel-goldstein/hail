@@ -255,7 +255,11 @@ pyodide: $(WHEEL)
 
 jupyterlite: $(WHEEL)
 	rm -rf _output .jupyterlite.doit.db .cache
-	jupyter lite build --piplite-wheels $(WHEEL)
+	jupyter lite build --piplite-wheels $(WHEEL) \
+		--contents ~/.config/gcloud/application_default_credentials.json \
+		--contents ~/.config/hail/config.ini \
+		--contents ~/.hail/tokens.json \
+		--contents ~/.hail/deploy-config.json  # Awful..
 	jupyter lite serve --port 8888
 
 .PHONY: egg

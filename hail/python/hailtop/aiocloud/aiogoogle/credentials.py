@@ -68,6 +68,9 @@ class GoogleCredentials(CloudCredentials):
             application_default_credentials_file = f'{os.environ["HOME"]}/.config/gcloud/application_default_credentials.json'
             if os.path.exists(application_default_credentials_file):
                 credentials_file = application_default_credentials_file
+            wasm_application_default_credentials_file = f'/drive/application_default_credentials.json'
+            if os.path.exists(wasm_application_default_credentials_file):
+                credentials_file = wasm_application_default_credentials_file
 
         if credentials_file:
             creds = GoogleCredentials.from_file(credentials_file)
@@ -75,9 +78,9 @@ class GoogleCredentials(CloudCredentials):
             return creds
 
         log.warning('Unable to locate Google Cloud credentials file')
-        # if GoogleInstanceMetadataCredentials.available():
-        #     log.warning('Will attempt to use instance metadata server instead')
-        #     return GoogleInstanceMetadataCredentials()
+        if GoogleInstanceMetadataCredentials.available():
+            log.warning('Will attempt to use instance metadata server instead')
+            return GoogleInstanceMetadataCredentials()
 
         log.warning('Using anonymous credentials. If accessing private data, '
                     'run `gcloud auth application-default login` first to log in.')
