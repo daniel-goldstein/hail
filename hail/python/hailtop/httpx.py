@@ -1,5 +1,6 @@
 from typing import Any, Tuple, Optional, Type, TypeVar, Generic, Callable, Union
 from types import TracebackType
+from urllib.parse import urlencode
 import json
 
 from .utils import async_to_blocking
@@ -47,14 +48,19 @@ class ClientResponse:
     async def read(self) -> bytes:
         return await self.client_response.bytes()
 
-    def get_encoding(self) -> str:
-        return self.client_response.get_encoding()
-
     async def text(self, encoding: Optional[str] = None, errors: str = 'strict'):
         return await self.client_response.string()
 
     async def json(self):
         return await self.client_response.json()
+
+    @property
+    def headers(self):
+        return self.client_response.js_response.headers
+
+    @property
+    def status(self):
+        return self.client_response.status
 
     async def __aenter__(self) -> "ClientResponse":
         return self
@@ -105,7 +111,7 @@ class AsyncIterablePayload:
                 # when the case iterable is used twice
                 while True:
                     chunk = await self._iter.__anext__()
-                    await buf.extend(chunk)
+                    buf.extend(chunk)
             except StopAsyncIteration:
                 self._iter = None
 
@@ -135,10 +141,15 @@ class ClientSession:
                     buf = bytes()
                     while data._iter is not None:
                         await data.write(buf)
+                    kwargs['body'] = buf
                 else:
                     kwargs['body'] = kwargs['data']
+            if 'params' in kwargs:
+                url_with_params = url + '?' + urlencode(kwargs['params'])
+            else:
+                url_with_params = url
 
-            resp = await pyodide.http.pyfetch(url, method=method, **kwargs)
+            resp = await pyodide.http.pyfetch(url_with_params, method=method, **kwargs)
             if not resp.ok:
                 raise ClientResponseError(resp)
             return ClientResponse(resp)
@@ -185,19 +196,19 @@ class ClientSession:
         return self.request('DELETE', url, **kwargs)
 
     async def close(self) -> None:
-        await self.client_session.close()
+        pass
 
     @property
     def closed(self) -> bool:
-        return self.client_session.closed
+        return False
 
     @property
     def cookie_jar(self):
-        return self.client_session.cookie_jar
+        return None
 
     @property
     def version(self) -> Tuple[int, int]:
-        return self.client_session.version
+        return (0, 0)
 
     async def __aenter__(self) -> "ClientSession":
         return self
@@ -208,7 +219,7 @@ class ClientSession:
         exc_val: Optional[BaseException],
         exc_tb: Optional[TracebackType],
     ) -> None:
-        await self.client_session.__aexit__(exc_type, exc_val, exc_tb)
+        pass
 
 
 def client_session(*args, **kwargs) -> ClientSession:
