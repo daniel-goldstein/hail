@@ -619,7 +619,10 @@ class BatchBuilder:
         b.append(ord('}'))
         resp = await self._client._post(
             '/api/v1alpha/batches/create-fast',
-            data=httpx.BytesPayload(b, content_type='application/json', encoding='utf-8'),
+            data=b,
+            headers={
+                'Content-Type': 'application/json',
+            },
         )
         batch_json = await resp.json()
         progress_task.update(n_jobs)
@@ -644,7 +647,10 @@ class BatchBuilder:
         b.append(ord('}'))
         resp = await self._client._post(
             f'/api/v1alpha/batches/{self._batch.id}/update-fast',
-            data=httpx.BytesPayload(b, content_type='application/json', encoding='utf-8'),
+            data=b,
+            headers={
+                'Content-Type': 'application/json',
+            },
         )
         update_json = await resp.json()
         progress_task.update(len(byte_job_specs))
@@ -668,7 +674,10 @@ class BatchBuilder:
 
         await self._client._post(
             f'/api/v1alpha/batches/{batch_id}/updates/{update_id}/jobs/create',
-            data=httpx.BytesPayload(b, content_type='application/json', encoding='utf-8'),
+            data=b,
+            headers={
+                'Content-Type': 'application/json',
+            },
         )
         progress_task.update(n_jobs)
 
@@ -858,10 +867,15 @@ class BatchClient:
             self._session, 'GET', self.url + path, params=params, headers=self._headers
         )
 
-    async def _post(self, path, data=None, json=None) -> httpx.ClientResponse:
+    async def _post(self, path, data=None, json=None, headers=None) -> httpx.ClientResponse:
         assert self._session
+        req_headers = {}
+        if headers is not None:
+            req_headers.update(headers)
+        req_headers.update(self._headers)
+
         return await request_retry_transient_errors(
-            self._session, 'POST', self.url + path, data=data, json=json, headers=self._headers
+            self._session, 'POST', self.url + path, data=data, json=json, headers=req_headers,
         )
 
     async def _patch(self, path) -> httpx.ClientResponse:

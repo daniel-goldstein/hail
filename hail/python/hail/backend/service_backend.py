@@ -325,6 +325,8 @@ class ServiceBackend(Backend):
                     await write_str(infile, str(self.worker_memory))
                     await inputs(infile, token)
 
+            print("WROTE INPUTS")
+
             with timings.step("submit batch"):
                 batch_attributes = self.batch_attributes
                 if 'name' not in batch_attributes:
@@ -460,7 +462,6 @@ class ServiceBackend(Backend):
         return async_to_blocking(self._async_matrix_type(mir))
 
     async def _async_matrix_type(self, mir, *, progress: Optional[BatchProgressBar] = None):
-        print('GETTING MATRIX TYPE')
         async def inputs(infile, _):
             await write_int(infile, ServiceBackend.MATRIX_TABLE_TYPE)
             await write_str(infile, tmp_dir())

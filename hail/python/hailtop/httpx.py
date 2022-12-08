@@ -99,9 +99,6 @@ class AsyncIterablePayload:
     def __init__(self, value, *args: Any, **kwargs: Any) -> None:
         if "content_type" not in kwargs:
             kwargs["content_type"] = "application/octet-stream"
-
-        super().__init__(value, *args, **kwargs)
-
         self._iter = value.__aiter__()
 
     async def write(self, buf) -> None:
@@ -125,8 +122,6 @@ class ClientSession:
         self.raise_for_status = raise_for_status
 
     def request(self, method: str, url, **kwargs: Any):
-        # raise_for_status = kwargs.pop('raise_for_status', self.raise_for_status)
-
         async def request_and_raise_for_status():
             json_data = kwargs.pop('json', None)
             if json_data is not None:
@@ -138,10 +133,10 @@ class ClientSession:
             if 'data' in kwargs:
                 data = kwargs['data']
                 if isinstance(data, AsyncIterablePayload):
-                    buf = bytes()
+                    buf = bytearray()
                     while data._iter is not None:
                         await data.write(buf)
-                    kwargs['body'] = buf
+                    kwargs['body'] = bytes(buf)
                 else:
                     kwargs['body'] = kwargs['data']
             if 'params' in kwargs:

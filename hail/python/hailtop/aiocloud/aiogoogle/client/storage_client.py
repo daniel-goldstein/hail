@@ -202,7 +202,6 @@ class ResumableInsertObjectStream(WritableStream):
         # Upload a single chunk.  See:
         # https://cloud.google.com/storage/docs/performing-resumable-uploads#chunked-upload
         it: FeedableAsyncIterable[bytes] = FeedableAsyncIterable()
-        print('TRYING TO PUT')
         async with _TaskManager(
                 self._session.put(self._session_url,
                                   data=httpx.AsyncIterablePayload(it),
@@ -213,18 +212,19 @@ class ResumableInsertObjectStream(WritableStream):
                                   raise_for_status=False,
                                   retry=False),
                 closable=True) as put_task:
-            print('INSIDE THE THING?')
             for chunk in self._write_buffer.chunks(n):
                 async with _TaskManager(it.feed(chunk)) as feed_task:
                     done, _ = await asyncio.wait([put_task, feed_task], return_when=asyncio.FIRST_COMPLETED)
                     if feed_task not in done:
                         msg = 'resumable upload chunk PUT request finished before writing data'
+                        print(msg)
                         log.warning(msg)
                         raise TransientError(msg)
 
             await it.stop()
 
             resp = await put_task
+
             if resp.status >= 200 and resp.status < 300:
                 assert self._closed
                 assert total_size is not None
@@ -247,7 +247,6 @@ class ResumableInsertObjectStream(WritableStream):
         await retry_transient_errors(self._write_chunk_1)
 
     async def write(self, b):
-        print('TRYING TO WRITE')
         assert not self._closed
         assert self._write_buffer.size() < self._chunk_size
         self._write_buffer.append(b)
@@ -346,7 +345,6 @@ class GoogleStorageClient(GoogleBaseClient):
             **kwargs
         ) as resp:
             session_url = resp.headers['Location']
-            print(f'THE SESSION URL IS {session_url}')
         return ResumableInsertObjectStream(self._session, session_url, chunk_size)
 
     async def get_object(self, bucket: str, name: str, **kwargs) -> GetObjectStream:

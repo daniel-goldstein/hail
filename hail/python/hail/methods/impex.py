@@ -2438,17 +2438,7 @@ def import_plink(bed, bim, fam,
     return MatrixTable(ir.MatrixRead(reader, drop_cols=False, drop_rows=False))
 
 
-@typecheck(path=str,
-           _intervals=nullable(sequenceof(anytype)),
-           _filter_intervals=bool,
-           _drop_cols=bool,
-           _drop_rows=bool,
-           _create_row_uids=bool,
-           _create_col_uids=bool,
-           _n_partitions=nullable(int),
-           _assert_type=nullable(hl.tmatrix),
-           _load_refs=bool)
-def read_matrix_table(path, *, _intervals=None, _filter_intervals=False, _drop_cols=False,
+async def read_matrix_table(path, *, _intervals=None, _filter_intervals=False, _drop_cols=False,
                       _drop_rows=False, _create_row_uids=False, _create_col_uids=False,
                       _n_partitions=None, _assert_type=None, _load_refs=True) -> MatrixTable:
     """Read in a :class:`.MatrixTable` written with :meth:`.MatrixTable.write`.
@@ -2469,15 +2459,15 @@ def read_matrix_table(path, *, _intervals=None, _filter_intervals=False, _drop_c
     if _intervals is not None and _n_partitions is not None:
         raise ValueError("'read_matrix_table' does not support both _intervals and _n_partitions")
 
-    mt = MatrixTable(ir.MatrixRead(ir.MatrixNativeReader(path, _intervals, _filter_intervals),
-                                   _drop_cols,
-                                   _drop_rows,
-                                   drop_row_uids=not _create_row_uids,
-                                   drop_col_uids=not _create_col_uids,
-                                   _assert_type=_assert_type))
+    mt = await MatrixTable.create(ir.MatrixRead(ir.MatrixNativeReader(path, _intervals, _filter_intervals),
+                                  _drop_cols,
+                                  _drop_rows,
+                                  drop_row_uids=not _create_row_uids,
+                                  drop_col_uids=not _create_col_uids,
+                                  _assert_type=_assert_type))
     if _n_partitions:
         intervals = mt._calculate_new_partitions(_n_partitions)
-        return read_matrix_table(
+        return await read_matrix_table(
             path,
             _drop_rows=_drop_rows,
             _drop_cols=_drop_cols,

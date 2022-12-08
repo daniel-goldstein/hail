@@ -707,6 +707,8 @@ class _TemporaryDirectoryManager:
         return self.name
 
     def __exit__(self, type, value, traceback):
+        if type is not None:
+            raise value
         try:
             return self.fs.rmtree(self.name)
         except FileNotFoundError:
