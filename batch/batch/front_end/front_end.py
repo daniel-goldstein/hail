@@ -14,6 +14,7 @@ from numbers import Number
 from typing import Dict, Optional, Tuple, Union
 
 import aiohttp
+import aiohttp_cors
 import aiohttp_session
 import humanize
 import pandas as pd
@@ -2814,10 +2815,24 @@ def run():
     )
     setup_aiohttp_session(app)
 
+    cors = aiohttp_cors.setup(
+        app,
+        defaults={
+            "*": aiohttp_cors.ResourceOptions(
+                allow_credentials=True,
+                expose_headers="*",
+                allow_headers="*",
+            )
+        },
+    )
+
     setup_aiohttp_jinja2(app, 'batch.front_end')
     setup_common_static_routes(routes)
     app.add_routes(routes)
     app.router.add_get("/metrics", server_stats)
+
+    for route in routes:
+        cors.add(route)
 
     app.on_startup.append(on_startup)
     app.on_cleanup.append(on_cleanup)
