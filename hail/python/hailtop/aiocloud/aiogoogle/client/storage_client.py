@@ -267,19 +267,30 @@ class GetObjectStream(ReadableStream):
     def __init__(self, resp: httpx.ClientResponse):
         super().__init__()
         self._resp: Optional[httpx.ClientResponse] = resp
-        self._content: Optional[httpx.StreamReader] = resp.content
+        self._content = None
+        self._idx = 0
 
     # https://docs.aiohttp.org/en/stable/streams.html#aiohttp.StreamReader.read
     # Read up to n bytes. If n is not provided, or set to -1, read until EOF
     # and return all read bytes.
     async def read(self, n: int = -1) -> bytes:
-        assert not self._closed and self._content is not None
-        return await self._content.read(n)
+        assert not self._closed and self._resp is not None
+        if self._content is None:
+            self._content = await self._resp.read()
+
+        rest = min(len(self._content) - self._idx, n)
+        content = self._content[self._idx:self._idx + rest]
+        self._idx += rest
+        return content
 
     async def readexactly(self, n: int) -> bytes:
-        assert not self._closed and n >= 0 and self._content is not None
+        assert not self._closed and n >= 0 and self._resp is not None
         try:
-            return await self._content.readexactly(n)
+            if self._content is None:
+                self._content = await self._resp.read()
+            content = self._content[self._idx:self._idx + n]
+            self._idx += n
+            return content
         except asyncio.IncompleteReadError as e:
             raise UnexpectedEOFError() from e
 

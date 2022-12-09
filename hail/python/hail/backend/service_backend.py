@@ -325,8 +325,6 @@ class ServiceBackend(Backend):
                     await write_str(infile, str(self.worker_memory))
                     await inputs(infile, token)
 
-            print("WROTE INPUTS")
-
             with timings.step("submit batch"):
                 batch_attributes = self.batch_attributes
                 if 'name' not in batch_attributes:
@@ -360,7 +358,7 @@ class ServiceBackend(Backend):
                 try:
                     await self._batch.wait(
                         description=name,
-                        disable_progress_bar=self.disable_progress_bar,
+                        disable_progress_bar=True,
                         progress=progress,
                         starting_job=j.job_id,
                     )

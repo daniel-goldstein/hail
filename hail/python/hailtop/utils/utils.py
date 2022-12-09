@@ -619,7 +619,7 @@ def is_transient_error(e):
     # https://hail.zulipchat.com/#narrow/stream/223457-Batch-support/topic/ssl.20error
     import hailtop.aiocloud.aiogoogle.client.compute_client  # pylint: disable=import-outside-toplevel,cyclic-import
     import hailtop.httpx  # pylint: disable=import-outside-toplevel,cyclic-import
-    if isinstance(e, httpx.ClientResponseError) and (
+    if isinstance(e, hailtop.httpx.ClientResponseError) and (
             e.status in RETRYABLE_HTTP_STATUS_CODES):
         # nginx returns 502 if it cannot connect to the upstream server
         # 408 request timeout, 500 internal server error, 502 bad gateway
@@ -634,33 +634,11 @@ def is_transient_error(e):
             (e.status in RETRYABLE_HTTP_STATUS_CODES) or (
                 e.status == 403 and 'rateLimitExceeded' in e.body)):
         return True
-    if isinstance(e, httpx.ServerTimeoutError):
-        return True
-    if isinstance(e, httpx.ServerDisconnectedError):
-        return True
     if isinstance(e, asyncio.TimeoutError):
         return True
-    if isinstance(e, httpx.client_exceptions.ClientConnectorError):
-        return hasattr(e, 'os_error') and is_transient_error(e.os_error)
     # appears to happen when the connection is lost prematurely, see:
     # https://github.com/aio-libs/aiohttp/issues/4581
     # https://github.com/aio-libs/aiohttp/blob/v3.7.4/aiohttp/client_proto.py#L85
-    if (isinstance(e, httpx.ClientPayloadError)
-            and e.args[0] == "Response payload is not completed"):
-        return True
-    if (isinstance(e, OSError)
-            and e.errno in (errno.ETIMEDOUT,
-                            errno.ECONNREFUSED,
-                            errno.EHOSTUNREACH,
-                            errno.ECONNRESET,
-                            errno.ENETUNREACH,
-                            errno.EPIPE,
-                            errno.ETIMEDOUT
-                            )):
-        return True
-    if isinstance(e, httpx.ClientOSError):
-        # aiohttp/client_reqrep.py wraps all OSError instances with a ClientOSError
-        return is_transient_error(e.__cause__)
     if isinstance(e, urllib3.exceptions.ReadTimeoutError):
         return True
     if isinstance(e, requests.exceptions.ReadTimeout):

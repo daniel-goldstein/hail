@@ -139,7 +139,7 @@ class ClientSession:
                     kwargs['body'] = bytes(buf)
                 else:
                     kwargs['body'] = kwargs['data']
-            if 'params' in kwargs:
+            if 'params' in kwargs and kwargs['params'] is not None:
                 url_with_params = url + '?' + urlencode(kwargs['params'])
             else:
                 url_with_params = url

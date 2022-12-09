@@ -560,7 +560,7 @@ class MatrixTable(ExprContainer):
         self._col_indices = Indices(self, {self._col_axis})
         self._entry_indices = Indices(self, {self._row_axis, self._col_axis})
 
-        self._type = self._type
+        self._type = _type
 
         self._global_type = self._type.global_type
         self._col_type = self._type.col_type
