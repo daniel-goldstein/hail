@@ -2,7 +2,7 @@ from types import TracebackType
 from typing import Optional, Type, TypeVar, Mapping
 import abc
 from hailtop import httpx
-from hailtop.utils import request_retry_transient_errors, RateLimit, RateLimiter
+from hailtop.utils import RateLimit, RateLimiter
 from .credentials import CloudCredentials
 
 SessionType = TypeVar('SessionType', bound='BaseSession')
@@ -10,35 +10,35 @@ SessionType = TypeVar('SessionType', bound='BaseSession')
 
 class BaseSession(abc.ABC):
     @abc.abstractmethod
-    async def request(self, method: str, url: str, **kwargs) -> httpx.ClientResponse:
+    def request(self, method: str, url: str, **kwargs) -> httpx.ClientResponse:
         pass
 
-    async def get(self, url: str, **kwargs) -> httpx.ClientResponse:
-        return await self.request('GET', url, **kwargs)
+    def get(self, url: str, **kwargs) -> httpx.ClientResponse:
+        return self.request('GET', url, **kwargs)
 
-    async def post(self, url: str, **kwargs) -> httpx.ClientResponse:
-        return await self.request('POST', url, **kwargs)
+    def post(self, url: str, **kwargs) -> httpx.ClientResponse:
+        return self.request('POST', url, **kwargs)
 
-    async def put(self, url: str, **kwargs) -> httpx.ClientResponse:
-        return await self.request('PUT', url, **kwargs)
+    def put(self, url: str, **kwargs) -> httpx.ClientResponse:
+        return self.request('PUT', url, **kwargs)
 
-    async def delete(self, url: str, **kwargs) -> httpx.ClientResponse:
-        return await self.request('DELETE', url, **kwargs)
+    def delete(self, url: str, **kwargs) -> httpx.ClientResponse:
+        return self.request('DELETE', url, **kwargs)
 
-    async def head(self, url: str, **kwargs) -> httpx.ClientResponse:
-        return await self.request('HEAD', url, **kwargs)
+    def head(self, url: str, **kwargs) -> httpx.ClientResponse:
+        return self.request('HEAD', url, **kwargs)
 
-    async def close(self) -> None:
+    def close(self) -> None:
         pass
 
-    async def __aenter__(self: SessionType) -> SessionType:
+    def __enter__(self: SessionType) -> SessionType:
         return self
 
-    async def __aexit__(self,
-                        exc_type: Optional[Type[BaseException]],
-                        exc_val: Optional[BaseException],
-                        exc_tb: Optional[TracebackType]) -> None:
-        await self.close()
+    def __exit__(self,
+                 exc_type: Optional[Type[BaseException]],
+                 exc_val: Optional[BaseException],
+                 exc_tb: Optional[TracebackType]) -> None:
+        self.close()
 
 
 class RateLimitedSession(BaseSession):
@@ -78,8 +78,8 @@ class Session(BaseSession):
             self._http_session = httpx.ClientSession(**kwargs)
         self._credentials = credentials
 
-    async def request(self, method: str, url: str, **kwargs) -> httpx.ClientResponse:
-        auth_headers = await self._credentials.auth_headers()
+    def request(self, method: str, url: str, **kwargs) -> httpx.ClientResponse:
+        auth_headers = self._credentials.auth_headers()
         if auth_headers:
             if 'headers' in kwargs:
                 kwargs['headers'].update(auth_headers)
@@ -96,11 +96,7 @@ class Session(BaseSession):
                 if k not in request_params:
                     request_params[k] = v
 
-        # retry by default
-        retry = kwargs.pop('retry', True)
-        if retry:
-            return await request_retry_transient_errors(self._http_session, method, url, **kwargs)
-        return await self._http_session.request(method, url, **kwargs)
+        return self._http_session.request(method, url, **kwargs)._resp
 
     async def close(self) -> None:
         if hasattr(self, '_http_session'):

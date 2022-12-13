@@ -86,12 +86,12 @@ class GoogleCredentials(CloudCredentials):
                     'run `gcloud auth application-default login` first to log in.')
         return AnonymousCloudCredentials()
 
-    async def auth_headers(self) -> Dict[str, str]:
+    def auth_headers(self) -> Dict[str, str]:
         if self._access_token is None or self._access_token.expired():
-            self._access_token = await self._get_access_token()
+            self._access_token = self._get_access_token()
         return {'Authorization': f'Bearer {self._access_token.token}'}
 
-    async def _get_access_token(self) -> GoogleExpiringAccessToken:
+    def _get_access_token(self) -> GoogleExpiringAccessToken:
         raise NotImplementedError
 
     async def close(self):
@@ -109,9 +109,8 @@ class GoogleApplicationDefaultCredentials(GoogleCredentials):
     def __str__(self):
         return 'ApplicationDefaultCredentials'
 
-    async def _get_access_token(self) -> GoogleExpiringAccessToken:
-        async with await request_retry_transient_errors(
-                self._http_session, 'POST',
+    def _get_access_token(self) -> GoogleExpiringAccessToken:
+        with self._http_session.request('POST',
                 'https://www.googleapis.com/oauth2/v4/token',
                 headers={
                     'content-type': 'application/x-www-form-urlencoded'
@@ -122,7 +121,7 @@ class GoogleApplicationDefaultCredentials(GoogleCredentials):
                     'client_secret': self.credentials['client_secret'],
                     'refresh_token': self.credentials['refresh_token']
                 })) as resp:
-            return GoogleExpiringAccessToken.from_dict(await resp.json())
+            return GoogleExpiringAccessToken.from_dict(resp.json())
 
 
 # protocol documented here:
@@ -136,7 +135,7 @@ class GoogleServiceAccountCredentials(GoogleCredentials):
     def __str__(self):
         return f'GoogleServiceAccountCredentials for {self.key["client_email"]}'
 
-    async def _get_access_token(self) -> GoogleExpiringAccessToken:
+    def _get_access_token(self) -> GoogleExpiringAccessToken:
         now = int(time.time())
         scope = 'openid https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/cloud-platform https://www.googleapis.com/auth/appengine.admin https://www.googleapis.com/auth/compute'
         assertion = {
@@ -147,8 +146,7 @@ class GoogleServiceAccountCredentials(GoogleCredentials):
             "iss": self.key['client_email']
         }
         encoded_assertion = jwt.encode(assertion, self.key['private_key'], algorithm='RS256')
-        async with await request_retry_transient_errors(
-                self._http_session, 'POST',
+        with self._http_session.request('POST',
                 'https://www.googleapis.com/oauth2/v4/token',
                 headers={
                     'content-type': 'application/x-www-form-urlencoded'
@@ -157,7 +155,7 @@ class GoogleServiceAccountCredentials(GoogleCredentials):
                     'grant_type': 'urn:ietf:params:oauth:grant-type:jwt-bearer',
                     'assertion': encoded_assertion
                 })) as resp:
-            return GoogleExpiringAccessToken.from_dict(await resp.json())
+            return GoogleExpiringAccessToken.from_dict(resp.json())
 
 
 # https://cloud.google.com/compute/docs/access/create-enable-service-accounts-for-instances#applications

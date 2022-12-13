@@ -16,44 +16,44 @@ class CloudBaseClient:
             session = RateLimitedSession(session=session, rate_limit=rate_limit)
         self._session = session
 
-    async def get(self, path: Optional[str] = None, *, url: Optional[str] = None, **kwargs) -> Any:
+    def get(self, path: Optional[str] = None, *, url: Optional[str] = None, **kwargs) -> Any:
         if url is None:
             assert path
             url = f'{self._base_url}{path}'
-        async with await self._session.get(url, **kwargs) as resp:
-            return await resp.json()
+        with self._session.get(url, **kwargs) as resp:
+            return resp.json()
 
-    async def post(self, path: Optional[str] = None, *, url: Optional[str] = None, **kwargs) -> Any:
+    def post(self, path: Optional[str] = None, *, url: Optional[str] = None, **kwargs) -> Any:
         if url is None:
             assert path
             url = f'{self._base_url}{path}'
-        async with await self._session.post(url, **kwargs) as resp:
-            return await resp.json()
+        with self._session.post(url, **kwargs) as resp:
+            return resp.json()
 
-    async def delete(self, path: Optional[str] = None, *, url: Optional[str] = None, **kwargs) -> Any:
+    def delete(self, path: Optional[str] = None, *, url: Optional[str] = None, **kwargs) -> Any:
         if url is None:
             assert path
             url = f'{self._base_url}{path}'
-        async with await self._session.delete(url, **kwargs) as resp:
-            return await resp.json()
+        with self._session.delete(url, **kwargs) as resp:
+            return resp.json()
 
-    async def put(self, path: Optional[str] = None, *, url: Optional[str] = None, **kwargs) -> Any:
+    def put(self, path: Optional[str] = None, *, url: Optional[str] = None, **kwargs) -> Any:
         if url is None:
             assert path
             url = f'{self._base_url}{path}'
-        async with await self._session.put(url, **kwargs) as resp:
-            return await resp.json()
+        with self._session.put(url, **kwargs) as resp:
+            return resp.json()
 
-    async def close(self) -> None:
+    def close(self) -> None:
         if hasattr(self, '_session'):
-            await self._session.close()
+            self._session.close()
             del self._session
 
-    async def __aenter__(self: ClientType) -> ClientType:
+    def __enter__(self: ClientType) -> ClientType:
         return self
 
-    async def __aexit__(self,
+    def __exit__(self,
                         exc_type: Optional[Type[BaseException]],
                         exc_val: Optional[BaseException],
                         exc_tb: Optional[TracebackType]) -> None:
-        await self.close()
+        self.close()

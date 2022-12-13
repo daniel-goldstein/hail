@@ -17,26 +17,26 @@ class ReadableStream(abc.ABC):
 
     # Read at most up to n bytes. If n == -1, then
     # return all bytes up to the end of the file
-    async def read(self, n: int = -1) -> bytes:
+    def read(self, n: int = -1) -> bytes:
         raise NotImplementedError
 
     # Read exactly n bytes. If there is an EOF before
     # n bytes have been read, raise an UnexpectedEOFError.
-    async def readexactly(self, n: int) -> bytes:
+    def readexactly(self, n: int) -> bytes:
         raise NotImplementedError
 
     def close(self) -> None:
         self._closed = True
 
     @abc.abstractmethod
-    async def _wait_closed(self) -> None:
+    def _wait_closed(self) -> None:
         pass
 
-    async def wait_closed(self) -> None:
+    def wait_closed(self) -> None:
         self._closed = True
         if not self._waited_closed:
             try:
-                await self._wait_closed()
+                self._wait_closed()
             finally:
                 self._waited_closed = True
 
@@ -44,14 +44,14 @@ class ReadableStream(abc.ABC):
     def closed(self) -> bool:
         return self._closed
 
-    async def __aenter__(self) -> 'ReadableStream':
+    def __enter__(self) -> 'ReadableStream':
         return self
 
-    async def __aexit__(
+    def __exit__(
             self, exc_type: Optional[Type[BaseException]] = None,
             exc_value: Optional[BaseException] = None,
             exc_traceback: Optional[TracebackType] = None) -> None:
-        await self.wait_closed()
+        self.wait_closed()
 
 
 class EmptyReadableStream(ReadableStream):
@@ -75,21 +75,21 @@ class WritableStream(abc.ABC):
     def writable(self) -> bool:
         return False
 
-    async def write(self, b: bytes) -> int:
+    def write(self, b: bytes) -> int:
         raise NotImplementedError
 
     def close(self) -> None:
         self._closed = True
 
     @abc.abstractmethod
-    async def _wait_closed(self) -> None:
+    def _wait_closed(self) -> None:
         pass
 
-    async def wait_closed(self) -> None:
+    def wait_closed(self) -> None:
         self._closed = True
         if not self._waited_closed:
             try:
-                await self._wait_closed()
+                self._wait_closed()
             finally:
                 self._waited_closed = True
 
@@ -97,14 +97,14 @@ class WritableStream(abc.ABC):
     def closed(self) -> bool:
         return self._closed
 
-    async def __aenter__(self) -> 'WritableStream':
+    def __enter__(self) -> 'WritableStream':
         return self
 
-    async def __aexit__(
+    def __exit__(
             self, exc_type: Optional[Type[BaseException]] = None,
             exc_value: Optional[BaseException] = None,
             exc_traceback: Optional[TracebackType] = None) -> None:
-        await self.wait_closed()
+        self.wait_closed()
 
 
 class _ReadableStreamFromBlocking(ReadableStream):

@@ -479,20 +479,20 @@ class MatrixIR(BaseIR):
         pass
 
     @abc.abstractmethod
-    async def _compute_type(self, deep_typecheck):
+    def _compute_type(self, deep_typecheck):
         ...
 
-    async def compute_type(self, deep_typecheck):
+    def compute_type(self, deep_typecheck):
         if deep_typecheck or self._type is None:
-            computed = await self._compute_type(deep_typecheck)
+            computed = self._compute_type(deep_typecheck)
             if self._type is not None:
                 assert self._type == computed
             else:
                 self._type = computed
 
-    async def typ(self):
+    def typ(self):
         if self._type is None:
-            await self.compute_type(deep_typecheck=False)
+            self.compute_type(deep_typecheck=False)
         return self._type
 
     def renderable_new_block(self, i: int) -> bool:

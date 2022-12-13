@@ -4,9 +4,8 @@ from urllib.parse import urlencode
 import json
 
 from .utils import async_to_blocking
-from .config.deploy_config import get_deploy_config
 
-import pyodide.http
+from js import XMLHttpRequest, Blob
 
 
 class ClientTimeout:
@@ -15,12 +14,11 @@ class ClientTimeout:
 
 
 class ClientResponseError(BaseException):
-    def __init__(self,
-                 resp: pyodide.http.FetchResponse):
-        self.resp = resp
-        self.status = resp.status
-        self.message = resp.status_text
-        self.url = resp.url
+    def __init__(self, req: XMLHttpRequest):
+        self.req = req
+        self.status = req.status
+        self.message = req.responseText
+        self.url = req.responseURL
         self.body = ''
 
     def __str__(self) -> str:
@@ -32,10 +30,12 @@ class ClientResponseError(BaseException):
 
 
 class ClientResponse:
-    def __init__(self, client_response: pyodide.http.FetchResponse):
-        self.client_response = client_response
+    def __init__(self, xml_http_req: XMLHttpRequest):
+        self._xml_http_req = xml_http_req
+        self._response = str(xml_http_req.response)
+        self._status = xml_http_req.status
 
-    async def release(self) -> None:
+    def release(self) -> None:
         pass
 
     @property
@@ -45,48 +45,46 @@ class ClientResponse:
     def close(self) -> None:
         pass
 
-    async def read(self) -> bytes:
-        return await self.client_response.bytes()
+    def read(self) -> bytes:
+        return self._response.encode('utf-8')
 
-    async def text(self, encoding: Optional[str] = None, errors: str = 'strict'):
-        return await self.client_response.string()
+    def text(self, encoding: Optional[str] = None, errors: str = 'strict'):
+        return self._response
 
-    async def json(self):
-        return await self.client_response.json()
+    def json(self):
+        return json.loads(self._response)
 
     @property
     def headers(self):
-        return self.client_response.js_response.headers
+        return {}
+
+    def header(self, header_name):
+        return self._xml_http_req.getResponseHeader(header_name)
 
     @property
     def status(self):
-        return self.client_response.status
+        return self._status
 
-    async def __aenter__(self) -> "ClientResponse":
+    def __enter__(self) -> "ClientResponse":
         return self
 
-    async def __aexit__(
+    def __exit__(
         self,
         exc_type: Optional[Type[BaseException]],
         exc_val: Optional[BaseException],
         exc_tb: Optional[TracebackType],
     ) -> None:
-        await self.release()
+        self.release()
 
 
 class _RequestContextManager:
-    def __init__(self, coro):
-        self._coro = coro
+    def __init__(self, resp):
+        self._resp = resp
 
-    def __await__(self):
-        ret = self._coro.__await__()
-        return ret
+    def __enter__(self):
+        return self._resp
 
-    async def __aenter__(self):
-        resp = await self._coro
-        return resp
-
-    async def __aexit__(
+    def __exit__(
         self,
         exc_type: Optional[Type[BaseException]],
         exc_val: Optional[BaseException],
@@ -95,21 +93,21 @@ class _RequestContextManager:
         pass
 
 
-class AsyncIterablePayload:
+class IterablePayload:
     def __init__(self, value, *args: Any, **kwargs: Any) -> None:
         if "content_type" not in kwargs:
             kwargs["content_type"] = "application/octet-stream"
-        self._iter = value.__aiter__()
+        self._iter = iter(value)
 
-    async def write(self, buf) -> None:
+    def write(self, buf) -> None:
         if self._iter:
             try:
                 # iter is not None check prevents rare cases
                 # when the case iterable is used twice
                 while True:
-                    chunk = await self._iter.__anext__()
+                    chunk = next(self._iter)
                     buf.extend(chunk)
-            except StopAsyncIteration:
+            except StopIteration:
                 self._iter = None
 
 
@@ -122,32 +120,37 @@ class ClientSession:
         self.raise_for_status = raise_for_status
 
     def request(self, method: str, url, **kwargs: Any):
-        async def request_and_raise_for_status():
+        def request_and_raise_for_status():
             json_data = kwargs.pop('json', None)
             if json_data is not None:
                 if kwargs.get('data') is not None:
                     raise ValueError(
                         'data and json parameters cannot be used at the same time')
-                kwargs['body'] = json.dumps(json_data).encode('utf-8')
-                kwargs['headers']['Content-Type'] = 'application/json'
-            if 'data' in kwargs:
+                blob = Blob.new([json.dumps(json_data)], {type: 'application/json'})
+            elif 'data' in kwargs:
                 data = kwargs['data']
-                if isinstance(data, AsyncIterablePayload):
+                if isinstance(data, IterablePayload):
                     buf = bytearray()
                     while data._iter is not None:
-                        await data.write(buf)
-                    kwargs['body'] = bytes(buf)
-                else:
-                    kwargs['body'] = kwargs['data']
+                        data.write(buf)
+                    data = bytes(buf)
+                blob = Blob.new([data])
+            else:
+                blob = Blob.new()
+
             if 'params' in kwargs and kwargs['params'] is not None:
                 url_with_params = url + '?' + urlencode(kwargs['params'])
             else:
                 url_with_params = url
 
-            resp = await pyodide.http.pyfetch(url_with_params, method=method, **kwargs)
-            if not resp.ok:
-                raise ClientResponseError(resp)
-            return ClientResponse(resp)
+            req = XMLHttpRequest.new()
+            req.open(method, url_with_params, False)
+            for header, val in kwargs.get('headers', {}).items():
+                req.setRequestHeader(header, val)
+            req.send(blob)
+            if req.status >= 400:
+                raise ClientResponseError(req)
+            return ClientResponse(req)
         return _RequestContextManager(request_and_raise_for_status())
 
     def ws_connect(

@@ -539,12 +539,7 @@ class MatrixTable(ExprContainer):
     def _from_java(jmir):
         return MatrixTable(ir.JavaMatrix(jmir))
 
-    @staticmethod
-    async def create(mir):
-        _type = await mir.typ()
-        return MatrixTable(mir, _type)
-
-    def __init__(self, mir, _type):
+    def __init__(self, mir):
         super(MatrixTable, self).__init__()
 
         self._mir = mir
@@ -560,7 +555,7 @@ class MatrixTable(ExprContainer):
         self._col_indices = Indices(self, {self._col_axis})
         self._entry_indices = Indices(self, {self._row_axis, self._col_axis})
 
-        self._type = _type
+        self._type = self._mir.typ
 
         self._global_type = self._type.global_type
         self._col_type = self._type.col_type

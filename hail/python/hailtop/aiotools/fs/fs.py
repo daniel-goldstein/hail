@@ -1,4 +1,4 @@
-from typing import (Any, AsyncContextManager, Optional, Type, Set, AsyncIterator, Callable, TypeVar,
+from typing import (Any, ContextManager, Optional, Type, Set, AsyncIterator, Callable, TypeVar,
                     Generic, List)
 from types import TracebackType
 import abc
@@ -46,7 +46,7 @@ class FileListEntry(abc.ABC):
 
 class MultiPartCreate(abc.ABC):
     @abc.abstractmethod
-    async def create_part(self, number: int, start: int, size_hint: Optional[int] = None) -> AsyncContextManager[WritableStream]:
+    async def create_part(self, number: int, start: int, size_hint: Optional[int] = None):
         pass
 
     @abc.abstractmethod
@@ -103,7 +103,7 @@ class AsyncFS(abc.ABC):
         pass
 
     @abc.abstractmethod
-    async def open(self, url: str) -> ReadableStream:
+    def open(self, url: str) -> ReadableStream:
         pass
 
     async def open_from(self, url: str, start: int, *, length: Optional[int] = None) -> ReadableStream:
@@ -129,7 +129,7 @@ class AsyncFS(abc.ABC):
         pass
 
     @abc.abstractmethod
-    async def create(self, url: str, *, retry_writes: bool = True) -> AsyncContextManager[WritableStream]:
+    def create(self, url: str, *, retry_writes: bool = True) -> ContextManager[WritableStream]:
         pass
 
     @abc.abstractmethod
