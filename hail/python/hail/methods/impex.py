@@ -2438,7 +2438,7 @@ def import_plink(bed, bim, fam,
     return MatrixTable(ir.MatrixRead(reader, drop_cols=False, drop_rows=False))
 
 
-async def read_matrix_table(path, *, _intervals=None, _filter_intervals=False, _drop_cols=False,
+def read_matrix_table(path, *, _intervals=None, _filter_intervals=False, _drop_cols=False,
                       _drop_rows=False, _create_row_uids=False, _create_col_uids=False,
                       _n_partitions=None, _assert_type=None, _load_refs=True) -> MatrixTable:
     """Read in a :class:`.MatrixTable` written with :meth:`.MatrixTable.write`.
@@ -2459,15 +2459,15 @@ async def read_matrix_table(path, *, _intervals=None, _filter_intervals=False, _
     if _intervals is not None and _n_partitions is not None:
         raise ValueError("'read_matrix_table' does not support both _intervals and _n_partitions")
 
-    mt = await MatrixTable.create(ir.MatrixRead(ir.MatrixNativeReader(path, _intervals, _filter_intervals),
-                                  _drop_cols,
-                                  _drop_rows,
-                                  drop_row_uids=not _create_row_uids,
-                                  drop_col_uids=not _create_col_uids,
-                                  _assert_type=_assert_type))
+    mt = MatrixTable(ir.MatrixRead(ir.MatrixNativeReader(path, _intervals, _filter_intervals),
+                                   _drop_cols,
+                                   _drop_rows,
+                                   drop_row_uids=not _create_row_uids,
+                                   drop_col_uids=not _create_col_uids,
+                                   _assert_type=_assert_type))
     if _n_partitions:
         intervals = mt._calculate_new_partitions(_n_partitions)
-        return await read_matrix_table(
+        return read_matrix_table(
             path,
             _drop_rows=_drop_rows,
             _drop_cols=_drop_cols,

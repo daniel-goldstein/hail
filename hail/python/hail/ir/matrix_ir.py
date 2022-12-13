@@ -180,9 +180,9 @@ class MatrixRead(MatrixIR):
                 and self.drop_row_uids == other.drop_row_uids
                 and self.drop_col_uids == other.drop_col_uids)
 
-    async def _compute_type(self, deep_typecheck):
+    def _compute_type(self, deep_typecheck):
         if self._type is None:
-            return await Env.backend()._async_matrix_type(self)
+            return Env.backend().matrix_type(self)
         else:
             return self._type
 

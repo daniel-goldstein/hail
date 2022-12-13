@@ -146,7 +146,17 @@ def unzip(lst: Iterable[Tuple[T, U]]) -> Tuple[List[T], List[U]]:
 
 
 def async_to_blocking(coro: Awaitable[T]) -> T:
-    return asyncio.get_event_loop().run_until_complete(coro)
+    import js
+    from pyodide.ffi import to_js
+    x=js.WebAssembly.Memory.new(to_js({"shared":True,"initial":1,"maximum":1},
+                                            dict_converter = js.Object.fromEntries))
+    b=js.Int32Array.new(x.buffer)
+
+    fut = asyncio.ensure_future(coro)
+    while not fut.done():
+        print(fut)
+        js.Atomics.wait(b,0,0,1000)
+    return fut.result()
 
 
 async def blocking_to_async(thread_pool: concurrent.futures.Executor,
