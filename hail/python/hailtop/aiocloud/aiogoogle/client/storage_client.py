@@ -342,7 +342,7 @@ class GoogleStorageClient(GoogleBaseClient):
             f'https://storage.googleapis.com/upload/storage/v1/b/{bucket}/o',
             **kwargs
         ) as resp:
-            session_url = resp.headers['Location']
+            session_url = resp.header('Location')
         return ResumableInsertObjectStream(self._session, session_url, chunk_size)
 
     def get_object(self, bucket: str, name: str, **kwargs) -> GetObjectStream:

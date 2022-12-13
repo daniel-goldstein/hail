@@ -71,17 +71,17 @@ class RouterAsyncFS(AsyncFS):
         assert fs is not None
         return fs
 
-    async def open(self, url: str) -> ReadableStream:
+    def open(self, url: str) -> ReadableStream:
         fs = self._get_fs(url)
-        return await fs.open(url)
+        return fs.open(url)
 
     async def _open_from(self, url: str, start: int, *, length: Optional[int] = None) -> ReadableStream:
         fs = self._get_fs(url)
         return await fs.open_from(url, start, length=length)
 
-    async def create(self, url: str, retry_writes: bool = True) -> AsyncContextManager[WritableStream]:
+    def create(self, url: str, retry_writes: bool = True):
         fs = self._get_fs(url)
-        return await fs.create(url, retry_writes=retry_writes)
+        return fs.create(url, retry_writes=retry_writes)
 
     async def multi_part_create(
             self,

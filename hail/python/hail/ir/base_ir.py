@@ -490,6 +490,7 @@ class MatrixIR(BaseIR):
             else:
                 self._type = computed
 
+    @property
     def typ(self):
         if self._type is None:
             self.compute_type(deep_typecheck=False)
