@@ -360,7 +360,7 @@ set -x
 
 {RETRY_FUNCTION_SCRIPT}
 
-export BUILDKITD_FLAGS='--oci-worker-no-process-sandbox --oci-worker-snapshotter=overlayfs'
+export BUILDKITD_FLAGS='--oci-worker-no-process-sandbox --oci-worker-snapshotter=estargz'
 export BUILDCTL_CONNECT_RETRIES_MAX=100 # https://github.com/moby/buildkit/issues/1423
 retry buildctl-daemonless.sh \
      build \
