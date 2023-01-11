@@ -261,7 +261,8 @@ class AzureFileStatus(FileStatus):
 
 
 class AzureAsyncFSURL(AsyncFSURL):
-    def __init__(self, account: str, container: str, path: str):
+    def __init__(self, scheme: str, account: str, container: str, path: str):
+        self._scheme = scheme
         self._account = account
         self._container = container
         self._path = path
@@ -276,13 +277,17 @@ class AzureAsyncFSURL(AsyncFSURL):
 
     @property
     def scheme(self) -> str:
-        return 'hail-az'
+        return self._scheme
 
     def with_path(self, path) -> 'AzureAsyncFSURL':
-        return AzureAsyncFSURL(self._account, self._container, path)
+        return AzureAsyncFSURL(self._scheme, self._account, self._container, path)
 
     def __str__(self) -> str:
-        return f'hail-az://{self._account}/{self._container}/{self._path}'
+        if self._scheme == 'hail-az':
+            return f'hail-az://{self._account}/{self._container}/{self._path}'
+        else:
+            assert self._scheme == 'https'
+            return f'https://{self._account}.blob.core.windows.net/{self._container}/{self._path}'
 
 
 class AzureAsyncFS(AsyncFS):
@@ -304,25 +309,32 @@ class AzureAsyncFS(AsyncFS):
         self._blob_service_clients: Dict[str, BlobServiceClient] = {}
 
     def parse_url(self, url: str) -> AzureAsyncFSURL:
-        return AzureAsyncFSURL(*self.get_account_container_and_name(url))
+        return AzureAsyncFSURL(*self.get_scheme_account_container_and_name(url))
 
     @staticmethod
-    def get_account_container_and_name(url: str) -> Tuple[str, str, str]:
+    def get_scheme_account_container_and_name(url: str) -> Tuple[str, str, str, str]:
         colon_index = url.find(':')
         if colon_index == -1:
             raise ValueError(f'invalid URL: {url}')
 
         scheme = url[:colon_index]
-        if scheme != 'hail-az':
-            raise ValueError(f'invalid scheme, expected hail-az: {scheme}')
+        if scheme not in ('hail-az', 'https'):
+            raise ValueError(f'invalid scheme, expected hail-az or https: {scheme}')
 
         rest = url[(colon_index + 1):]
         if not rest.startswith('//'):
-            raise ValueError(f'invalid path name, expected hail-az://account/container/blob_name: {url}')
+            raise ValueError(f'invalid url: {url}')
 
         end_of_account = rest.find('/', 2)
-        account = rest[2:end_of_account]
+        authority = rest[2:end_of_account]
         container_and_name = rest[end_of_account:]
+
+        if scheme == 'hail-az':
+            account = authority
+        else:
+            assert scheme == 'https'
+            assert len(authority) > len('.blob.core.windows.net')
+            account = authority[:-len('.blob.core.windows.net')]
 
         match = AzureAsyncFS.PATH_REGEX.fullmatch(container_and_name)
         if match is None:
@@ -335,7 +347,7 @@ class AzureAsyncFS(AsyncFS):
             assert name[0] == '/'
             name = name[1:]
 
-        return (account, container, name)
+        return (scheme, account, container, name)
 
     def get_blob_service_client(self, account: str) -> BlobServiceClient:
         if account not in self._blob_service_clients:
@@ -343,12 +355,12 @@ class AzureAsyncFS(AsyncFS):
         return self._blob_service_clients[account]
 
     def get_blob_client(self, url: str) -> BlobClient:
-        account, container, name = AzureAsyncFS.get_account_container_and_name(url)
+        _, account, container, name = AzureAsyncFS.get_scheme_account_container_and_name(url)
         blob_service_client = self.get_blob_service_client(account)
         return blob_service_client.get_blob_client(container, name)
 
     def get_container_client(self, url: str) -> ContainerClient:
-        account, container, _ = AzureAsyncFS.get_account_container_and_name(url)
+        _, account, container, _ = AzureAsyncFS.get_scheme_account_container_and_name(url)
         blob_service_client = self.get_blob_service_client(account)
         return blob_service_client.get_container_client(container)
 
@@ -378,7 +390,7 @@ class AzureAsyncFS(AsyncFS):
         return AzureMultiPartCreate(sema, client, num_parts)
 
     async def isfile(self, url: str) -> bool:
-        _, _, name = self.get_account_container_and_name(url)
+        _, _, _, name = self.get_scheme_account_container_and_name(url)
         # if name is empty, get_object_metadata behaves like list objects
         # the urls are the same modulo the object name
         if not name:
@@ -387,7 +399,7 @@ class AzureAsyncFS(AsyncFS):
         return await self.get_blob_client(url).exists()
 
     async def isdir(self, url: str) -> bool:
-        _, _, name = self.get_account_container_and_name(url)
+        _, _, _, name = self.get_scheme_account_container_and_name(url)
         assert not name or name.endswith('/'), name
         client = self.get_container_client(url)
         async for _ in client.walk_blobs(name_starts_with=name,
@@ -433,7 +445,7 @@ class AzureAsyncFS(AsyncFS):
                         recursive: bool = False,
                         exclude_trailing_slash_files: bool = True
                         ) -> AsyncIterator[FileListEntry]:
-        _, _, name = self.get_account_container_and_name(url)
+        _, _, _, name = self.get_scheme_account_container_and_name(url)
         if name and not name.endswith('/'):
             name = f'{name}/'
 
