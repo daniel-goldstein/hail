@@ -1,5 +1,4 @@
 import base64
-import json
 import logging
 import os
 from shlex import quote as shq
@@ -13,6 +12,8 @@ from ....instance_config import InstanceConfig
 from ...resource_utils import unreserved_worker_data_disk_size_gib
 from ...utils import ACCEPTABLE_QUERY_JAR_URL_PREFIX
 from ..resource_utils import azure_machine_type_to_worker_type_and_cores
+
+import hailtop.json
 
 log = logging.getLogger('create_instance')
 
@@ -291,10 +292,10 @@ done
         'batch_logs_storage_uri': file_store.batch_logs_storage_uri,
         'instance_id': file_store.instance_id,
         'max_idle_time_msecs': max_idle_time_msecs,
-        'instance_config': base64.b64encode(json.dumps(instance_config.to_dict()).encode()).decode(),
+        'instance_config': base64.b64encode(hailtop.json.dump_bytes(instance_config.to_dict())).decode(),
         'region': region,
     }
-    user_data_str = base64.b64encode(json.dumps(user_data).encode('utf-8')).decode('utf-8')
+    user_data_str = base64.b64encode(hailtop.json.dump_bytes(user_data)).decode('utf-8')
 
     tags = {'namespace': DEFAULT_NAMESPACE, 'batch-worker': '1'}
 

@@ -1,8 +1,9 @@
 import abc
-import json
 
 from ..typecheck import typecheck_method, sequenceof
 from ..utils.misc import escape_str
+
+import hailtop.json
 
 
 class BlockMatrixReader(object):
@@ -23,7 +24,7 @@ class BlockMatrixNativeReader(BlockMatrixReader):
     def render(self):
         reader = {'name': 'BlockMatrixNativeReader',
                   'path': self.path}
-        return escape_str(json.dumps(reader))
+        return escape_str(hailtop.json.dumps(reader))
 
     def __eq__(self, other):
         return isinstance(other, BlockMatrixNativeReader) and \
@@ -42,7 +43,7 @@ class BlockMatrixBinaryReader(BlockMatrixReader):
                   'path': self.path,
                   'shape': self.shape,
                   'blockSize': self.block_size}
-        return escape_str(json.dumps(reader))
+        return escape_str(hailtop.json.dumps(reader))
 
     def __eq__(self, other):
         return isinstance(other, BlockMatrixBinaryReader) and \
@@ -59,7 +60,7 @@ class BlockMatrixPersistReader(BlockMatrixReader):
     def render(self):
         reader = {'name': 'BlockMatrixPersistReader',
                   'id': self.id}
-        return escape_str(json.dumps(reader))
+        return escape_str(hailtop.json.dumps(reader))
 
     def __eq__(self, other):
         return isinstance(other, BlockMatrixPersistReader) and \

@@ -1,6 +1,5 @@
 import asyncio
 import base64
-import json
 import os
 import secrets
 import string
@@ -9,11 +8,12 @@ from shlex import quote as shq
 from typing import Optional
 
 from gear import Database
+import hailtop.json
 from hailtop.auth.sql_config import SQLConfig, create_secret_data_from_config
 from hailtop.utils import check_shell, check_shell_output
 
 assert len(sys.argv) == 1
-create_database_config = json.load(sys.stdin)
+create_database_config = hailtop.json.load(sys.stdin)
 
 
 def generate_token(size=12):
@@ -254,7 +254,7 @@ async def async_main():
 kubectl -n {namespace} get -o json secret {shq(admin_secret_name)}
 '''
     )
-    admin_secret = json.loads(out)
+    admin_secret = hailtop.json.loads(out)
 
     with open('/sql-config.json', 'wb') as f:
         f.write(base64.b64decode(admin_secret['data']['sql-config.json']))

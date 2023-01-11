@@ -1,10 +1,11 @@
-import json
 import yaml
 import aiohttp
 import csv
 from typing import List, Dict, Callable
 import tabulate
 import io
+
+import hailtop.json
 
 TableData = List[Dict[str, str]]
 TABLE_FORMAT_OPTIONS = ['json', 'yaml', 'csv', *tabulate.tabulate_formats]
@@ -59,7 +60,7 @@ def make_formatter(name: str) -> Callable[[TableData], str]:
     assert name in TABLE_FORMAT_OPTIONS, f'unknown format: {name}'
 
     if name == "json":
-        return lambda table_data: json.dumps(table_data, indent=2)
+        return lambda table_data: hailtop.json.dumps(table_data, indent=2)
     if name == "yaml":
         return yaml.dump
     if name == "csv":

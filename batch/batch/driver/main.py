@@ -1,6 +1,5 @@
 import asyncio
 import copy
-import json
 import logging
 import re
 import signal
@@ -31,6 +30,7 @@ from gear import (
     transaction,
 )
 from gear.clients import get_cloud_async_fs
+import hailtop.json
 from hailtop import aiotools, httpx
 from hailtop.config import get_deploy_config
 from hailtop.hail_logging import AccessLogger
@@ -231,7 +231,7 @@ async def delete_batch(request):
 async def get_gsa_key_1(instance):
     log.info(f'returning gsa-key to activating instance {instance}')
     with open('/gsa-key/key.json', 'r', encoding='utf-8') as f:
-        key = json.loads(f.read())
+        key = hailtop.json.load(f)
     return web.json_response({'key': key})
 
 
@@ -239,7 +239,7 @@ async def get_credentials_1(instance):
     log.info(f'returning {instance.inst_coll.cloud} credentials to activating instance {instance}')
     credentials_file = '/gsa-key/key.json'
     with open(credentials_file, 'r', encoding='utf-8') as f:
-        key = json.loads(f.read())
+        key = hailtop.json.loads(f.read())
     return web.json_response({'key': key})
 
 
@@ -516,6 +516,8 @@ async def get_quotas(request, userdata):
         title_x=0.5,
     )
 
+    import json
+
     plot_json = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
     return await render_template('batch-driver', request, userdata, 'quotas.html', {"plot_json": plot_json})
 
@@ -661,7 +663,7 @@ async def pool_config_update(request, userdata):  # pylint: disable=unused-argum
             pool.preemptible,
         )
 
-        current_client_pool_config = json.loads(post['_pool_config_json'])
+        current_client_pool_config = hailtop.json.loads(post['_pool_config_json'])
         current_server_pool_config = pool.config()
 
         client_items = current_client_pool_config.items()
@@ -763,7 +765,7 @@ async def get_pool(request, userdata):
 
     ready_cores_mcpu = sum(record['ready_cores_mcpu'] for record in user_resources)
 
-    pool_config_json = json.dumps(pool.config())
+    pool_config_json = hailtop.json.dumps(pool.config())
 
     page_context = {
         'pool': pool,
@@ -944,7 +946,7 @@ LOCK IN SHARE MODE;
 
         failures = [record async for record in user_inst_coll_with_broken_resources]
         if len(failures) > 0:
-            raise ValueError(json.dumps(failures))
+            raise ValueError(hailtop.json.dumps(failures))
 
     try:
         await check()  # pylint: disable=no-value-for-parameter

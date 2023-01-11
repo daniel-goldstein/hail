@@ -1,10 +1,10 @@
 import os
-import json
 import time
 import logging
 from typing import List, Optional
 from azure.identity.aio import DefaultAzureCredential, ClientSecretCredential
 
+import hailtop.json
 from hailtop.utils import first_extant_file
 
 from ..common.credentials import CloudCredentials
@@ -23,7 +23,7 @@ class AzureCredentials(CloudCredentials):
     @staticmethod
     def from_file(credentials_file: str, scopes: Optional[List[str]] = None):
         with open(credentials_file, 'r', encoding='utf-8') as f:
-            credentials = json.loads(f.read())
+            credentials = hailtop.json.loads(f.read())
             return AzureCredentials.from_credentials_data(credentials, scopes)
 
     @staticmethod

@@ -1,6 +1,7 @@
-import json
 import os
 from typing import Dict, Set
+
+import hailtop.json
 
 
 class AzureConfig:
@@ -29,7 +30,7 @@ class AzureConfig:
 class GCPConfig:
     @staticmethod
     def from_global_config(global_config):
-        regions: Set[str] = set(json.loads(global_config['batch_gcp_regions']))
+        regions: Set[str] = set(hailtop.json.loads(global_config['batch_gcp_regions']))
         region = global_config['gcp_region']
         regions.add(region)
         return GCPConfig(

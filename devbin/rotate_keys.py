@@ -1,7 +1,6 @@
 import asyncio
 import base64
 import itertools
-import json
 import sys
 import warnings
 from datetime import datetime, timedelta
@@ -13,6 +12,7 @@ import kubernetes_asyncio.config
 import pytz
 from dateutil.parser import isoparse
 
+import hailtop.json
 from hailtop.aiocloud.aiogoogle import GoogleIAmClient
 from hailtop.utils import retry_transient_errors
 
@@ -37,7 +37,7 @@ class GSAKeySecret:
     def __init__(self, raw_secret):
         self.name = raw_secret.metadata.name
         self.namespace = raw_secret.metadata.namespace
-        self.key_data = json.loads(base64.b64decode(raw_secret.data['key.json']))
+        self.key_data = hailtop.json.loads(base64.b64decode(raw_secret.data['key.json']))
 
     def service_account_email(self):
         return self.key_data['client_email']

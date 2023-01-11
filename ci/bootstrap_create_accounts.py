@@ -1,5 +1,4 @@
 import base64
-import json
 import os
 
 import kubernetes_asyncio.client
@@ -9,6 +8,8 @@ from auth.driver.driver import create_user
 from gear import Database, transaction
 from gear.clients import get_identity_client
 from gear.cloud_config import get_global_config
+
+import hailtop.json
 from hailtop.utils import async_to_blocking
 
 CLOUD = get_global_config()['cloud']
@@ -32,7 +33,7 @@ async def insert_user_if_not_exists(app, username, login_id, is_developer, is_se
 
         secret = await k8s_client.read_namespaced_secret(hail_credentials_secret_name, DEFAULT_NAMESPACE)
         credentials_json = base64.b64decode(secret.data['key.json']).decode()
-        credentials = json.loads(credentials_json)
+        credentials = hailtop.json.loads(credentials_json)
 
         if CLOUD == 'gcp':
             hail_identity = credentials['client_email']

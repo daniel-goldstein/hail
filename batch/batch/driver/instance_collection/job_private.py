@@ -1,5 +1,4 @@
 import asyncio
-import json
 import logging
 import random
 import traceback
@@ -8,6 +7,7 @@ from typing import Dict, List, Tuple
 import sortedcontainers
 
 from gear import Database
+import hailtop.json
 from hailtop import aiotools
 from hailtop.utils import (
     AsyncWorkerPool,
@@ -403,7 +403,7 @@ LIMIT %s
                 ):
                     try:
                         batch_format_version = BatchFormatVersion(record['format_version'])
-                        spec = json.loads(record['spec'])
+                        spec = hailtop.json.loads(record['spec'])
                         machine_spec = batch_format_version.get_spec_machine_spec(spec)
 
                         regions_bits_rep = record['regions_bits_rep']

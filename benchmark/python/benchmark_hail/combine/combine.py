@@ -1,10 +1,11 @@
 import collections
-import json
 import logging
 
 import argparse
 
 from .. import init_logging
+
+import hailtop.json
 
 
 def main(args_):
@@ -36,7 +37,7 @@ def combine(output, files):
 
     for file in files:
         with open(file, 'r') as f:
-            data = json.load(f)
+            data = hailtop.json.load(f)
         config = config or data['config']  # take first config; should be similar
         for bm in data['benchmarks']:
             bm_data = benchmark_data[bm['name']]
@@ -78,4 +79,4 @@ def combine(output, files):
         benchmark_json.append(data)
 
     with open(output, 'w') as out:
-        json.dump({'config': config, 'benchmarks': benchmark_json}, out)
+        hailtop.json.dump({'config': config, 'benchmarks': benchmark_json}, out)

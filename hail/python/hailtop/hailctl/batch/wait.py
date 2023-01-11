@@ -1,6 +1,7 @@
-import json
 import sys
 from .batch_cli_utils import get_batch_if_exists
+
+import hailtop.json
 
 
 def init_parser(parser):
@@ -21,6 +22,6 @@ def main(args, pass_through_args, client):  # pylint: disable=unused-argument
     quiet = args.quiet or args.o != 'text'
     out = batch.wait(disable_progress_bar=quiet)
     if args.o == 'json':
-        print(json.dumps(out))
+        print(hailtop.json.dumps(out))
     else:
         print(out)

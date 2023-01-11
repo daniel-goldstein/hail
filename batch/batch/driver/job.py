@@ -1,7 +1,6 @@
 import asyncio
 import base64
 import collections
-import json
 import logging
 import traceback
 from typing import TYPE_CHECKING, Dict, List
@@ -9,6 +8,7 @@ from typing import TYPE_CHECKING, Dict, List
 import aiohttp
 
 from gear import Database
+import hailtop.json
 from hailtop import httpx
 from hailtop.aiotools import BackgroundTaskManager
 from hailtop.utils import Notice, retry_transient_errors, time_msecs
@@ -146,7 +146,7 @@ async def mark_job_complete(
                 attempt_id,
                 instance_name,
                 new_state,
-                json.dumps(status) if status is not None else None,
+                hailtop.json.dumps(status) if status is not None else None,
                 start_time,
                 end_time,
                 reason,
@@ -327,7 +327,7 @@ async def job_config(app, record, attempt_id):
     batch_id = record['batch_id']
     job_id = record['job_id']
 
-    db_spec = json.loads(record['spec'])
+    db_spec = hailtop.json.loads(record['spec'])
 
     if format_version.has_full_spec_in_cloud():
         job_spec = {
@@ -339,7 +339,7 @@ async def job_config(app, record, attempt_id):
 
     job_spec['attempt_id'] = attempt_id
 
-    userdata = json.loads(record['userdata'])
+    userdata = hailtop.json.loads(record['userdata'])
 
     secrets = job_spec.get('secrets', [])
     k8s_secrets = await asyncio.gather(
@@ -443,7 +443,7 @@ async def mark_job_errored(app, batch_id, job_id, attempt_id, user, format_versi
     }
 
     if format_version.has_full_status_in_gcs():
-        await file_store.write_status_file(batch_id, job_id, attempt_id, json.dumps(status))
+        await file_store.write_status_file(batch_id, job_id, attempt_id, hailtop.json.dumps(status))
 
     db_status = format_version.db_status(status)
 

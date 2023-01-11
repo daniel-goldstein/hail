@@ -1,11 +1,12 @@
 import base64
-import json
 import logging
 import os
 from shlex import quote as shq
 from typing import Dict
 
 from gear.cloud_config import get_global_config
+
+import hailtop.json
 
 from ....batch_configuration import DEFAULT_NAMESPACE, DOCKER_PREFIX, DOCKER_ROOT_IMAGE, INTERNAL_GATEWAY_IP
 from ....file_store import FileStore
@@ -356,7 +357,7 @@ journalctl -u docker.service > dockerd.log
                 {'key': 'region', 'value': region},
                 {
                     'key': 'instance_config',
-                    'value': base64.b64encode(json.dumps(instance_config.to_dict()).encode()).decode(),
+                    'value': base64.b64encode(hailtop.json.dump_bytes(instance_config.to_dict())).decode(),
                 },
             ]
         },

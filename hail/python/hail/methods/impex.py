@@ -1,4 +1,3 @@
-import json
 import os
 import re
 from typing import List
@@ -26,6 +25,8 @@ from hail.utils.java import Env, FatalError, jindexed_seq_args, warning
 from hail.utils.deduplicate import deduplicate
 
 from .import_lines_helpers import split_lines, should_remove_line
+
+import hailtop.json
 
 
 def locus_interval_expr(contig, start, end, includes_start, includes_end,
@@ -2802,7 +2803,7 @@ def import_gvcfs(path,
         find_replace[1] if find_replace is not None else None,
         _external_sample_ids,
         _external_header)
-    vector_ref = json.loads(vector_ref_s)
+    vector_ref = hailtop.json.loads(vector_ref_s)
     jir_vref = ir.JIRVectorReference(vector_ref['vector_ir_id'],
                                      vector_ref['length'],
                                      hl.tmatrix._from_json(vector_ref['type']))

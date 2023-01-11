@@ -1,4 +1,3 @@
-import json
 import os
 import warnings
 from typing import Iterable, List, Optional, Set, Tuple, Union
@@ -13,6 +12,8 @@ from ..matrixtable import MatrixTable, matrix_table_type
 from ..table import Table, table_type
 from ..typecheck import oneof, typecheck_method
 from ..utils.java import Env, info
+
+import hailtop.json
 
 
 class DatasetVersion:
@@ -357,7 +358,7 @@ class DB:
                 assert os.path.exists(config_path), \
                     f'{config_path} does not exist'
                 with open(config_path) as f:
-                    config = json.load(f)
+                    config = hailtop.json.load(f)
             else:
                 session = external_requests_client_session()
                 response = retry_response_returning_functions(session.get, url)

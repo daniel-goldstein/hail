@@ -1,4 +1,3 @@
-import json
 import os
 import sys
 import math
@@ -6,11 +5,13 @@ import math
 from scipy.stats.mstats import gmean, hmean
 import numpy as np
 
+import hailtop.json
+
 
 def load_file(path):
     if path.endswith('.json'):
         with open(path, 'r') as f:
-            js_data = json.load(f)
+            js_data = hailtop.json.load(f)
     elif path.endswith('.tsv'):
         import pandas as pd
         js_data = pd.read_table(path).to_json(orient='records')

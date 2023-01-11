@@ -1,6 +1,6 @@
-import json
 import sys
 
+import hailtop.json
 from hailtop.auth import get_userinfo
 
 
@@ -21,4 +21,4 @@ def main(args, pass_through_args):  # pylint: disable=unused-argument
         'login_id': userinfo['login_id'],
         'display_name': userinfo['display_name'],
     }
-    print(json.dumps(result, indent=4))
+    print(hailtop.json.dumps(result, indent=4))

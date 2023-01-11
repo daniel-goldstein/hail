@@ -1,5 +1,4 @@
 import asyncio
-import json
 import logging
 import os
 import re
@@ -23,6 +22,7 @@ from gear import (
     transaction,
 )
 from gear.cloud_config import get_global_config
+import hailtop.json
 from hailtop import httpx
 from hailtop.config import get_deploy_config
 from hailtop.hail_logging import AccessLogger
@@ -601,7 +601,7 @@ async def rest_callback(request):
             'callback_uri': f'http://127.0.0.1:{callback_port}/oauth2callback',
         }
     else:
-        flow_dict = json.loads(request.query['flow'])
+        flow_dict = hailtop.json.loads(request.query['flow'])
 
     try:
         flow_result = request.app['flow_client'].receive_callback(request, flow_dict)

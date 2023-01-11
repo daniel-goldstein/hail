@@ -1,9 +1,10 @@
 import abc
-import json
 
 from ..typecheck import typecheck_method, sequenceof, nullable, enumeration
 from ..expr.types import tvoid, tstr
 from ..utils.misc import escape_str
+
+import hailtop.json
 
 
 class BlockMatrixWriter(object):
@@ -34,7 +35,7 @@ class BlockMatrixNativeWriter(BlockMatrixWriter):
                   'overwrite': self.overwrite,
                   'forceRowMajor': self.force_row_major,
                   'stageLocally': self.stage_locally}
-        return escape_str(json.dumps(writer))
+        return escape_str(hailtop.json.dumps(writer))
 
     def _type(self):
         return tvoid
@@ -55,7 +56,7 @@ class BlockMatrixBinaryWriter(BlockMatrixWriter):
     def render(self):
         writer = {'name': 'BlockMatrixBinaryWriter',
                   'path': self.path}
-        return escape_str(json.dumps(writer))
+        return escape_str(hailtop.json.dumps(writer))
 
     def _type(self):
         return tstr
@@ -82,7 +83,7 @@ class BlockMatrixRectanglesWriter(BlockMatrixWriter):
                   'rectangles': self.rectangles,
                   'delimiter': self.delimiter,
                   'binary': self.binary}
-        return escape_str(json.dumps(writer))
+        return escape_str(hailtop.json.dumps(writer))
 
     def _type(self):
         return tvoid
@@ -118,7 +119,7 @@ class BlockMatrixBinaryMultiWriter(BlockMatrixMultiWriter):
         writer = {'name': 'BlockMatrixBinaryMultiWriter',
                   'prefix': self.prefix,
                   'overwrite': self.overwrite}
-        return escape_str(json.dumps(writer))
+        return escape_str(hailtop.json.dumps(writer))
 
     def _type(self):
         return tvoid
@@ -150,7 +151,7 @@ class BlockMatrixTextMultiWriter(BlockMatrixMultiWriter):
                   'addIndex': self.add_index,
                   'compression': self.compression,
                   'customFilenames': self.custom_filenames}
-        return escape_str(json.dumps(writer))
+        return escape_str(hailtop.json.dumps(writer))
 
     def _type(self):
         return tvoid
@@ -176,7 +177,7 @@ class BlockMatrixPersistWriter(BlockMatrixWriter):
         writer = {'name': 'BlockMatrixPersistWriter',
                   'id': self.id,
                   'storageLevel': self.storage_level}
-        return escape_str(json.dumps(writer))
+        return escape_str(hailtop.json.dumps(writer))
 
     def _type(self):
         return tvoid
@@ -201,7 +202,7 @@ class BlockMatrixNativeMultiWriter(BlockMatrixMultiWriter):
                   'overwrite': self.overwrite,
                   'forceRowMajor': self.force_row_major,
                   'stageLocally': self.stage_locally}
-        return escape_str(json.dumps(writer))
+        return escape_str(hailtop.json.dumps(writer))
 
     def _type(self):
         return tvoid

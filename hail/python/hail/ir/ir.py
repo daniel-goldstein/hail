@@ -1,5 +1,4 @@
 import copy
-import json
 from collections import defaultdict
 
 import decorator
@@ -19,6 +18,8 @@ from .matrix_writer import MatrixWriter, MatrixNativeMultiWriter
 from .renderer import Renderer, Renderable, ParensRenderer
 from .table_writer import TableWriter
 from .utils import default_row_uid, default_col_uid, unpack_row_uid, unpack_col_uid
+
+import hailtop.json
 
 
 class I32(IR):
@@ -2988,9 +2989,9 @@ class PartitionNativeIntervalReader(PartitionReader):
         return PartitionNativeIntervalReader(self.path, uid_field)
 
     def render(self):
-        return escape_str(json.dumps({"name": "PartitionNativeIntervalReader",
-                                      "path": self.path,
-                                      "uidFieldName": self.uid_field if self.uid_field is not None else '__dummy'}))
+        return escape_str(hailtop.json.dumps({"name": "PartitionNativeIntervalReader",
+                                              "path": self.path,
+                                              "uidFieldName": self.uid_field if self.uid_field is not None else '__dummy'}))
 
     def _eq(self, other):
         return isinstance(other,

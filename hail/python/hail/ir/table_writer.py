@@ -1,8 +1,9 @@
 import abc
-import json
 from ..typecheck import typecheck_method, nullable, sequenceof
 from ..utils.misc import escape_str
 from .export_type import ExportType
+
+import hailtop.json
 
 
 class TableWriter(object):
@@ -33,7 +34,7 @@ class TableNativeWriter(TableWriter):
                   'overwrite': self.overwrite,
                   'stageLocally': self.stage_locally,
                   'codecSpecJSONStr': self.codec_spec}
-        return escape_str(json.dumps(writer))
+        return escape_str(hailtop.json.dumps(writer))
 
     def __eq__(self, other):
         return isinstance(other, TableNativeWriter) and \
@@ -64,7 +65,7 @@ class TableTextWriter(TableWriter):
                   'header': self.header,
                   'exportType': self.export_type,
                   'delimiter': self.delimiter}
-        return escape_str(json.dumps(writer))
+        return escape_str(hailtop.json.dumps(writer))
 
     def __eq__(self, other):
         return isinstance(other, TableTextWriter) and \
@@ -96,7 +97,7 @@ class TableNativeFanoutWriter(TableWriter):
                   'overwrite': self.overwrite,
                   'stageLocally': self.stage_locally,
                   'codecSpecJSONStr': self.codec_spec}
-        return escape_str(json.dumps(writer))
+        return escape_str(hailtop.json.dumps(writer))
 
     def __eq__(self, other):
         return isinstance(other, TableNativeWriter) and \

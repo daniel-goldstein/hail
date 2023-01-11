@@ -1,9 +1,10 @@
-import json
 import os
 from typing import Optional, Union
 
 import hail as hl
 import pkg_resources
+
+import hailtop.json
 
 
 def _read_dataset(path: str) -> Union[hl.Table, hl.MatrixTable, hl.linalg.BlockMatrix]:
@@ -73,7 +74,7 @@ def load_dataset(name: str,
     config_path = pkg_resources.resource_filename(__name__, 'datasets.json')
     assert os.path.exists(config_path), f'{config_path} does not exist'
     with open(config_path) as f:
-        datasets = json.load(f)
+        datasets = hailtop.json.load(f)
 
     names = set([dataset for dataset in datasets])
     if name not in names:

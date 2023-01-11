@@ -1,5 +1,4 @@
 import abc
-import json
 
 import avro.schema
 
@@ -10,6 +9,8 @@ from hail.typecheck import typecheck_method, sequenceof, nullable, anytype, oneo
 from hail.utils.misc import escape_str
 
 from .utils import impute_type_of_partition_interval_array
+
+import hailtop.json
 
 
 class TableReader(object):
@@ -42,7 +43,7 @@ class TableNativeReader(TableReader):
                 'intervalPointType': self._interval_type.element_type.point_type._parsable_string(),
                 'filterIntervals': self.filter_intervals
             }
-        return escape_str(json.dumps(reader))
+        return escape_str(hailtop.json.dumps(reader))
 
     def __eq__(self, other):
         return isinstance(other, TableNativeReader) and \
@@ -75,7 +76,7 @@ class TextTableReader(TableReader):
     def render(self):
         reader = dict(self.config)
         reader['name'] = 'TextTableReader'
-        return escape_str(json.dumps(reader))
+        return escape_str(hailtop.json.dumps(reader))
 
     def __eq__(self, other):
         return isinstance(other, TextTableReader) and \
@@ -100,7 +101,7 @@ class StringTableReader(TableReader):
                   'forceGZ': self.force,
                   'filePerPartition': self.file_per_partition}
 
-        return escape_str(json.dumps(reader))
+        return escape_str(hailtop.json.dumps(reader))
 
     def __eq__(self, other):
         return isinstance(other, StringTableReader) and \
@@ -123,7 +124,7 @@ class TableFromBlockMatrixNativeReader(TableReader):
                   'path': self.path,
                   'nPartitions': self.n_partitions,
                   'maximumCacheMemoryInBytes': self.maximum_cache_memory_in_bytes}
-        return escape_str(json.dumps(reader))
+        return escape_str(hailtop.json.dumps(reader))
 
     def __eq__(self, other):
         return isinstance(other, TableFromBlockMatrixNativeReader) and \

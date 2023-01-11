@@ -1,10 +1,10 @@
 import os
 import socket
 import asyncio
-import json
 import webbrowser
 from aiohttp import web
 
+import hailtop.json
 from hailtop.config import get_deploy_config
 from hailtop.auth import get_tokens, namespace_auth_headers
 from hailtop.httpx import client_session
@@ -73,7 +73,7 @@ Opening in your browser.
                 'callback_port': port,
                 'code': code,
                 'state': state,
-                'flow': json.dumps(flow),
+                'flow': hailtop.json.dumps(flow),
             }) as resp:
         resp = await resp.json()
     token = resp['token']

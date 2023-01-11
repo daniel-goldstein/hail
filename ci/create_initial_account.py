@@ -1,12 +1,13 @@
 import argparse
 import base64
-import json
 import os
 
 import kubernetes_asyncio.client
 import kubernetes_asyncio.config
 
 from gear import Database, transaction
+
+import hailtop.json
 from hailtop.utils import async_to_blocking
 
 NAMESPACE = os.environ['NAMESPACE']
@@ -28,7 +29,7 @@ async def copy_identity_from_default(hail_credentials_secret_name: str) -> str:
     )
 
     credentials_json = base64.b64decode(secret.data['key.json']).decode()
-    credentials = json.loads(credentials_json)
+    credentials = hailtop.json.loads(credentials_json)
 
     if cloud == 'gcp':
         return credentials['client_email']

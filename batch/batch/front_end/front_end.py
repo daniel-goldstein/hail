@@ -2,7 +2,6 @@ import asyncio
 import base64
 import collections
 import datetime
-import json
 import logging
 import os
 import random
@@ -37,6 +36,7 @@ from gear import (
 )
 from gear.clients import get_cloud_async_fs
 from gear.database import CallError
+import hailtop.json
 from hailtop import aiotools, dictfix, httpx, version
 from hailtop.batch_client.parse import parse_cpu_in_mcpu, parse_memory_in_bytes, parse_storage_in_bytes
 from hailtop.config import get_deploy_config
@@ -376,7 +376,7 @@ WHERE jobs.batch_id = %s AND NOT deleted AND jobs.job_id = %s;
 
 def job_tasks_from_spec(record):
     batch_format_version = BatchFormatVersion(record['format_version'])
-    spec = json.loads(record['spec'])
+    spec = hailtop.json.loads(record['spec'])
     tasks = []
 
     has_input_files = batch_format_version.get_spec_has_input_files(spec)
@@ -500,7 +500,7 @@ async def _get_attributes(app, record):
     format_version = BatchFormatVersion(record['format_version'])
 
     if not format_version.has_full_spec_in_cloud():
-        spec = json.loads(record['spec'])
+        spec = hailtop.json.loads(record['spec'])
         return spec.get('attributes')
 
     records = db.select_and_fetchall(
@@ -524,13 +524,13 @@ async def _get_full_job_spec(app, record):
     format_version = BatchFormatVersion(record['format_version'])
 
     if not format_version.has_full_spec_in_cloud():
-        return json.loads(record['spec'])
+        return hailtop.json.loads(record['spec'])
 
     token, start_job_id = await SpecWriter.get_token_start_id(db, batch_id, job_id)
 
     try:
         spec = await file_store.read_spec_file(batch_id, token, start_job_id, job_id)
-        return json.loads(spec)
+        return hailtop.json.loads(spec)
     except FileNotFoundError:
         id = (batch_id, job_id)
         log.exception(f'missing spec file for {id}')
@@ -557,11 +557,11 @@ async def _get_full_job_status(app, record):
 
     if state in ('Error', 'Failed', 'Success', 'Cancelled'):
         if not format_version.has_full_status_in_gcs():
-            return json.loads(record['status'])
+            return hailtop.json.loads(record['status'])
 
         try:
             status = await file_store.read_status_file(batch_id, job_id, attempt_id)
-            return json.loads(status)
+            return hailtop.json.loads(status)
         except FileNotFoundError:
             id = (batch_id, job_id)
             log.exception(f'missing status file for {id}')
@@ -1069,7 +1069,7 @@ WHERE batch_updates.batch_id = %s AND batch_updates.update_id = %s AND user = %s
         if user != 'ci' and unconfined:
             raise web.HTTPBadRequest(reason=f'unauthorized use of unconfined={unconfined}')
 
-        spec_writer.add(json.dumps(spec))
+        spec_writer.add(hailtop.json.dumps(spec))
         db_spec = batch_format_version.db_spec(spec)
 
         jobs_args.append(
@@ -1078,7 +1078,7 @@ WHERE batch_updates.batch_id = %s AND batch_updates.update_id = %s AND user = %s
                 job_id,
                 update_id,
                 state,
-                json.dumps(db_spec),
+                hailtop.json.dumps(db_spec),
                 always_run,
                 cores_mcpu,
                 len(parent_ids),
@@ -1205,8 +1205,8 @@ VALUES (%s, %s, %s);
         except Exception as err:
             raise ValueError(
                 f'encountered exception while inserting a bunch'
-                f'jobs_args={json.dumps(jobs_args)}'
-                f'job_parents_args={json.dumps(job_parents_args)}'
+                f'jobs_args={hailtop.json.dumps(jobs_args)}'
+                f'job_parents_args={hailtop.json.dumps(job_parents_args)}'
             ) from err
 
     @transaction(db)
@@ -1337,10 +1337,10 @@ INSERT INTO batches (userdata, user, billing_project, attributes, callback, n_jo
 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
 ''',
             (
-                json.dumps(userdata),
+                hailtop.json.dumps(userdata),
                 user,
                 billing_project,
-                json.dumps(attributes),
+                hailtop.json.dumps(attributes),
                 batch_spec.get('callback'),
                 0,
                 now,
@@ -1907,6 +1907,8 @@ def plot_job_durations(container_statuses: dict, batch_id: int, job_id: int):
         },
     )
 
+    import json
+
     return json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
 
 
@@ -1975,7 +1977,7 @@ def plot_resource_usage(resource_usage: Optional[Dict[str, Optional[pd.DataFrame
     if n_total_rows == 0:
         return None
 
-    return json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
+    return hailtop.json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
 
 
 @routes.get('/batches/{batch_id}/jobs/{job_id}')
@@ -2057,7 +2059,7 @@ async def ui_get_job(request, userdata, batch_id):
         'attempts': attempts,
         'container_statuses': container_statuses,
         'job_specification': job_specification,
-        'job_status_str': json.dumps(job, indent=2),
+        'job_status_str': hailtop.json.dumps(job, indent=2),
         'step_errors': step_errors,
         'error': job_status.get('error'),
         'plot_job_durations': plot_job_durations(container_statuses, batch_id, job_id),

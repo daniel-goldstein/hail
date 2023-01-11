@@ -1,6 +1,5 @@
 from typing import Union
 import abc
-import json
 import math
 from collections.abc import Mapping, Sequence
 import pprint
@@ -22,6 +21,8 @@ from ..utils.byte_reader import ByteReader
 from ..utils.misc import lookup_bit
 from ..utils.java import escape_parsable
 from ..genetics.reference_genome import reference_genome_type
+
+import hailtop.json
 
 
 __all__ = [
@@ -260,7 +261,7 @@ class HailType(object):
         return x
 
     def _from_json(self, s):
-        x = json.loads(s)
+        x = hailtop.json.loads(s)
         return self._convert_from_json_na(x)
 
     def _convert_from_json_na(self, x, _should_freeze: bool = False):

@@ -1,9 +1,10 @@
-import json
 import os
 import shutil
 import unittest
 
 from unittest import mock
+
+import hailtop.json
 
 from avro.datafile import DataFileReader
 from avro.io import DatumReader
@@ -14,6 +15,7 @@ import hail as hl
 from ..helpers import *
 from hail import ir
 from hail.utils import new_temp_file, FatalError, run_command, uri_path, HailUserError
+
 
 _FLOAT_INFO_FIELDS = [
     'BaseQRankSum',
@@ -337,7 +339,7 @@ class VCFTests(unittest.TestCase):
                         end=hl.Struct(locus=hl.Locus('20', 20000000)),
                         includes_end=True)
         ]
-        parts_str = json.dumps(parts_type._convert_to_json(parts))
+        parts_str = hailtop.json.dumps(parts_type._convert_to_json(parts))
         vir = ir.MatrixVCFReader(path=path, call_fields=['PGT'], entry_float_type=hl.tfloat64,
                                  header_file=None, block_size=None, min_partitions=None,
                                  reference_genome='default', contig_recoding=None,

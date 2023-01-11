@@ -1,11 +1,12 @@
 from typing import List, Optional, Dict
 import argparse
 import asyncio
-import json
 import logging
 import sys
 
 from concurrent.futures import ThreadPoolExecutor
+
+import hailtop.json
 
 from ..utils.rich_progress_bar import RichProgressBar, make_listener
 from . import Transfer, Copier
@@ -111,10 +112,10 @@ async def main() -> None:
         logging.basicConfig()
         logging.root.setLevel(logging.INFO)
 
-    requester_pays_project = json.loads(args.requester_pays_project)
+    requester_pays_project = hailtop.json.loads(args.requester_pays_project)
     if args.files is None or args.files == '-':
         args.files = sys.stdin.read()
-    files = json.loads(args.files)
+    files = hailtop.json.loads(args.files)
     gcs_kwargs = {'project': requester_pays_project}
 
     await copy_from_dict(

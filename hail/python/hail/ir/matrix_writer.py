@@ -1,9 +1,10 @@
 import abc
-import json
 from hail.expr.types import hail_type
 from ..typecheck import typecheck_method, nullable, dictof, sequenceof
 from ..utils.misc import escape_str
 from .export_type import ExportType
+
+import hailtop.json
 
 
 class MatrixWriter(object):
@@ -43,7 +44,7 @@ class MatrixNativeWriter(MatrixWriter):
                   'partitionsTypeStr': self.partitions_type._parsable_string() if self.partitions_type is not None else None,
                   'checkpointFile': self.checkpoint_file
                   }
-        return escape_str(json.dumps(writer))
+        return escape_str(hailtop.json.dumps(writer))
 
     def __eq__(self, other):
         return isinstance(other, MatrixNativeWriter) and \
@@ -76,7 +77,7 @@ class MatrixVCFWriter(MatrixWriter):
                   'exportType': self.export_type,
                   'metadata': self.metadata,
                   'tabix': self.tabix}
-        return escape_str(json.dumps(writer))
+        return escape_str(hailtop.json.dumps(writer))
 
     def __eq__(self, other):
         return isinstance(other, MatrixVCFWriter) and \
@@ -98,7 +99,7 @@ class MatrixGENWriter(MatrixWriter):
         writer = {'name': 'MatrixGENWriter',
                   'path': self.path,
                   'precision': self.precision}
-        return escape_str(json.dumps(writer))
+        return escape_str(hailtop.json.dumps(writer))
 
     def __eq__(self, other):
         return isinstance(other, MatrixGENWriter) and \
@@ -116,7 +117,7 @@ class MatrixBGENWriter(MatrixWriter):
         writer = {'name': 'MatrixBGENWriter',
                   'path': self.path,
                   'exportType': self.export_type}
-        return escape_str(json.dumps(writer))
+        return escape_str(hailtop.json.dumps(writer))
 
     def __eq__(self, other):
         return isinstance(other, MatrixBGENWriter) and \
@@ -132,7 +133,7 @@ class MatrixPLINKWriter(MatrixWriter):
     def render(self):
         writer = {'name': 'MatrixPLINKWriter',
                   'path': self.path}
-        return escape_str(json.dumps(writer))
+        return escape_str(hailtop.json.dumps(writer))
 
     def __eq__(self, other):
         return isinstance(other, MatrixPLINKWriter) and \
@@ -153,7 +154,7 @@ class MatrixBlockMatrixWriter(MatrixWriter):
                   'overwrite': self.overwrite,
                   'entryField': self.entry_field,
                   'blockSize': self.block_size}
-        return escape_str(json.dumps(writer))
+        return escape_str(hailtop.json.dumps(writer))
 
     def __eq__(self, other):
         return isinstance(other, MatrixBlockMatrixWriter) and \
@@ -178,7 +179,7 @@ class MatrixNativeMultiWriter(object):
                   'overwrite': self.overwrite,
                   'stageLocally': self.stage_locally,
                   'codecSpecJSONStr': self.codec_spec}
-        return escape_str(json.dumps(writer))
+        return escape_str(hailtop.json.dumps(writer))
 
     def __eq__(self, other):
         return isinstance(other, MatrixNativeMultiWriter) and \

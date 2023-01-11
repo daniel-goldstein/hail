@@ -1,6 +1,5 @@
 from typing import Dict, Optional, Union
 import os
-import json
 import time
 import logging
 import socket
@@ -8,6 +7,7 @@ from urllib.parse import urlencode
 import jwt
 from hailtop.utils import request_retry_transient_errors
 import hailtop.httpx
+import hailtop.json
 from ..common.credentials import AnonymousCloudCredentials, CloudCredentials
 
 log = logging.getLogger(__name__)
@@ -46,7 +46,7 @@ class GoogleCredentials(CloudCredentials):
     @staticmethod
     def from_file(credentials_file: str) -> 'GoogleCredentials':
         with open(credentials_file, encoding='utf-8') as f:
-            credentials = json.load(f)
+            credentials = hailtop.json.load(f)
         return GoogleCredentials.from_credentials_data(credentials)
 
     @staticmethod

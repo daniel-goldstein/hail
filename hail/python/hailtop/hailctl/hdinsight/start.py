@@ -2,13 +2,14 @@ import re
 import os
 import sys
 import time
-import json
 import subprocess
 import requests
 from shlex import quote as shq
 
 from ... import pip_version
 from ...utils import secret_alnum_string
+
+import hailtop.json
 
 
 def exec(*args):
@@ -139,11 +140,11 @@ async def main(args, pass_through_args):
             timeout=60,
         )
 
-    stop = json.dumps({
+    stop = hailtop.json.dumps({
         "RequestInfo": {"context": "put services into STOPPED state"},
         "Body": {"ServiceInfo": {"state" : "INSTALLED"}}
     })
-    start = json.dumps({
+    start = hailtop.json.dumps({
         "RequestInfo": {"context": "put services into STARTED state"},
         "Body": {"ServiceInfo": {"state" : "STARTED"}}
     })

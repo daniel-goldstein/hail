@@ -1,7 +1,6 @@
 import argparse
 import asyncio
 import base64
-import json
 import os
 from shlex import quote as shq
 from typing import Dict, List, Optional, Tuple
@@ -14,6 +13,7 @@ from ci.build import BuildConfiguration, Code
 from ci.environment import KUBERNETES_SERVER_URL, STORAGE_URI
 from ci.github import clone_or_fetch_script
 from ci.utils import generate_token
+import hailtop.json
 from hailtop.utils import check_shell_output
 
 BATCH_WORKER_IMAGE = os.environ['BATCH_WORKER_IMAGE']
@@ -151,8 +151,8 @@ class LocalBatchBuilder:
                     BATCH_WORKER_IMAGE,
                     '-m',
                     'hailtop.aiotools.copy',
-                    json.dumps(None),
-                    json.dumps(files),
+                    hailtop.json.dumps(None),
+                    hailtop.json.dumps(files),
                 )
 
                 print(f'{j._index}: {job_name}/input: {input_cid} {"OK" if input_ok else "FAILED"}')
@@ -293,8 +293,8 @@ users:
                         BATCH_WORKER_IMAGE,
                         '-m',
                         'hailtop.aiotools.copy',
-                        json.dumps(None),
-                        json.dumps(files),
+                        hailtop.json.dumps(None),
+                        hailtop.json.dumps(files),
                     )
                     print(f'{j._index}: {job_name}/output: {output_cid} {"OK" if output_ok else "FAILED"}')
                 else:
@@ -368,7 +368,7 @@ async def main():
 
     branch_name = branch_pieces[1]
 
-    extra_code_config = json.loads(args.extra_code_config)
+    extra_code_config = hailtop.json.loads(args.extra_code_config)
 
     scope = 'deploy'
     code = Branch(owner, repo_name, branch_name, args.sha, extra_code_config)

@@ -1,7 +1,7 @@
-import json
 import logging
 
 from gear import transaction
+import hailtop.json
 from hailtop.utils import humanize_timedelta_msecs, time_msecs_str
 
 from .batch_format_version import BatchFormatVersion
@@ -59,7 +59,7 @@ def batch_record_to_dict(record):
         'cost': coalesce(record['cost'], 0),
     }
 
-    attributes = json.loads(record['attributes'])
+    attributes = hailtop.json.loads(record['attributes'])
     if attributes:
         d['attributes'] = attributes
 
@@ -71,7 +71,7 @@ def job_record_to_dict(record, name):
 
     db_status = record['status']
     if db_status:
-        db_status = json.loads(db_status)
+        db_status = hailtop.json.loads(db_status)
         exit_code, duration = format_version.get_status_exit_code_duration(db_status)
     else:
         exit_code = None

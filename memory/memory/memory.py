@@ -1,6 +1,5 @@
 import asyncio
 import base64
-import json
 import logging
 import os
 import signal
@@ -15,6 +14,7 @@ from prometheus_async.aio.web import server_stats  # type: ignore
 
 from gear import AuthClient, monitor_endpoints_middleware, setup_aiohttp_session
 from gear.clients import get_cloud_async_fs_factory
+import hailtop.json
 from hailtop import httpx
 from hailtop.aiotools import AsyncFS
 from hailtop.config import get_deploy_config
@@ -90,7 +90,9 @@ async def get_or_add_user(app, userdata):
                     DEFAULT_NAMESPACE,
                     _request_timeout=5.0,
                 )
-                cloud_credentials_data = json.loads(base64.b64decode(hail_credentials_secret.data['key.json']).decode())
+                cloud_credentials_data = hailtop.json.loads(
+                    base64.b64decode(hail_credentials_secret.data['key.json']).decode()
+                )
                 users[username] = {'fs': ASYNC_FS_FACTORY.from_credentials_data(cloud_credentials_data)}
     return users[username]
 

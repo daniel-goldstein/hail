@@ -3,8 +3,9 @@ import base64
 import collections.abc
 import os
 import sys
-import json
 import logging
+
+import hailtop.json
 from hailtop.config import get_deploy_config
 from hailtop.utils import first_extant_file
 
@@ -35,7 +36,7 @@ class Tokens(collections.abc.MutableMapping):
         if os.path.isfile(tokens_file):
             with open(tokens_file, 'r', encoding='utf-8') as f:
                 log.info(f'tokens loaded from {tokens_file}')
-                return Tokens(json.load(f))
+                return Tokens(hailtop.json.loads(f.read()))
         log.info(f'tokens file not found: {tokens_file}')
         return Tokens({})
 
@@ -43,7 +44,7 @@ class Tokens(collections.abc.MutableMapping):
     def from_file(tokens_file: str) -> 'Tokens':
         with open(tokens_file, 'r', encoding='utf-8') as f:
             log.info(f'tokens loaded from {tokens_file}')
-            return Tokens(json.load(f))
+            return Tokens(hailtop.json.load(f))
 
     def __init__(self, tokens: Dict[str, str]):
         self._tokens = tokens

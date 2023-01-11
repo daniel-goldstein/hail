@@ -2,7 +2,6 @@ import asyncio
 import base64
 import concurrent
 import errno
-import json
 import logging
 import os
 import random
@@ -129,8 +128,8 @@ class BatchWorkerAccessLogger(AccessLogger):
 def compose_auth_header_urlsafe(orig_f):
     def compose(auth: Union[MutableMapping, str, bytes], registry_addr: Optional[str] = None):
         orig_auth_header = orig_f(auth, registry_addr=registry_addr)
-        auth = json.loads(base64.b64decode(orig_auth_header))
-        auth_json = json.dumps(auth).encode('ascii')
+        auth = hailtop.json.loads(base64.b64decode(orig_auth_header))
+        auth_json = hailtop.json.dumps(auth).encode('ascii')
         return base64.urlsafe_b64encode(auth_json).decode('ascii')
 
     return compose
@@ -163,7 +162,7 @@ INSTANCE_ID = os.environ['INSTANCE_ID']
 REGION = os.environ['REGION']
 DOCKER_PREFIX = os.environ['DOCKER_PREFIX']
 PUBLIC_IMAGES = publicly_available_images(DOCKER_PREFIX)
-INSTANCE_CONFIG = json.loads(base64.b64decode(os.environ['INSTANCE_CONFIG']).decode())
+INSTANCE_CONFIG = hailtop.json.loads(base64.b64decode(os.environ['INSTANCE_CONFIG']))
 MAX_IDLE_TIME_MSECS = int(os.environ['MAX_IDLE_TIME_MSECS'])
 BATCH_WORKER_IMAGE = os.environ['BATCH_WORKER_IMAGE']
 BATCH_WORKER_IMAGE_ID = os.environ['BATCH_WORKER_IMAGE_ID']
@@ -462,7 +461,7 @@ class Image:
             raise
 
         image_config, _ = await check_exec_output('docker', 'inspect', self.image_ref_str)
-        image_configs[self.image_ref_str] = json.loads(image_config)[0]
+        image_configs[self.image_ref_str] = hailtop.json.loads(image_config)[0]
 
     async def _ensure_image_is_pulled(self, auth: Optional[Dict[str, str]] = None):
         assert docker
@@ -909,7 +908,7 @@ class Container:
     async def _write_container_config(self):
         os.makedirs(self.config_path)
         with open(f'{self.config_path}/config.json', 'w', encoding='utf-8') as f:
-            f.write(json.dumps(await self.container_config()))
+            f.write(hailtop.json.dumps(await self.container_config()))
 
     # https://github.com/opencontainers/runtime-spec/blob/master/config.md
     async def container_config(self):
@@ -1221,7 +1220,7 @@ def copy_container(
         '/usr/bin/python3',
         '-m',
         'hailtop.aiotools.copy',
-        json.dumps(requester_pays_project),
+        hailtop.json.dumps(requester_pays_project),
         '-',
         '-v',
     ]
@@ -1236,7 +1235,7 @@ def copy_container(
         memory_in_bytes=memory_in_bytes,
         volume_mounts=volume_mounts,
         env=[f'{job.credentials.cloud_env_name}={job.credentials.mount_path}'],
-        stdin=json.dumps(files),
+        stdin=hailtop.json.dumps(files),
     )
 
 
@@ -1452,7 +1451,7 @@ class Job:
                 self.batch_id,
                 self.job_id,
                 self.attempt_id,
-                json.dumps(full_status),
+                hailtop.json.dumps(full_status),
             )
 
         if not self.deleted:
@@ -2489,7 +2488,7 @@ class Worker:
 
         assert self.file_store
         job_spec = await self.file_store.read_spec_file(batch_id, token, start_job_id, job_id)
-        job_spec = json.loads(job_spec)
+        job_spec = hailtop.json.loads(job_spec)
 
         job_spec['attempt_id'] = addtl_spec['attempt_id']
         job_spec['secrets'] = addtl_spec['secrets']
@@ -2804,7 +2803,7 @@ class Worker:
 
         credentials_file = '/worker-key.json'
         with open(credentials_file, 'w', encoding='utf-8') as f:
-            f.write(json.dumps(resp_json['key']))
+            hailtop.json.dump(resp_json['key'], f)
 
         self.fs = RouterAsyncFS(
             'file',

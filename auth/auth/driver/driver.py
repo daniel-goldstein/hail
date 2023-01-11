@@ -1,6 +1,5 @@
 import asyncio
 import base64
-import json
 import logging
 import os
 import random
@@ -15,6 +14,7 @@ import kubernetes_asyncio.config
 from gear import Database, create_session
 from gear.clients import get_identity_client
 from gear.cloud_config import get_gcp_config, get_global_config
+import hailtop.json
 from hailtop import aiotools
 from hailtop import batch_client as bc
 from hailtop import httpx
@@ -443,7 +443,7 @@ async def _create_user(app, user, skip_trial_bp, cleanup):
         await tokens_secret.create(
             tokens_secret_name,
             DEFAULT_NAMESPACE,
-            {'tokens.json': json.dumps({DEFAULT_NAMESPACE: tokens_session.session_id})},
+            {'tokens.json': hailtop.json.dumps({DEFAULT_NAMESPACE: tokens_session.session_id})},
         )
         updates['tokens_secret_name'] = tokens_secret_name
 
@@ -467,7 +467,7 @@ async def _create_user(app, user, skip_trial_bp, cleanup):
             cleanup.append(azure_sp.delete)
 
             azure_app_obj_id, credentials = await azure_sp.create(ident_token)
-            secret_data = json.dumps(credentials)
+            secret_data = hailtop.json.dumps(credentials)
             updates['hail_identity'] = azure_app_obj_id
             updates['display_name'] = ident_token
 

@@ -1,6 +1,5 @@
 import asyncio
 import concurrent.futures
-import json
 import logging
 import os
 import traceback
@@ -18,6 +17,7 @@ from prometheus_async.aio.web import server_stats  # type: ignore
 from typing_extensions import TypedDict
 
 from gear import AuthClient, Database, check_csrf_token, monitor_endpoints_middleware, setup_aiohttp_session
+import hailtop.json
 from hailtop import aiotools, httpx
 from hailtop.batch_client.aioclient import Batch, BatchClient
 from hailtop.config import get_deploy_config
@@ -42,7 +42,9 @@ deploy_config = get_deploy_config()
 
 watched_branches: List[WatchedBranch] = [
     WatchedBranch(index, FQBranch.from_short_str(bss), deployable, mergeable)
-    for (index, [bss, deployable, mergeable]) in enumerate(json.loads(os.environ.get('HAIL_WATCHED_BRANCHES', '[]')))
+    for (index, [bss, deployable, mergeable]) in enumerate(
+        hailtop.json.loads(os.environ.get('HAIL_WATCHED_BRANCHES', '[]'))
+    )
 ]
 
 routes = web.RouteTableDef()
@@ -261,7 +263,7 @@ async def get_job(request, userdata):
         'batch_id': batch_id,
         'job_id': job_id,
         'job_log': await job.log(),
-        'job_status': json.dumps(await job.status(), indent=2),
+        'job_status': hailtop.json.dumps(await job.status(), indent=2),
         'attempts': await job.attempts(),
     }
     return await render_template('ci', request, userdata, 'job.html', page_context)
@@ -411,7 +413,7 @@ async def batch_callback_handler(request):
                     if 'test' in attrs and params['complete']:
                         assert 'deploy' not in attrs
                         assert 'dev' not in attrs
-                        namespace = json.loads(attrs['namespace'])
+                        namespace = hailtop.json.loads(attrs['namespace'])
                         if DEFAULT_NAMESPACE == 'default':
                             await remove_namespace_from_db(db, namespace)
 
@@ -589,7 +591,7 @@ GROUP BY active_namespaces.namespace'''
         )
     ]
     for ns in namespaces:
-        ns['services'] = [s for s in json.loads(ns['services']) if s is not None]
+        ns['services'] = [s for s in hailtop.json.loads(ns['services']) if s is not None]
     context = {
         'namespaces': namespaces,
     }
@@ -672,7 +674,7 @@ async def update_envoy_configs(db: Database, k8s_client):
     namespace_arg_list = "(" + ",".join('%s' for _ in live_namespaces) + ")"
 
     services_per_namespace = {
-        r['namespace']: [s for s in json.loads(r['services']) if s is not None]
+        r['namespace']: [s for s in hailtop.json.loads(r['services']) if s is not None]
         async for r in db.execute_and_fetchall(
             f'''
 SELECT active_namespaces.namespace, JSON_ARRAYAGG(service) as services

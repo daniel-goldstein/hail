@@ -1,4 +1,3 @@
-import json
 import logging
 import secrets
 from collections import deque
@@ -8,6 +7,7 @@ from typing import Deque, Set, Tuple
 from aiohttp import web
 
 from gear import maybe_parse_bearer_header
+import hailtop.json
 from hailtop.utils import secret_alnum_string
 
 log = logging.getLogger('utils')
@@ -167,7 +167,7 @@ GROUP BY base_t.billing_project;
         if record['users'] is None:
             record['users'] = []
         else:
-            record['users'] = json.loads(record['users'])
+            record['users'] = hailtop.json.loads(record['users'])
         return record
 
     billing_projects = [record_to_dict(record) async for record in db.execute_and_fetchall(sql, tuple(args))]
@@ -178,7 +178,7 @@ GROUP BY base_t.billing_project;
 def json_to_value(x):
     if x is None:
         return x
-    return json.loads(x)
+    return hailtop.json.loads(x)
 
 
 def regions_to_bits_rep(selected_regions, all_regions_mapping):

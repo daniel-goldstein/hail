@@ -1,7 +1,6 @@
 import asyncio
 import calendar
 import datetime
-import json
 import logging
 import os
 from collections import defaultdict, namedtuple
@@ -17,6 +16,7 @@ from gear import (
     setup_aiohttp_session,
     transaction,
 )
+import hailtop.json
 from hailtop import aiotools, httpx
 from hailtop.aiocloud import aiogoogle
 from hailtop.config import get_deploy_config
@@ -44,7 +44,7 @@ deploy_config = get_deploy_config()
 auth = AuthClient()
 
 GCP_REGION = os.environ['HAIL_GCP_REGION']
-BATCH_GCP_REGIONS = set(json.loads(os.environ['HAIL_BATCH_GCP_REGIONS']))
+BATCH_GCP_REGIONS = set(hailtop.json.loads(os.environ['HAIL_BATCH_GCP_REGIONS']))
 BATCH_GCP_REGIONS.add(GCP_REGION)
 
 PROJECT = os.environ['PROJECT']

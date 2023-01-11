@@ -1,7 +1,6 @@
 import asyncio
 import concurrent.futures
 import datetime
-import json
 import logging
 import os
 import random
@@ -16,6 +15,7 @@ import prometheus_client as pc  # type: ignore
 import zulip
 
 from gear import Database
+import hailtop.json
 from hailtop.batch_client.aioclient import Batch
 from hailtop.config import get_deploy_config
 from hailtop.utils import RETRY_FUNCTION_SCRIPT, check_shell, check_shell_output
@@ -85,7 +85,7 @@ class Repo:
         return hash((self.owner, self.name))
 
     def __str__(self):
-        return json.dumps(self.to_dict())
+        return hailtop.json.dumps(self.to_dict())
 
     @staticmethod
     def from_short_str(s):
@@ -132,7 +132,7 @@ class FQBranch:
         return hash((self.repo, self.name))
 
     def __str__(self):
-        return json.dumps(self.to_dict())
+        return hailtop.json.dumps(self.to_dict())
 
     @staticmethod
     def from_short_str(s):

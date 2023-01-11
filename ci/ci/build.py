@@ -1,5 +1,4 @@
 import abc
-import json
 import logging
 from collections import Counter, defaultdict
 from shlex import quote as shq
@@ -10,6 +9,7 @@ import yaml
 from typing_extensions import TypedDict
 
 from gear.cloud_config import get_global_config
+import hailtop.json
 from hailtop.utils import RETRY_FUNCTION_SCRIPT, flatten
 
 from .environment import (
@@ -350,7 +350,7 @@ set -ex
 
 time python3 \
      ~/jinja2_render.py \
-     {shq(json.dumps(config))} \
+     {shq(hailtop.json.dumps(config))} \
      {unrendered_dockerfile} \
      /home/user/Dockerfile
 

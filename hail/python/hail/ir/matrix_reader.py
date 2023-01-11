@@ -1,5 +1,4 @@
 import abc
-import json
 
 from .utils import make_filter_and_replace, impute_type_of_partition_interval_array
 from ..expr.types import HailType, tfloat32, tfloat64
@@ -8,6 +7,8 @@ from ..typecheck import (typecheck_method, sequenceof, nullable, enumeration, an
                          dictof, sized_tupleof)
 from ..utils import wrap_to_list
 from ..utils.misc import escape_str
+
+import hailtop.json
 
 
 class MatrixReader(object):
@@ -40,7 +41,7 @@ class MatrixNativeReader(MatrixReader):
                 'intervalPointType': self._interval_type.element_type.point_type._parsable_string(),
                 'filterIntervals': self.filter_intervals,
             }
-        return escape_str(json.dumps(reader))
+        return escape_str(hailtop.json.dumps(reader))
 
     def __eq__(self, other):
         return isinstance(other, MatrixNativeReader) and \
@@ -63,7 +64,7 @@ class MatrixRangeReader(MatrixReader):
                   'nRows': self.n_rows,
                   'nCols': self.n_cols,
                   'nPartitions': self.n_partitions}
-        return escape_str(json.dumps(reader))
+        return escape_str(hailtop.json.dumps(reader))
 
     def __eq__(self, other):
         return isinstance(other, MatrixRangeReader) and \
@@ -149,7 +150,7 @@ class MatrixVCFReader(MatrixReader):
                   'sampleIDs': self._sample_ids,
                   'partitionsTypeStr': self._partitions_type._parsable_string() if self._partitions_type is not None else None,
                   'partitionsJSON': self._partitions_json}
-        return escape_str(json.dumps(reader))
+        return escape_str(hailtop.json.dumps(reader))
 
     def __eq__(self, other):
         return isinstance(other, MatrixVCFReader) and \
@@ -199,7 +200,7 @@ class MatrixBGENReader(MatrixReader):
                   'blockSizeInMB': self.block_size,
                   # FIXME: This has to be wrong. The included_variants IR is not included as a child
                   'includedVariants': r(self.included_variants._tir) if self.included_variants else None}
-        return escape_str(json.dumps(reader))
+        return escape_str(hailtop.json.dumps(reader))
 
     def __eq__(self, other):
         return isinstance(other, MatrixBGENReader) and \
@@ -248,7 +249,7 @@ class MatrixPLINKReader(MatrixReader):
                   'rg': self.reference_genome.name if self.reference_genome else None,
                   'contigRecoding': self.contig_recoding if self.contig_recoding else {},
                   'skipInvalidLoci': self.skip_invalid_loci}
-        return escape_str(json.dumps(reader))
+        return escape_str(hailtop.json.dumps(reader))
 
     def __eq__(self, other):
         return isinstance(other, MatrixPLINKReader) and \

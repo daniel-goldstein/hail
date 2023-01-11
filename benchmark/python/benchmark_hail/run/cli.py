@@ -1,6 +1,5 @@
 import argparse
 import datetime
-import json
 import os
 import sys
 
@@ -8,6 +7,8 @@ import hail as hl
 
 from .utils import run_all, run_pattern, run_list, RunConfig
 from .. import init_logging
+
+import hailtop.json
 
 
 def main(args_):
@@ -93,6 +94,6 @@ def main(args_):
             'benchmarks': records}
     if args.output:
         with open(args.output, 'w') as out:
-            json.dump(data, out)
+            hailtop.json.dump(data, out)
     else:
-        print(json.dumps(data))
+        print(hailtop.json.dumps(data))

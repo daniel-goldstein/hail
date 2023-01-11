@@ -1,10 +1,11 @@
-import json
 import re
 from hail.typecheck import typecheck_method, sequenceof, dictof, oneof, \
     sized_tupleof, nullable, transformed, lazy
 from hail.utils.misc import wrap_to_list
 from hail.utils.java import Env
 import hail as hl
+
+import hailtop.json
 
 rg_type = lazy()
 reference_genome_type = oneof(transformed((str, lambda x: hl.get_reference(x))), rg_type)
@@ -293,7 +294,7 @@ class ReferenceGenome(object):
         :class:`.ReferenceGenome`
         """
         with hl.hadoop_open(path) as f:
-            return ReferenceGenome._from_config(json.load(f))
+            return ReferenceGenome._from_config(hailtop.json.load(f))
 
     @typecheck_method(output=str)
     def write(self, output):
@@ -317,7 +318,7 @@ class ReferenceGenome(object):
             Path of JSON file to write.
         """
         with hl.utils.hadoop_open(output, 'w') as f:
-            json.dump(self._config, f)
+            hailtop.json.dump(self._config, f)
 
     @typecheck_method(fasta_file=str,
                       index_file=nullable(str))

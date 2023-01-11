@@ -1,6 +1,7 @@
 import re
-import json
 from subprocess import call, Popen, PIPE
+
+import hailtop.json
 
 
 def init_parser(parser):
@@ -40,7 +41,7 @@ async def main(args, pass_through_args):  # pylint: disable=unused-argument
                shell=True,
                stdout=PIPE,
                stderr=PIPE) as process:
-        desc = json.loads(process.communicate()[0].strip())
+        desc = hailtop.json.loads(process.communicate()[0].strip())
 
     config = desc['config']
 

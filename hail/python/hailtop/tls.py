@@ -1,9 +1,10 @@
 from typing import Dict
 import logging
-import json
 import os
 import ssl
 from ssl import Purpose
+
+import hailtop.json
 
 log = logging.getLogger('hailtop.tls')
 _server_ssl_context = None
@@ -20,7 +21,7 @@ def _get_ssl_config() -> Dict[str, str]:
     if os.path.isfile(config_file):
         log.info(f'ssl config file found at {config_file}')
         with open(config_file, 'r', encoding='utf-8') as f:
-            ssl_config = json.load(f)
+            ssl_config = hailtop.json.load(f)
             for config_name, rel_path in ssl_config.items():
                 ssl_config[config_name] = f'{config_dir}/{rel_path}'
         check_ssl_config(ssl_config)

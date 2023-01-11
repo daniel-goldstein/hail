@@ -2126,7 +2126,6 @@ steps:
       # create billing projects and add users to them
       cat > create-billing-projects.py <<EOF
       import sys
-      import json
       import asyncio
       import aiohttp
       from hailtop import httpx

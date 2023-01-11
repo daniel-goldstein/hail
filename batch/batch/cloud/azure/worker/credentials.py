@@ -1,6 +1,7 @@
 import base64
-import json
 from typing import Dict
+
+import hailtop.json
 
 from ....worker.credentials import CloudUserCredentials
 
@@ -8,7 +9,7 @@ from ....worker.credentials import CloudUserCredentials
 class AzureUserCredentials(CloudUserCredentials):
     def __init__(self, data: Dict[str, bytes]):
         self._data = data
-        self._credentials = json.loads(base64.b64decode(data['key.json']).decode())
+        self._credentials = hailtop.json.loads(base64.b64decode(data['key.json']))
 
     @property
     def secret_name(self) -> str:

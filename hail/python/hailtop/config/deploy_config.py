@@ -1,12 +1,13 @@
 from typing import List, Tuple, Dict
 import random
 import os
-import json
 import logging
 from ..utils import retry_transient_errors, first_extant_file
 from ..tls import internal_client_ssl_context
 
 from .user_config import get_user_config
+
+import hailtop.json
 
 log = logging.getLogger('deploy_config')
 
@@ -33,7 +34,7 @@ class DeployConfig:
         if config_file is not None:
             log.info(f'deploy config file found at {config_file}')
             with open(config_file, 'r', encoding='utf-8') as f:
-                config = json.load(f)
+                config = hailtop.json.loads(f.read())
             log.info(f'deploy config location: {config["location"]}')
         else:
             log.info(f'deploy config file not found: {config_file}')

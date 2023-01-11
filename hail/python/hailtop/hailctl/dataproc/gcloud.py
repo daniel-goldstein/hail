@@ -1,7 +1,8 @@
 from typing import Tuple, List, Optional
-import json
 import subprocess
 import sys
+
+import hailtop.json
 
 
 def run(command: List[str]):
@@ -21,7 +22,7 @@ def get_config(setting: str) -> Optional[str]:
 def get_version() -> Tuple[int, int, int]:
     """Get gcloud version as a tuple."""
     version_output = subprocess.check_output(["gcloud", "version", "--format=json"], stderr=subprocess.DEVNULL).decode().strip()
-    version_info = json.loads(version_output)
+    version_info = hailtop.json.loads(version_output)
     v = version_info["Google Cloud SDK"].split(".")
     version = (int(v[0]), int(v[1]), int(v[2]))
     return version

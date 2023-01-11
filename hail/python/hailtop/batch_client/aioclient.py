@@ -2,7 +2,6 @@ from typing import Optional, Dict, Any, List, Tuple, Union
 import math
 import random
 import logging
-import json
 import functools
 import asyncio
 import aiohttp
@@ -617,7 +616,7 @@ class BatchBuilder:
             b.extend(spec)
         b.append(ord(']'))
         b.extend(b',"batch":')
-        b.extend(json.dump_bytes(self._batch_spec()))
+        b.extend(hailtop.json.dump_bytes(self._batch_spec()))
         b.append(ord('}'))
         resp = await self._client._post(
             '/api/v1alpha/batches/create-fast',
@@ -642,7 +641,7 @@ class BatchBuilder:
             b.extend(spec)
         b.append(ord(']'))
         b.extend(b',"update":')
-        b.extend(json.dump_bytes(self._update_spec()))
+        b.extend(hailtop.json.dump_bytes(self._update_spec()))
         b.append(ord('}'))
         resp = await self._client._post(
             f'/api/v1alpha/batches/{self._batch.id}/update-fast',

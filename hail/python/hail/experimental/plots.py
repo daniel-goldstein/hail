@@ -1,4 +1,3 @@
-import json
 import numpy as np
 import pandas as pd
 
@@ -11,6 +10,8 @@ from bokeh.transform import factor_cmap
 from hail.typecheck import typecheck
 from hail.utils.hadoop_utils import hadoop_open, hadoop_ls
 from hail.utils.java import warning
+
+import hailtop.json
 
 
 def plot_roc_curve(ht, scores, tp_label='tp', fp_label='fp', colors=None, title='ROC Curve', hover_mode='mouse'):
@@ -109,7 +110,7 @@ def hail_metadata(t_path):
         metadata_file = [x['path'] for x in rows_files if x['path'].endswith('metadata.json.gz')]
         if metadata_file:
             with hadoop_open(metadata_file[0], 'rb') as f:
-                rows_meta = json.load(f)
+                rows_meta = hailtop.json.load(f)
                 try:
                     partition_bounds = [
                         (x['start']['locus']['contig'], x['start']['locus']['position'],
@@ -151,7 +152,7 @@ def hail_metadata(t_path):
         raise FileNotFoundError('No metadata.json.gz file found.')
 
     with hadoop_open(metadata_file[0], 'rb') as f:
-        overall_meta = json.load(f)
+        overall_meta = hailtop.json.load(f)
         rows_per_partition = overall_meta['components']['partition_counts']['counts']
 
     if not rows_file:

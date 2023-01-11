@@ -1,10 +1,10 @@
 import asyncio
-import json
 import logging
 
 import pytest
 
 import hailtop.utils as utils
+import hailtop.json
 from hailtop.auth import service_auth_headers
 from hailtop.config import get_deploy_config
 from hailtop.httpx import client_session
@@ -28,7 +28,7 @@ async def test_deploy():
                     session, 'GET', f'{ci_deploy_status_url}', headers=headers
                 )
                 deploy_statuses = await resp.json()
-                log.info(f'deploy_statuses:\n{json.dumps(deploy_statuses, indent=2)}')
+                log.info(f'deploy_statuses:\n{hailtop.json.dumps(deploy_statuses, indent=2)}')
                 assert len(deploy_statuses) == 1, deploy_statuses
                 deploy_status = deploy_statuses[0]
                 deploy_state = deploy_status['deploy_state']

@@ -1,5 +1,4 @@
 from typing import Optional
-import json
 import os
 import socket
 import socketserver
@@ -21,6 +20,8 @@ from .py4j_backend import Py4JBackend, handle_java_exception
 from ..fs.local_fs import LocalFS
 from ..hail_logging import Logger
 from hailtop.utils import find_spark_home
+
+import hailtop.json
 
 
 _installed = False
@@ -249,10 +250,10 @@ class LocalBackend(Py4JBackend):
         return tblockmatrix._from_java(jir.typ())
 
     def add_reference(self, config):
-        self._hail_package.variant.ReferenceGenome.fromJSON(json.dumps(config))
+        self._hail_package.variant.ReferenceGenome.fromJSON(hailtop.json.dumps(config))
 
     def load_references_from_dataset(self, path):
-        return json.loads(self._jbackend.pyLoadReferencesFromDataset(path))
+        return hailtop.json.loads(self._jbackend.pyLoadReferencesFromDataset(path))
 
     def from_fasta_file(self, name, fasta_file, index_file, x_contigs, y_contigs, mt_contigs, par):
         self._jbackend.pyFromFASTAFile(
@@ -262,7 +263,7 @@ class LocalBackend(Py4JBackend):
         self._hail_package.variant.ReferenceGenome.removeReference(name)
 
     def _get_non_builtin_reference(self, name):
-        return json.loads(self._hail_package.variant.ReferenceGenome.getReference(name).toJSONString())
+        return hailtop.json.loads(self._hail_package.variant.ReferenceGenome.getReference(name).toJSONString())
 
     def add_sequence(self, name, fasta_file, index_file):
         self._jbackend.pyAddSequence(name, fasta_file, index_file)
@@ -278,13 +279,13 @@ class LocalBackend(Py4JBackend):
             name, dest_reference_genome)
 
     def parse_vcf_metadata(self, path):
-        return json.loads(self._jhc.pyParseVCFMetadataJSON(self._jbackend.fs(), path))
+        return hailtop.json.loads(self._jhc.pyParseVCFMetadataJSON(self._jbackend.fs(), path))
 
     def index_bgen(self, files, index_file_map, referenceGenomeName, contig_recoding, skip_invalid_loci):
         self._jbackend.pyIndexBgen(files, index_file_map, referenceGenomeName, contig_recoding, skip_invalid_loci)
 
     def import_fam(self, path: str, quant_pheno: bool, delimiter: str, missing: str):
-        return json.loads(self._jbackend.pyImportFam(path, quant_pheno, delimiter, missing))
+        return hailtop.json.loads(self._jbackend.pyImportFam(path, quant_pheno, delimiter, missing))
 
     @property
     def requires_lowering(self):

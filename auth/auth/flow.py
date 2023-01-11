@@ -1,5 +1,4 @@
 import abc
-import json
 import urllib.parse
 
 import aiohttp.web
@@ -9,6 +8,8 @@ import google_auth_oauthlib.flow
 import msal
 
 from gear.cloud_config import get_global_config
+
+import hailtop.json
 
 
 class FlowResult:
@@ -74,7 +75,7 @@ class GoogleFlow(Flow):
 class AzureFlow(Flow):
     def __init__(self, credentials_file: str):
         with open(credentials_file, encoding='utf-8') as f:
-            data = json.loads(f.read())
+            data = hailtop.json.load(f)
 
         tenant_id = data['tenant']
         authority = f'https://login.microsoftonline.com/{tenant_id}'

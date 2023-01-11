@@ -1,6 +1,7 @@
 from typing import Dict, NamedTuple, Optional, Any
-import json
 import os
+
+import hailtop.json
 
 
 class SQLConfig(NamedTuple):
@@ -17,7 +18,7 @@ class SQLConfig(NamedTuple):
     ssl_mode: str
 
     def to_json(self) -> str:
-        return json.dumps(self.to_dict())
+        return hailtop.json.dumps(self.to_dict())
 
     def to_dict(self) -> Dict[str, Any]:
         d = {'host': self.host,
@@ -78,7 +79,7 @@ ssl-mode={self.ssl_mode}
 
     @staticmethod
     def from_json(s: str) -> 'SQLConfig':
-        return SQLConfig.from_dict(json.loads(s))
+        return SQLConfig.from_dict(hailtop.json.loads(s))
 
     @staticmethod
     def from_dict(d: Dict[str, Any]) -> 'SQLConfig':

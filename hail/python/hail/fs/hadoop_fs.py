@@ -1,5 +1,4 @@
 import io
-import json
 import time
 from typing import Dict, List, Union, Any
 
@@ -7,6 +6,8 @@ import dateutil
 
 from .fs import FS
 from .stat_result import FileType, StatResult
+
+import hailtop.json
 
 
 def _stat_dict_to_stat_result(stat: Dict[str, Any]) -> StatResult:
@@ -61,12 +62,12 @@ class HadoopFS(FS):
         return self._jfs.isDir(path)
 
     def stat(self, path: str) -> StatResult:
-        stat_dict = json.loads(self._utils_package_object.stat(self._jfs, path))
+        stat_dict = hailtop.json.loads(self._utils_package_object.stat(self._jfs, path))
         return _stat_dict_to_stat_result(stat_dict)
 
     def ls(self, path: str) -> List[StatResult]:
         return [_stat_dict_to_stat_result(st)
-                for st in json.loads(self._utils_package_object.ls(self._jfs, path))]
+                for st in hailtop.json.loads(self._utils_package_object.ls(self._jfs, path))]
 
     def mkdir(self, path: str) -> None:
         return self._jfs.mkDir(path)

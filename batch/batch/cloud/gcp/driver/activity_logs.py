@@ -1,9 +1,9 @@
-import json
 import logging
 import re
 from typing import Any, Dict
 
 from gear import Database
+import hailtop.json
 from hailtop.aiocloud import aiogoogle
 from hailtop.utils import parse_timestamp_msecs
 
@@ -31,20 +31,20 @@ async def handle_activity_log_event(
 ):
     payload = event.get('protoPayload')
     if payload is None:
-        log.warning(f'event has no payload {json.dumps(event)}')
+        log.warning(f'event has no payload {hailtop.json.dumps(event)}')
         return
 
     timestamp_msecs = parse_timestamp_msecs(event['timestamp'])
 
     resource_type = event['resource']['type']
     if resource_type != 'gce_instance':
-        log.warning(f'unknown event resource type {resource_type} {json.dumps(event)}')
+        log.warning(f'unknown event resource type {resource_type} {hailtop.json.dumps(event)}')
         return
 
     operation = event.get('operation')
     if operation is None:
         # occurs when deleting a worker that does not exist
-        log.info(f'received an event with no operation {json.dumps(event)}')
+        log.info(f'received an event with no operation {hailtop.json.dumps(event)}')
         return
 
     operation_started = operation.get('first', False)
@@ -74,7 +74,7 @@ async def handle_activity_log_event(
         if not instance:
             record = await db.select_and_fetchone('SELECT name FROM instances WHERE name = %s;', (name,))
             if not record:
-                log.error(f'event for unknown instance {name}: {json.dumps(event)}')
+                log.error(f'event for unknown instance {name}: {hailtop.json.dumps(event)}')
             return
 
         if event_subtype == 'compute.instances.preempted':

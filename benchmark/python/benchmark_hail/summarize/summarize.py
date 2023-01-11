@@ -1,10 +1,11 @@
 import collections
-import json
 import logging
 
 import argparse
 
 from .. import init_logging
+
+import hailtop.json
 
 
 def main(args_):
@@ -30,7 +31,7 @@ def summarize(files):
         logging.info(f'Summary for {file}:')
 
         with open(file, 'r') as f:
-            data = json.load(f)
+            data = hailtop.json.load(f)
         logging.info(f"config: {data['config']}")
         for bm in data['benchmarks']:
             if bm['failed']:

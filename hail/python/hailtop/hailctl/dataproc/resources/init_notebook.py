@@ -1,10 +1,11 @@
 #!/opt/conda/default/bin/python3
-import json
 import os
 import subprocess as sp
 import sys
 import errno
 from subprocess import check_output
+
+import hailtop.json
 
 assert sys.version_info > (3, 0), sys.version_info
 
@@ -126,7 +127,7 @@ if role == 'Master':
     # spark monitor
     try:
         with open('/opt/conda/default/share/jupyter/kernels/python3/kernel.json', 'r') as f:
-            python3_kernel = json.load(f)
+            python3_kernel = hailtop.json.load(f)
     except:  # noqa: E722
         python3_kernel = {
             'argv': [
@@ -149,7 +150,7 @@ if role == 'Master':
     # write python3 kernel spec file to default Jupyter kernel directory
     mkdir_if_not_exists('/opt/conda/default/share/jupyter/kernels/python3/')
     with open('/opt/conda/default/share/jupyter/kernels/python3/kernel.json', 'w') as f:
-        json.dump(python3_kernel, f)
+        hailtop.json.dump(python3_kernel, f)
 
     # some old notebooks use the "Hail" kernel, so create that too
     hail_kernel = {
@@ -158,7 +159,7 @@ if role == 'Master':
     }
     mkdir_if_not_exists('/opt/conda/default/share/jupyter/kernels/hail/')
     with open('/opt/conda/default/share/jupyter/kernels/hail/kernel.json', 'w') as f:
-        json.dump(hail_kernel, f)
+        hailtop.json.dump(hail_kernel, f)
 
     # create Jupyter configuration file
     mkdir_if_not_exists('/opt/conda/default/etc/jupyter/')

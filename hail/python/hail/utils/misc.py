@@ -1,7 +1,6 @@
 import atexit
 import datetime
 import difflib
-import json
 import os
 import re
 import secrets
@@ -20,6 +19,8 @@ import hail
 import hail as hl
 from hail.typecheck import enumeration, typecheck, nullable
 from hail.utils.java import Env, error
+
+import hailtop.json
 
 
 @typecheck(n_rows=int, n_cols=int, n_partitions=nullable(int))
@@ -612,7 +613,7 @@ def _dumps_partitions(partitions, row_key_type):
         if not point_type._is_prefix_of(row_key_type):
             raise ValueError(f'partitions type invalid: {point_type} must be prefix of {row_key_type}')
 
-    s = json.dumps(partitions.dtype._convert_to_json(hl.eval(partitions)))
+    s = hailtop.json.dumps(partitions.dtype._convert_to_json(hl.eval(partitions)))
     return s, partitions.dtype
 
 
