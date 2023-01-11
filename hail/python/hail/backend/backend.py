@@ -1,6 +1,5 @@
 from typing import Mapping, List, Union, Tuple, Dict, Optional, Any
 import abc
-import orjson
 import pkg_resources
 import zipfile
 from ..fs.fs import FS
@@ -9,6 +8,8 @@ from ..expr import Expression
 from ..expr.types import HailType
 from ..ir import BaseIR
 from ..utils.java import FatalError
+
+import hailtop.json
 
 
 def fatal_error_from_java_error_triplet(short_message, expanded_message, error_id):
@@ -73,7 +74,7 @@ class Backend(abc.ABC):
         if name in BUILTIN_REFERENCE_RESOURCE_PATHS:
             path_in_jar = BUILTIN_REFERENCE_RESOURCE_PATHS[name]
             jar_path = pkg_resources.resource_filename(__name__, 'hail-all-spark.jar')
-            return orjson.loads(zipfile.ZipFile(jar_path).open(path_in_jar).read())
+            return hailtop.json.loads(zipfile.ZipFile(jar_path).open(path_in_jar).read())
         return self._get_non_builtin_reference(name)
 
     @abc.abstractmethod

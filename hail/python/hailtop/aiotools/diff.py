@@ -1,7 +1,6 @@
 from typing import Optional, Tuple, TypeVar, List
 import argparse
 import asyncio
-import orjson
 import logging
 import sys
 
@@ -10,6 +9,8 @@ from concurrent.futures import ThreadPoolExecutor
 from ..utils.rich_progress_bar import SimpleRichProgressBar, SimpleRichProgressBarTask
 from .router_fs import RouterAsyncFS
 from .fs import AsyncFS, FileStatus
+
+import hailtop.json
 
 try:
     import uvloop
@@ -182,7 +183,7 @@ async def main() -> None:
         print(exc.args[0], file=sys.stderr)
         sys.exit(1)
     else:
-        sys.stdout.buffer.write(orjson.dumps(different))
+        sys.stdout.buffer.write(hailtop.json.dump_bytes(different))
 
 
 if __name__ == '__main__':

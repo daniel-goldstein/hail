@@ -1,11 +1,11 @@
 import asyncio
-import orjson
 import os
 import sys
 from shlex import quote as shq
 
 import hailtop.batch as hb
 import hailtop.batch_client.client as bc
+import hailtop.json
 from hailtop import pip_version
 from hailtop.aiotools.copy import copy_from_dict
 from hailtop.config import get_remote_tmpdir, get_user_config_path, get_deploy_config
@@ -71,7 +71,7 @@ async def async_main(args):
         print(f'Submitted batch {batch_handle.id}, see {url}')
     else:
         assert args.o == 'json'
-        print(orjson.dumps({'id': batch_handle.id}).decode('utf-8'))
+        print(hailtop.json.dumps({'id': batch_handle.id}))
 
 
 def main(args, pass_through_args, client):  # pylint: disable=unused-argument

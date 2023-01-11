@@ -4,9 +4,9 @@ import secrets
 from typing import Any, AsyncGenerator, Awaitable, Callable, Optional
 
 import aiohttp
-import orjson
 import pytest
 
+import hailtop.json
 from hailtop import httpx
 from hailtop.auth import session_id_encode_to_str
 from hailtop.batch_client.aioclient import Batch, BatchClient
@@ -193,7 +193,7 @@ async def test_close_billing_project_with_pending_batch_update_does_not_error(
             'mount_docker_socket': False,
         }
         spec = {'always_run': False, 'job_id': 1, 'parent_ids': [], 'process': process}
-        await bb._submit_jobs(b.id, update_id, [orjson.dumps(spec)], 1, pbar)
+        await bb._submit_jobs(b.id, update_id, [hailtop.json.dump_bytes(spec)], 1, pbar)
     try:
         await dev_client.close_billing_project(project)
     except httpx.ClientResponseError as e:

@@ -36,12 +36,12 @@ import aiohttp
 import aiohttp.client_exceptions
 import aiorwlock
 import async_timeout
-import orjson
 from aiodocker.exceptions import DockerError  # type: ignore
 from aiohttp import web
 from sortedcontainers import SortedSet
 
 from gear.clients import get_cloud_async_fs, get_compute_client
+import hailtop.json
 from hailtop import aiotools, httpx
 from hailtop.aiotools import AsyncFS, LocalAsyncFS
 from hailtop.aiotools.router_fs import RouterAsyncFS
@@ -1406,7 +1406,7 @@ class Job:
     def write_batch_config(self):
         os.makedirs(f'{self.scratch}/batch-config')
         with open(f'{self.scratch}/batch-config/batch-config.json', 'wb') as config:
-            config.write(orjson.dumps({'version': 1, 'batch_id': self.batch_id}))
+            config.write(hailtop.json.dump_bytes({'version': 1, 'batch_id': self.batch_id}))
 
     @property
     def job_id(self):

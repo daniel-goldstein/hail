@@ -6,7 +6,6 @@ import json
 import functools
 import asyncio
 import aiohttp
-import orjson
 import secrets
 
 from hailtop.config import get_deploy_config, DeployConfig
@@ -14,6 +13,7 @@ from hailtop.auth import service_auth_headers
 from hailtop.utils import bounded_gather, request_retry_transient_errors
 from hailtop.utils.rich_progress_bar import is_notebook, BatchProgressBar, BatchProgressBarTask
 from hailtop import httpx
+import hailtop.json
 
 from .globals import tasks, complete_states
 
@@ -617,7 +617,7 @@ class BatchBuilder:
             b.extend(spec)
         b.append(ord(']'))
         b.extend(b',"batch":')
-        b.extend(json.dumps(self._batch_spec()).encode('utf-8'))
+        b.extend(json.dump_bytes(self._batch_spec()))
         b.append(ord('}'))
         resp = await self._client._post(
             '/api/v1alpha/batches/create-fast',
@@ -642,7 +642,7 @@ class BatchBuilder:
             b.extend(spec)
         b.append(ord(']'))
         b.extend(b',"update":')
-        b.extend(json.dumps(self._update_spec()).encode('utf-8'))
+        b.extend(json.dump_bytes(self._update_spec()))
         b.append(ord('}'))
         resp = await self._client._post(
             f'/api/v1alpha/batches/{self._batch.id}/update-fast',
@@ -767,7 +767,7 @@ class BatchBuilder:
                      ) -> Batch:
         assert max_bunch_bytesize > 0
         assert max_bunch_size > 0
-        byte_job_specs = [orjson.dumps(job_spec)
+        byte_job_specs = [hailtop.json.dump_bytes(job_spec)
                           for job_spec in self._job_specs]
         byte_job_specs_bunches: List[List[bytes]] = []
         bunch_sizes = []

@@ -1,6 +1,5 @@
 import argparse
 import asyncio
-import orjson
 import sys
 from typing import List
 from os import path
@@ -11,6 +10,8 @@ from collections import OrderedDict
 
 from ..aiotools import aio_contextlib
 from ..aiotools.router_fs import RouterAsyncFS
+
+import hailtop.json
 
 
 SECTION_SEPARATOR = '-' * 40
@@ -133,8 +134,8 @@ async def main_after_parsing(args, pass_through_args):  # pylint: disable=unused
 
     async with aio_contextlib.closing(
             RouterAsyncFS(default_scheme='file', gcs_kwargs=gcs_kwargs)) as fs:
-        j = orjson.loads(decompress(await fs.read(path.join(args.file, 'metadata.json.gz')),
-                                    16 + MAX_WBITS))
+        j = hailtop.json.loads(decompress(await fs.read(path.join(args.file, 'metadata.json.gz')),
+                                          16 + MAX_WBITS))
 
         # Get the file schema
         file_schema = parse_schema(j[[k for k in j.keys() if k.endswith('type')][0]])
