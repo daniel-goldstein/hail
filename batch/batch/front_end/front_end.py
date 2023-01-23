@@ -451,7 +451,7 @@ async def _get_job_log(app, batch_id, job_id):
     return dict(await asyncio.gather(*[_read_log_from_cloud_storage(task) for task in tasks]))
 
 
-async def _get_job_resource_usage(app, batch_id, job_id):
+async def _get_job_resource_usage(app, batch_id, job_id) -> Optional[Dict[str, Optional[str]]]:
     record = await _get_job_record(app, batch_id, job_id)
 
     client_session: httpx.ClientSession = app['client_session']
@@ -473,11 +473,7 @@ async def _get_job_resource_usage(app, batch_id, job_id):
                 'GET',
                 f'http://{ip_address}:5000/api/v1alpha/batches/{batch_id}/jobs/{job_id}/resource_usage',
             )
-            data = await resp.json()
-            return {
-                task: ResourceUsageMonitor.decode_to_df(base64.b64decode(encoded_df))
-                for task, encoded_df in data.items()
-            }
+            return await resp.json()
         except aiohttp.ClientResponseError:
             log.exception(f'while getting resource usage for {(batch_id, job_id)}')
             return {task: None for task in tasks}
@@ -1861,6 +1857,13 @@ async def get_job(request, userdata, batch_id):  # pylint: disable=unused-argume
     job_id = int(request.match_info['job_id'])
     status = await _get_job(request.app, batch_id, job_id)
     return web.json_response(status)
+
+
+@routes.get('/api/v1alpha/batches/{batch_id}/jobs/{job_id}/resource_usage')
+@rest_billing_project_users_only
+async def get_resource_usage(request, userdata, batch_id):
+    job_id = int(request.match_info['job_id'])
+    resource_usage = _get_job_resource_usage(request.app, batch_id, job_id)
 
 
 def plot_job_durations(container_statuses: dict, batch_id: int, job_id: int):

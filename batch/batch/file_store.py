@@ -48,12 +48,9 @@ class FileStore:
         url = self.log_path(format_version, batch_id, job_id, attempt_id, task)
         await self.fs.write(url, data.encode('utf-8'))
 
-    async def read_resource_usage_file(
-        self, format_version, batch_id, job_id, attempt_id, task
-    ) -> Optional[pd.DataFrame]:
+    async def read_resource_usage_file(self, format_version, batch_id, job_id, attempt_id, task) -> bytes:
         url = self.resource_usage_path(format_version, batch_id, job_id, attempt_id, task)
-        data = await self.fs.read(url)
-        return ResourceUsageMonitor.decode_to_df(data)
+        return await self.fs.read(url)
 
     async def write_resource_usage_file(self, format_version, batch_id, job_id, attempt_id, task, data):
         url = self.resource_usage_path(format_version, batch_id, job_id, attempt_id, task)
