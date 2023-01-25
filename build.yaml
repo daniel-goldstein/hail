@@ -29,6 +29,25 @@ steps:
         to: /git_version
     dependsOn:
       - git_make_bash_image
+  - kind: runImage
+    name: copy_third_party_images
+    image: quay.io/skopeo/stable:v1.10.0
+    script: |
+      set -ex
+
+      set +x
+      /bin/sh /io/convert-cloud-credentials-to-docker-auth-config
+      set -x
+
+      cd /io/docker/third-party
+      DOCKER_PREFIX={{ global.docker_prefix }} bash copy_images.sh
+    inputs:
+      - from: /repo/docker
+        to: /io/docker
+      - from: /repo/ci/buildkit/convert-cloud-credentials-to-docker-auth-config
+        to: /io/convert-cloud-credentials-to-docker-auth-config
+    dependsOn:
+      - merge_code
   - kind: buildImage2
     name: hail_ubuntu_image
     dockerFile: /io/hail-ubuntu/Dockerfile
