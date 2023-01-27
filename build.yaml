@@ -3159,8 +3159,8 @@ steps:
         namespace:
           valueFrom: default_ns.name
         mountPath: /registry-push-credentials
-    scopes:
-      - deploy
+    # scopes:
+    #   - deploy
     dependsOn:
       - default_ns
       - ci_utils_image
