@@ -3128,6 +3128,45 @@ steps:
       - make_docs
     clouds:
       - gcp
+  - kind: runImage
+    name: mirror_hailgenetics_images
+    image:
+      valueFrom: ci_utils_image.image
+    script: |
+      set -ex
+      gcloud auth activate-service-account --key-file=/registry-push-credentials/credentials.json
+      gcloud auth -q configure-docker australia-southeast1-docker.pkg.dev
+
+      copy_if_not_present() {
+        src_image=$1
+        dest_image=$2
+        if skopeo inspect "$2";
+        then
+          echo "$2 already exists, doing nothing"
+        else
+          echo "$2 does not exist, copying $1 to $2"
+          skopeo copy "docker://$1" "docker://$2"
+        fi
+      }
+
+      copy_if_not_present {{ hailgenetics_hail_image.image}} {{ global.docker_prefix }}/hailgenetics/hail:$(cat /io/hail_pip_version)
+      copy_if_not_present {{ hailgenetics_hailtop_image.image}} {{ global.docker_prefix }}/hailgenetics/hailtop:$(cat /io/hail_pip_version)
+    inputs:
+      - from: /hail_pip_version
+        to: /io/hail_pip_version
+    secrets:
+      - name: registry-push-credentials
+        namespace:
+          valueFrom: default_ns.name
+        mountPath: /registry-push-credentials
+    scopes:
+      - deploy
+    dependsOn:
+      - default_ns
+      - ci_utils_image
+      - merge_code
+      - hailgenetics_hail_image
+      - hailgenetics_hailtop_image
   - kind: buildImage2
     name: website_image
     dockerFile: /io/website/Dockerfile
