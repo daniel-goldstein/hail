@@ -408,47 +408,60 @@ def has_resource_available(record):
     return True
 
 
-def attempt_id_from_spec(record):
+def attempt_id_from_spec(record) -> Optional[str]:
     return record['attempt_id'] or record['last_cancelled_attempt_id']
 
 
-async def _get_job_log(app, batch_id, job_id):
-    record = await _get_job_record(app, batch_id, job_id)
+async def _get_job_container_log_from_worker(client_session, batch_id, job_id, container, ip_address) -> bytes:
+    try:
+        async with await request_retry_transient_errors(
+            client_session,
+            'GET',
+            f'http://{ip_address}:5000/api/v1alpha/batches/{batch_id}/jobs/{job_id}/log/{container}',
+        ) as resp:
+            return await resp.read()
+    except aiohttp.ClientResponseError:
+        log.exception(f'while getting log for {(batch_id, job_id)}')
+        return b'ERROR: encountered a problem while fetching the log'
 
-    client_session: httpx.ClientSession = app['client_session']
-    file_store: FileStore = app['file_store']
-    batch_format_version = BatchFormatVersion(record['format_version'])
 
-    state = record['state']
-    ip_address = record['ip_address']
-    tasks = job_tasks_from_spec(record)
-    attempt_id = attempt_id_from_spec(record)
+async def _read_job_container_log_from_cloud_storage(
+    file_store: FileStore, batch_format_version: BatchFormatVersion, batch_id, job_id, container, attempt_id
+) -> bytes:
+    try:
+        return await file_store.read_log_file(batch_format_version, batch_id, job_id, attempt_id, container)
+    except FileNotFoundError:
+        id = (batch_id, job_id)
+        log.exception(f'missing log file for {id} and container {container}')
+        return b'ERROR: could not find log file'
 
-    if not has_resource_available(record):
+
+async def _get_job_container_log(app, batch_id, job_id, container, job_record) -> Optional[bytes]:
+    if not has_resource_available(job_record):
         return None
 
+    state = job_record['state']
     if state == 'Running':
-        try:
-            async with await request_retry_transient_errors(
-                client_session, 'GET', f'http://{ip_address}:5000/api/v1alpha/batches/{batch_id}/jobs/{job_id}/log'
-            ) as resp:
-                return await resp.json()
-        except aiohttp.ClientResponseError:
-            log.exception(f'while getting log for {(batch_id, job_id)}')
-            return {task: 'ERROR: encountered a problem while fetching the log' for task in tasks}
+        return await _get_job_container_log_from_worker(
+            app['client_session'], batch_id, job_id, container, job_record['ip_address']
+        )
 
+    attempt_id = attempt_id_from_spec(job_record)
     assert attempt_id is not None and state in complete_states
+    return await _read_job_container_log_from_cloud_storage(
+        app['file_store'],
+        BatchFormatVersion(job_record['format_version']),
+        batch_id,
+        job_id,
+        container,
+        attempt_id,
+    )
 
-    async def _read_log_from_cloud_storage(task):
-        try:
-            data = await file_store.read_log_file(batch_format_version, batch_id, job_id, attempt_id, task)
-        except FileNotFoundError:
-            id = (batch_id, job_id)
-            log.exception(f'missing log file for {id} and task {task}')
-            data = 'ERROR: could not find log file'
-        return task, data
 
-    return dict(await asyncio.gather(*[_read_log_from_cloud_storage(task) for task in tasks]))
+async def _get_job_log(app, batch_id, job_id) -> Dict[str, bytes]:
+    record = await _get_job_record(app, batch_id, job_id)
+    containers = job_tasks_from_spec(record)
+    return dict(await asyncio.gather(*[_get_job_container_log(app, batch_id, job_id, c, record) for c in containers]))
 
 
 async def _get_job_resource_usage(app, batch_id, job_id):
