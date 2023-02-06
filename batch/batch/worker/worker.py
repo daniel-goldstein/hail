@@ -1460,6 +1460,9 @@ class Job:
     async def get_log(self):
         pass
 
+    def get_container_log_path(self, container_name: str) -> str:
+        raise NotImplementedError
+
     async def get_resource_usage(self) -> Dict[str, Optional[bytes]]:
         raise NotImplementedError
 
@@ -1668,7 +1671,7 @@ class DockerJob(Job):
                     self.job_id,
                     self.attempt_id,
                     task_name,
-                    await container.get_log(),
+                    await self.worker.fs.read(container.log_path),
                 )
 
             with container._step('uploading_resource_usage'):
@@ -1844,6 +1847,9 @@ class DockerJob(Job):
                 c_log = ''
             logs[name] = c_log
         return logs
+
+    def get_container_log_path(self, container_name: str) -> str:
+        return self.containers[container_name].log_path
 
     async def get_resource_usage(self):
         return {name: await c.get_resource_usage() for name, c in self.containers.items()}
@@ -2038,6 +2044,10 @@ class JVMJob(Job):
 
     async def get_log(self):
         return {'main': await self._get_log()}
+
+    def get_container_log_path(self, container_name: str) -> str:
+        assert container_name == 'main'
+        return self.log_file
 
     async def get_resource_usage(self):
         return {'main': ResourceUsageMonitor.no_data()}
@@ -2613,6 +2623,16 @@ class Worker:
         job = self._job_from_request(request)
         return web.json_response(await job.get_log())
 
+    async def get_job_container_log(self, request):
+        if not self.active:
+            raise web.HTTPServiceUnavailable
+        job = self._job_from_request(request)
+        container = request.match_info['container']
+        log_path = job.get_container_log_path(container)
+        if os.path.exists(log_path):
+            return web.FileResponse(log_path)
+        return web.Response()
+
     async def get_job_resource_usage(self, request):
         if not self.active:
             raise web.HTTPServiceUnavailable
@@ -2667,6 +2687,7 @@ class Worker:
                 web.post('/api/v1alpha/batches/jobs/create', self.create_job),
                 web.delete('/api/v1alpha/batches/{batch_id}/jobs/{job_id}/delete', self.delete_job),
                 web.get('/api/v1alpha/batches/{batch_id}/jobs/{job_id}/log', self.get_job_log),
+                web.get('/api/v1alpha/batches/{batch_id}/jobs/{job_id}/log/{container}', self.get_job_container_log),
                 web.get('/api/v1alpha/batches/{batch_id}/jobs/{job_id}/resource_usage', self.get_job_resource_usage),
                 web.get('/api/v1alpha/batches/{batch_id}/jobs/{job_id}/status', self.get_job_status),
                 web.get('/healthcheck', self.healthcheck),
