@@ -461,7 +461,8 @@ async def _get_job_container_log(app, batch_id, job_id, container, job_record) -
 async def _get_job_log(app, batch_id, job_id) -> Dict[str, bytes]:
     record = await _get_job_record(app, batch_id, job_id)
     containers = job_tasks_from_spec(record)
-    return dict(await asyncio.gather(*[_get_job_container_log(app, batch_id, job_id, c, record) for c in containers]))
+    logs = await asyncio.gather(*[_get_job_container_log(app, batch_id, job_id, c, record) for c in containers])
+    return dict(zip(containers, logs))
 
 
 async def _get_job_resource_usage(app, batch_id, job_id):
@@ -604,8 +605,16 @@ async def _get_full_job_status(app, record):
 @rest_billing_project_users_only
 async def get_job_log(request, userdata, batch_id):  # pylint: disable=unused-argument
     job_id = int(request.match_info['job_id'])
-    job_log = await _get_job_log(request.app, batch_id, job_id)
-    return web.json_response(job_log)
+    job_log_bytes = await _get_job_log(request.app, batch_id, job_id)
+    job_log_strings: Dict[str, str] = dict()
+    for container, log in job_log_bytes.items():
+        try:
+            job_log_strings[container] = log.decode('utf-8')
+        except UnicodeDecodeError:
+            raise web.HTTPBadRequest(
+                reason=f'log for container {container} is not valid UTF-8, upgrade your hail version to download the log'
+            )
+    return web.json_response(job_log_strings)
 
 
 @routes.get('/api/v1alpha/batches/{batch_id}/jobs/{job_id}/log/{container}')
@@ -2087,7 +2096,7 @@ async def ui_get_job(request, userdata, batch_id):
     app = request.app
     job_id = int(request.match_info['job_id'])
 
-    job, attempts, job_log, resource_usage = await asyncio.gather(
+    job, attempts, job_log_bytes, resource_usage = await asyncio.gather(
         _get_job(app, batch_id, job_id),
         _get_attempts(app, batch_id, job_id),
         _get_job_log(app, batch_id, job_id),
@@ -2160,11 +2169,20 @@ async def ui_get_job(request, userdata, batch_id):
         resources['actual_cpu'] = cores
         del resources['cores_mcpu']
 
+    # Not all logs will be proper utf-8 but we attempt to show them as
+    # str or else Jinja will present them surrounded by b''
+    job_log_strings_or_bytes = dict()
+    for container, log in job_log_bytes.items():
+        try:
+            job_log_strings_or_bytes[container] = log.decode('utf-8')
+        except UnicodeDecodeError:
+            job_log_strings_or_bytes[container] = log
+
     page_context = {
         'batch_id': batch_id,
         'job_id': job_id,
         'job': job,
-        'job_log': job_log,
+        'job_log': job_log_strings_or_bytes,
         'attempts': attempts,
         'container_statuses': container_statuses,
         'job_specification': job_specification,

@@ -323,9 +323,15 @@ class SubmittedJob:
             if i < 64:
                 i = i + 1
 
-    async def log(self):
-        resp = await self._batch._client._get(f'/api/v1alpha/batches/{self.batch_id}/jobs/{self.job_id}/log')
-        return await resp.json()
+    async def log(self) -> Dict[str, bytes]:
+        async def get_container_log(c):
+            async with self._batch._client._get(f'/api/v1alpha/batches/{self.batch_id}/jobs/{self.job_id}/log/{c}') as resp:
+                return await resp.read()
+
+        assert self._status
+        containers = self._status['container_statuses'].keys()
+        logs = await asyncio.gather(*(get_container_log(c) for c in containers))
+        return dict(zip(containers, logs))
 
     async def attempts(self):
         resp = await self._batch._client._get(f'/api/v1alpha/batches/{self.batch_id}/jobs/{self.job_id}/attempts')
@@ -908,6 +914,7 @@ class BatchClient:
         j = await j_resp.json()
         return Job.submitted_job(b, j['job_id'], _status=j)
 
+    # TODO MY GOD THIS IS SUCH A MESS
     async def get_job_log(self, batch_id, job_id) -> Optional[Dict[str, Any]]:
         resp = await self._get(f'/api/v1alpha/batches/{batch_id}/jobs/{job_id}/log')
         return await resp.json()
