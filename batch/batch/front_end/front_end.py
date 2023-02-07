@@ -599,12 +599,27 @@ async def _get_full_job_status(app, record):
         raise
 
 
+# deprecated
 @routes.get('/api/v1alpha/batches/{batch_id}/jobs/{job_id}/log')
 @rest_billing_project_users_only
 async def get_job_log(request, userdata, batch_id):  # pylint: disable=unused-argument
     job_id = int(request.match_info['job_id'])
     job_log = await _get_job_log(request.app, batch_id, job_id)
     return web.json_response(job_log)
+
+
+@routes.get('/api/v1alpha/batches/{batch_id}/jobs/{job_id}/log/{container}')
+@rest_billing_project_users_only
+async def get_job_container_log(request, userdata, batch_id):  # pylint: disable=unused-argument
+    app = request.app
+    job_id = int(request.match_info['job_id'])
+    container = request.match_info['container']
+    record = await _get_job_record(app, batch_id, job_id)
+    containers = job_tasks_from_spec(record)
+    if container not in containers:
+        raise web.HTTPBadRequest(reason=f'unknown container {container}')
+    job_log = await _get_job_container_log(app, batch_id, job_id, container, record)
+    return web.Response(body=job_log)
 
 
 async def _query_batches(request, user, q):
@@ -2165,6 +2180,7 @@ async def ui_get_job(request, userdata, batch_id):
     return await render_template('batch', request, userdata, 'job.html', page_context)
 
 
+# This should really be the exact same thing as the REST endpoint
 @routes.get('/batches/{batch_id}/jobs/{job_id}/log/{container}')
 @web_billing_project_users_only()
 @catch_ui_error_in_dev
@@ -2172,10 +2188,12 @@ async def ui_get_job_log(request, userdata, batch_id):  # pylint: disable=unused
     app = request.app
     job_id = int(request.match_info['job_id'])
     container = request.match_info['container']
-    job_log = await _get_job_log(app, batch_id, job_id)
-    if container not in job_log:
+    record = await _get_job_record(app, batch_id, job_id)
+    containers = job_tasks_from_spec(record)
+    if container not in containers:
         raise web.HTTPBadRequest(reason=f'unknown container {container}')
-    return web.Response(text=job_log[container])
+    job_log = await _get_job_container_log(app, batch_id, job_id, container, record)
+    return web.Response(body=job_log)
 
 
 @routes.get('/billing_limits')
