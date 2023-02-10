@@ -1690,18 +1690,26 @@ steps:
       - create_certs
       - copy_third_party_images
   - kind: runImage
-    name: create_dummy_oauth2_client_secret
-    resources:
-      memory: standard
-      cpu: '0.25'
+    name: create_auth_config
     image:
       valueFrom: ci_utils_image.image
     script: |
-      set -ex
-      kubectl -n {{ default_ns.name }} create secret generic auth-oauth2-client-secret || true
-    scopes:
-      - test
-      - dev
+      {% if deploy %}
+      OAUTH2_CALLBACK_URL="https://auth.{{ global.domain }}/oauth2callback"
+      {% elif 'oauth2_callback_url' in code %}
+      OAUTH2_CALLBACK_URL="{{ code['oauth2_callback_url'] }}"
+      {% else %}
+      OAUTH2_CALLBACK_URL="https://internal.{{ global.domain }}/{{ default_ns.name }}/auth/oauth2callback"
+      {% endif %}
+
+      kubectl -n {{ default_ns.name }} create secret generic auth-config \
+          --from-literal=oauth2_callback_url="$OAUTH2_CALLBACK_URL" \
+          --save-config --dry-run=client -o yaml \
+        | kubectl -n {{ default_ns.name }} apply -f -
+    serviceAccount:
+      name: admin
+      namespace:
+        valueFrom: default_ns.name
     dependsOn:
       - default_ns
       - ci_utils_image
@@ -1723,7 +1731,7 @@ steps:
       - create_session_key
       - auth_database
       - auth_image
-      - create_dummy_oauth2_client_secret
+      - create_auth_config
       - create_certs
       - create_accounts
   - kind: runImage
@@ -2039,6 +2047,8 @@ steps:
         online: true
       - name: fix-default-namespace-record
         script: /io/sql/fix-default-namespace.py
+      - name: test-oauth2-callback-urls
+        script: /io/sql/add-oauth2-callback-urls-to-namespaces.sql
         online: true
       - name: record-failure-notifications
         script: /io/sql/record-failure-notifications.sql
@@ -2353,6 +2363,36 @@ steps:
       - batch_database
       - deploy_auth
       - create_certs
+  - kind: runImage
+    name: add_users
+    image:
+      valueFrom: hailgenetics_hailtop_image.image
+    script: |
+      set -ex
+
+      {% for user in code.get("users", []) %}
+      hailctl auth create-user \
+        --developer \
+        --hail-identity {{ user["hail_identity"] }} \
+        --hail-credentials-secret-name {{ user["username"] }}-gsa-key \
+        {{ user["username"] }} {{ user["login_id"] }}
+      {% endfor %}
+    secrets:
+      - name: worker-deploy-config
+        namespace:
+          valueFrom: default_ns.name
+        mountPath: /deploy-config
+      - name: test-dev-tokens
+        namespace:
+          valueFrom: default_ns.name
+        mountPath: /user-tokens
+    scopes:
+      - dev
+      - test
+    dependsOn:
+      - default_ns
+      - hailgenetics_hailtop_image
+      - deploy_batch
   - kind: runImage
     name: create_billing_projects
     resources:
@@ -2862,11 +2902,18 @@ steps:
     image:
       valueFrom: ci_utils_image.image
     script: |
+      {% if 'oauth2_callback_url' in code %}
+      OAUTH2_CALLBACK_URL="{{ code['oauth2_callback_url'] }}"
+      {% else %}
+      OAUTH2_CALLBACK_URL="https://internal.{{ global.domain }}/{{ default_ns.name }}/auth/oauth2callback"
+      {% endif %}
+
       kubectl -n {{ default_ns.name }} create secret generic ci-config \
           --from-literal=github_context="ci-test" \
           --from-literal=storage_uri="{{ global.test_storage_uri }}" \
           --from-literal=deploy_steps="[]" \
           --from-literal=watched_branches="[[\"hail-ci-test/ci-test-{{create_ci_test_repo.token}}:master\", true, true]]" \
+          --from-literal=test_oauth2_callback_urls="[\"$OAUTH2_CALLBACK_URL\"]" \
           --save-config --dry-run=client -o yaml \
         | kubectl -n {{ default_ns.name }} apply -f -
     serviceAccount:
@@ -3851,4 +3898,5 @@ steps:
       - test_batch
       - test_ci
       - test_hailtop_batch
+      - test_hail_python_service_backend
       - cancel_all_running_test_batches
