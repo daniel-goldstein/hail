@@ -6,7 +6,7 @@ import os
 import traceback
 from typing import Callable, Dict, List, Optional, Set
 
-import aiohttp_session  # type: ignore
+import aiohttp_session
 import kubernetes_asyncio
 import uvloop  # type: ignore
 import yaml
@@ -17,19 +17,21 @@ from gidgethub import sansio as gh_sansio
 from prometheus_async.aio.web import server_stats  # type: ignore
 from typing_extensions import TypedDict
 
+from ci.utils import release_namespace, reserve_namespace
 from gear import AuthClient, Database, check_csrf_token, monitor_endpoints_middleware, setup_aiohttp_session
 from gear.profiling import install_profiler_if_requested
 from hailtop import aiotools, httpx
+from hailtop.auth import service_auth_headers
 from hailtop.batch_client.aioclient import Batch, BatchClient
 from hailtop.config import get_deploy_config
 from hailtop.hail_logging import AccessLogger
 from hailtop.tls import internal_server_ssl_context
-from hailtop.utils import collect_agen, humanize_timedelta_msecs, periodically_call
+from hailtop.utils import collect_agen, humanize_timedelta_msecs, periodically_call, request_retry_transient_errors
 from web_common import render_template, set_message, setup_aiohttp_jinja2, setup_common_static_routes
 
 from .constants import AUTHORIZED_USERS, TEAMS
 from .environment import DEFAULT_NAMESPACE, STORAGE_URI
-from .envoy import create_cds_response, create_rds_response
+from .envoy import NamespaceRoutingConfig, create_cds_response, create_rds_response
 from .github import PR, WIP, FQBranch, MergeFailureBatch, Repo, UnwatchedBranch, WatchedBranch, select_random_teammate
 
 with open(os.environ.get('HAIL_CI_OAUTH_TOKEN', 'oauth-token/oauth-token'), 'r', encoding='utf-8') as f:
@@ -388,14 +390,6 @@ async def github_callback(request):
     return web.Response(status=200)
 
 
-async def remove_namespace_from_db(db: Database, namespace: str):
-    assert namespace != 'default'
-    await db.just_execute(
-        'DELETE FROM active_namespaces WHERE namespace = %s',
-        (namespace,),
-    )
-
-
 async def batch_callback_handler(request):
     app = request.app
     db: Database = app['db']
@@ -414,7 +408,7 @@ async def batch_callback_handler(request):
                         assert 'dev' not in attrs
                         namespace = attrs['namespace']
                         if DEFAULT_NAMESPACE == 'default':
-                            await remove_namespace_from_db(db, namespace)
+                            await release_namespace(db, namespace)
 
                     await wb.notify_batch_changed(app)
 
@@ -484,6 +478,7 @@ async def dev_deploy_branch(request, userdata):
         steps = params['steps']
         excluded_steps = params['excluded_steps']
         extra_config = params.get('extra_config', {})
+        namespace = userdata['username']
     except asyncio.CancelledError:
         raise
     except Exception as e:
@@ -504,7 +499,10 @@ async def dev_deploy_branch(request, userdata):
         log.info('dev deploy failed: ' + message, exc_info=True)
         raise web.HTTPBadRequest(text=message) from e
 
-    unwatched_branch = UnwatchedBranch(branch, sha, userdata, extra_config)
+    oauth2_callback_url = await reserve_namespace(app['db'], namespace)
+    unwatched_branch = UnwatchedBranch(
+        branch, sha, userdata, namespace, oauth2_callback_url, app['developers'], extra_config=extra_config
+    )
 
     batch_client = app['batch_client']
 
@@ -662,7 +660,7 @@ async def cleanup_expired_namespaces(db: Database):
     for namespace in expired_namespaces:
         assert namespace != 'default'
         log.info(f'Cleaning up expired namespace: {namespace}')
-        await remove_namespace_from_db(db, namespace)
+        await release_namespace(db, namespace)
 
 
 async def update_envoy_configs(db: Database, k8s_client):
@@ -672,11 +670,11 @@ async def update_envoy_configs(db: Database, k8s_client):
     live_namespaces = tuple(ns.metadata.name for ns in api_response.items)
     namespace_arg_list = "(" + ",".join('%s' for _ in live_namespaces) + ")"
 
-    services_per_namespace = {
-        r['namespace']: [s for s in json.loads(r['services']) if s is not None]
+    records = [
+        r
         async for r in db.execute_and_fetchall(
             f'''
-SELECT active_namespaces.namespace, JSON_ARRAYAGG(service) as services
+SELECT active_namespaces.namespace, active_namespaces.oauth2_callback_url, JSON_ARRAYAGG(service) as services
 FROM active_namespaces
 LEFT JOIN deployed_services
 ON active_namespaces.namespace = deployed_services.namespace
@@ -684,9 +682,17 @@ WHERE active_namespaces.namespace IN {namespace_arg_list}
 GROUP BY active_namespaces.namespace''',
             live_namespaces,
         )
+    ]
+
+    namespaces = {
+        r['namespace']: NamespaceRoutingConfig(
+            r['namespace'], [s for s in json.loads(r['services']) if s is not None], r['oauth2_callback_url']
+        )
+        for r in records
     }
-    assert 'default' in services_per_namespace
-    default_services = services_per_namespace.pop('default')
+
+    assert 'default' in namespaces
+    default_services = namespaces.pop('default').deployed_services
     assert set(['batch', 'auth', 'batch-driver', 'ci']).issubset(set(default_services)), default_services
 
     for proxy in ('gateway', 'internal-gateway'):
@@ -695,8 +701,8 @@ GROUP BY active_namespaces.namespace''',
             name=configmap_name,
             namespace=DEFAULT_NAMESPACE,
         )
-        cds = create_cds_response(default_services, services_per_namespace, proxy)
-        rds = create_rds_response(default_services, services_per_namespace, proxy)
+        cds = create_cds_response(proxy, default_services, list(namespaces.values()))
+        rds = create_rds_response(proxy, default_services, list(namespaces.values()))
         configmap.data['cds.yaml'] = yaml.dump(cds)
         configmap.data['rds.yaml'] = yaml.dump(rds)
         await k8s_client.patch_namespaced_config_map(
@@ -732,6 +738,15 @@ async def on_startup(app):
 SELECT frozen_merge_deploy FROM globals;
 '''
     )
+
+    async with await request_retry_transient_errors(
+        app['client_session'],
+        'GET',
+        deploy_config.url('auth', '/api/v1alpha/users'),
+        headers=service_auth_headers(deploy_config, 'auth'),
+    ) as resp:
+        users = await resp.json()
+        app['developers'] = [u for u in users if u['is_developer'] == 1 and u['username'] != 'test-dev']
 
     app['frozen_merge_deploy'] = row['frozen_merge_deploy']
 

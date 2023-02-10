@@ -45,5 +45,5 @@ build: service-base
 .PHONY: deploy
 deploy: build build-ci-utils build-hail-buildkit
 	! [ -z $(NAMESPACE) ]  # call this like: make deploy NAMESPACE=default
-	python3 jinja2_render.py '{"code":{"sha":"$(shell git rev-parse --short=12 HEAD)"},"deploy":$(DEPLOY),"default_ns":{"name":"$(NAMESPACE)"},"ci_image":{"image":"$(CI_IMAGE)"},"ci_utils_image":{"image":"$(CI_UTILS_IMAGE)"},"ci_database":{"user_secret_name":"sql-ci-user-config"},"hail_buildkit_image":{"image":"$(HAIL_BUILDKIT_IMAGE)"}}' deployment.yaml deployment.yaml.out
+	python3 jinja2_render.py '{"code":{"sha":"$(shell git rev-parse --short=12 HEAD)"},"deploy":$(DEPLOY),"default_ns":{"name":"$(NAMESPACE)"},"ci_image":{"image":"$(CI_IMAGE)"},"ci_utils_image":{"image":"$(CI_UTILS_IMAGE)"},"ci_database":{"user_secret_name":"sql-ci-user-config"},"hail_buildkit_image":{"image":"$(HAIL_BUILDKIT_IMAGE)"},"scope":"$(SCOPE)"}' deployment.yaml deployment.yaml.out
 	kubectl -n $(NAMESPACE) apply -f deployment.yaml.out
