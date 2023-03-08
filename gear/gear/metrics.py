@@ -9,6 +9,10 @@ REQUEST_TIME = pc.Summary('http_request_latency_seconds', 'Endpoint latency in s
 REQUEST_COUNT = pc.Counter('http_request_count', 'Number of HTTP requests', ['endpoint', 'verb', 'status'])
 CONCURRENT_REQUESTS = pc.Gauge('http_concurrent_requests', 'Number of in progress HTTP requests', ['endpoint', 'verb'])
 
+ACTIVE_WEBSOCKETS = pc.Gauge('wss_active_connections', 'Number of active websocket connections')
+WEBSOCKET_MESSAGES = pc.Counter('wss_messages', 'Number of websocket messages', ['sent'])
+WEBSOCKET_ERRORS = pc.Counter('wss_errors', 'Number of errors that occured during websocket communication')
+
 SQL_TRANSACTIONS = pc.Counter('sql_transactions', 'Number of SQL transactions')
 SQL_QUERY_COUNT = pc.Counter('sql_query_count', 'Number of SQL Queries', ['query_name'])
 SQL_QUERY_LATENCY = pc.Summary('sql_query_latency_seconds', 'SQL Query latency in seconds', ['query_name'])
@@ -49,3 +53,25 @@ class PrometheusSQLTimer:
     async def __aexit__(self, exc_type, exc, tb):
         assert self.sql_query_latency_manager
         self.sql_query_latency_manager.__exit__(exc_type, exc, tb)
+
+
+class WebSocketResponseWithMetrics:
+    def __init__(self, ws: web.WebSocketResponse):
+        self._ws = ws
+
+    def __aiter__(self):
+        ACTIVE_WEBSOCKETS.inc()
+        return self
+
+    async def __anext__(self):
+        try:
+            val = await self._ws.__anext__()
+            WEBSOCKET_MESSAGES.labels(sent=True).inc()
+            return val
+        except StopAsyncIteration:
+            ACTIVE_WEBSOCKETS.dec()
+            raise
+        except Exception:
+            ACTIVE_WEBSOCKETS.dec()
+            WEBSOCKET_ERRORS.inc()
+            raise

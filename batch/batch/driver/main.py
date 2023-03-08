@@ -1,5 +1,7 @@
 import asyncio
 import copy
+import collections
+import orjson
 import json
 import logging
 import os
@@ -33,6 +35,7 @@ from gear import (
     transaction,
 )
 from gear.clients import get_cloud_async_fs
+from gear.metrics import WebSocketResponseWithMetrics
 from gear.profiling import install_profiler_if_requested
 from hailtop import aiotools, httpx
 from hailtop.config import get_deploy_config
@@ -964,6 +967,61 @@ HAVING n_ready_jobs + n_running_jobs > 0;
     return await render_template('batch-driver', request, userdata, 'user_resources.html', page_context)
 
 
+@routes.get('/api/v1alpha/batchwss')
+@batch_only
+async def batch_status_wss(request):
+    ws = web.WebSocketResponse()
+    await ws.prepare(request)
+    ws = WebSocketResponseWithMetrics(ws)
+    ws_pool: WebsocketUpdatePool = request.app['ws_pool']
+
+    subscribed_batches = set()
+    # TODO All these metrics could be encapsulated in a class that wraps WebSocketResponse
+    try:
+        async for msg in ws:
+            message = msg.json(loads=orjson.loads)
+            batch_id = message['id']
+            if message['type'] == 'sub':
+                subscribed_batches.add(batch_id)
+                ws_pool.subscribe(batch_id, ws._ws)
+            else:
+                subscribed_batches.remove(batch_id)
+                ws_pool.unsubscribe(batch_id, ws._ws)
+    except Exception:
+        log.exception('Error when dealing with websockets')
+        for batch_id in subscribed_batches:
+            ws_pool.unsubscribe(batch_id, ws._ws)
+    return ws._ws
+
+
+class WebsocketUpdatePool:
+    def __init__(self):
+        self._subscriptions: Dict[int, Set[web.WebSocketResponse]] = collections.defaultdict(set)
+        self._done_events: Dict[int, asyncio.Event] = {}
+        self._worker_pool = AsyncWorkerPool(parallelism=10)
+        self._queued_batch_ids = set()
+
+    def subscribe(self, batch_id: int, ws: web.WebSocketResponse):
+        self._subscriptions[batch_id].add(ws)
+
+    def unsubscribe(self, batch_id: int, ws: web.WebSocketResponse):
+        self._subscriptions[batch_id].remove(ws)
+        if len(self._subscriptions[batch_id]) == 0:
+            del self._subscriptions[batch_id]
+
+    async def update_batch(self, batch_id: int):
+        async def notify_batch_changed(ws: web.WebSocketResponse, batch_id):
+            await ws.send_str(str(batch_id))
+            self._queued_batch_ids.remove(
+                batch_id
+            )  # TODO maybe this should be an enqueued task after all these go through?
+
+        if batch_id not in self._queued_batch_ids:
+            self._queued_batch_ids.add(batch_id)
+            for ws in self._subscriptions[batch_id]:
+                await self._worker_pool.call(notify_batch_changed, ws, batch_id)
+
+
 async def check_incremental(db):
     @transaction(db, read_only=True)
     async def check(tx):
@@ -1407,6 +1465,8 @@ SELECT instance_id, internal_token, frozen FROM globals;
     )
 
     app['canceller'] = await Canceller.create(app)
+
+    app['ws_pool'] = WebsocketUpdatePool()
 
     task_manager.ensure_future(periodically_call(10, monitor_billing_limits, app))
     task_manager.ensure_future(periodically_call(10, cancel_fast_failing_batches, app))

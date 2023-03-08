@@ -186,6 +186,10 @@ async def mark_job_complete(
         # already complete, do nothing
         return
 
+    # TODO I wonder whether or not this should happen on this critical path.
+    # I feel like both of these should happen in a different task, but gotta make sure
+    # the number of tasks doesn't explode
+    await app['ws_pool'].update_batch(batch_id)
     await notify_batch_job_complete(db, client_session, batch_id)
 
     if instance and not instance.inst_coll.is_pool and instance.state == 'active':

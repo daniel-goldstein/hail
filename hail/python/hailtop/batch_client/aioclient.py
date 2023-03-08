@@ -1,4 +1,4 @@
-from typing import Optional, Dict, Any, List, Tuple, Union
+from typing import AsyncGenerator, Optional, Dict, Any, List, Tuple, Union
 import math
 import random
 import logging
@@ -422,10 +422,33 @@ class Batch:
             return await self.status()  # updates _last_known_status
         return self._last_known_status
 
+    # TODO Not sure how this deals with the whole `send` stuff
+    async def stream_status(self) -> AsyncGenerator[dict, None]:
+        try:
+            async for status in self._client.get_status_update_stream(self.id):
+                self._last_known_status = status
+                yield status
+                if status['complete']:
+                    return
+        except (StopAsyncIteration, GeneratorExit):
+            pass
+
+    async def poll_status(self) -> AsyncGenerator[dict, None]:
+        i = 0
+        status = await self.status()
+        while not status['complete']:
+            yield status
+            status = await self.status()
+            j = random.randrange(math.floor(1.1 ** i))
+            await asyncio.sleep(0.100 * j)
+            # max 44.5s
+            if i < 64:
+                i = i + 1
+        yield status
+
     async def _wait(self, description: str, progress: BatchProgressBar, disable_progress_bar: bool, starting_job: int):
         deploy_config = get_deploy_config()
         url = deploy_config.external_url('batch', f'/batches/{self.id}')
-        i = 0
         status = await self.status()
         if is_notebook():
             description += f'[link={url}]{self.id}[/link]'
@@ -434,16 +457,16 @@ class Batch:
         with progress.with_task(description,
                                 total=status['n_jobs'] - starting_job + 1,
                                 disable=disable_progress_bar) as progress_task:
-            while True:
-                status = await self.status()
+            async for status in self.stream_status():
                 progress_task.update(None, total=status['n_jobs'] - starting_job + 1, completed=status['n_completed'] - starting_job + 1)
                 if status['complete']:
                     return status
-                j = random.randrange(math.floor(1.1 ** i))
-                await asyncio.sleep(0.100 * j)
-                # max 44.5s
-                if i < 64:
-                    i = i + 1
+            # If we were cut off from the websocket we should start polling
+            async for status in self.poll_status():
+                progress_task.update(None, total=status['n_jobs'] - starting_job + 1, completed=status['n_completed'] - starting_job + 1)
+                if status['complete']:
+                    return status
+
 
     # FIXME Error if this is called while within a job of the same Batch
     async def wait(self,
@@ -886,6 +909,10 @@ class BatchClient:
     async def _delete(self, path) -> aiohttp.ClientResponse:
         return await self._session.delete(self.url + path, headers=self._headers)
 
+    async def _ws_connect(self, path) -> aiohttp.client._WSRequestContextManager:
+        assert self._session
+        return self._session.ws_connect(self.url + path, headers=self._headers)
+
     def reset_billing_project(self, billing_project):
         self.billing_project = billing_project
 
@@ -990,6 +1017,14 @@ class BatchClient:
     async def cloud(self):
         resp = await self._get('/api/v1alpha/cloud')
         return await resp.text()
+
+    async def get_status_update_stream(self, batch_id: int) -> AsyncGenerator[dict, bool]:
+        try:
+            async with await self._ws_connect(f'/api/v1alpha/batches/{batch_id}/wss') as ws:  # TODO I don't like that endpoint name
+                async for msg in ws:
+                    yield orjson.loads(msg.data)
+        except (StopAsyncIteration, GeneratorExit):
+            return
 
     async def close(self):
         await self._session.close()

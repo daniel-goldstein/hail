@@ -11,7 +11,7 @@ import signal
 import traceback
 from functools import wraps
 from numbers import Number
-from typing import Dict, Optional, Tuple, Union
+from typing import Dict, Optional, Set, Tuple, Union
 
 import aiohttp
 import aiohttp_session
@@ -38,6 +38,7 @@ from gear import (
     transaction,
 )
 from gear.clients import get_cloud_async_fs
+from gear.metrics import WebSocketResponseWithMetrics
 from gear.database import CallError
 from gear.profiling import install_profiler_if_requested
 from hailtop import aiotools, dictfix, httpx, version
@@ -46,6 +47,7 @@ from hailtop.config import get_deploy_config
 from hailtop.hail_logging import AccessLogger
 from hailtop.tls import internal_server_ssl_context
 from hailtop.utils import (
+    AsyncWorkerPool,
     cost_str,
     dump_all_stacktraces,
     humanize_timedelta_msecs,
@@ -1649,6 +1651,59 @@ async def get_batch(request, userdata, batch_id):  # pylint: disable=unused-argu
     return json_response(await _get_batch(request.app, batch_id))
 
 
+class WebsocketUpdatePool:
+    def __init__(self, app: web.Application):
+        self._subscriptions: Dict[int, Set[web.WebSocketResponse]] = collections.defaultdict(set)
+        self._done_events: Dict[int, asyncio.Event] = collections.defaultdict(asyncio.Event)
+        self._worker_pool = AsyncWorkerPool(parallelism=10)
+        self._app = app
+        self._driver_ws = None
+        self._queued_batch_ids = set()
+
+    # TODO This is all sketchy and should be able to handle multiple subscriptions to the same batch
+    async def subscribe_and_wait(self, batch_id: int, ws: web.WebSocketResponse):
+        if len(self._subscriptions[batch_id]) == 0:
+            if self._driver_ws:
+                await self._driver_ws.send_json({'type': 'sub', 'id': batch_id})
+        self._subscriptions[batch_id].add(ws)
+        self._app['task_manager'].ensure_future(self.update_batch(batch_id))  # Totally sketchy
+        await self._done_events[batch_id].wait()
+        self._subscriptions[batch_id].remove(ws)
+        del self._done_events[batch_id]
+
+    async def update_batch(self, batch_id: int):
+        async def push_status_update(ws, app, batch_id):
+            status = await _get_batch(app, batch_id)
+            await ws.send_json(status)
+            self._queued_batch_ids.remove(batch_id)
+            if status['complete']:
+                self._done_events[batch_id].set()
+                if self._driver_ws:
+                    await self._driver_ws.send_json({'type': 'unsub', 'id': batch_id})
+
+        for ws in self._subscriptions[batch_id]:
+            if batch_id not in self._queued_batch_ids:
+                self._queued_batch_ids.add(batch_id)
+                await self._worker_pool.call(push_status_update, ws, self._app, batch_id)
+
+    async def update_all_subscribed_batches(self):
+        for batch_id in self._subscriptions:
+            await self.update_batch(batch_id)
+
+    def set_driver_wss(self, ws: web.WebSocketResponse):
+        self._driver_ws = ws
+
+
+@routes.get('/api/v1alpha/batches/{batch_id}/wss')
+@rest_billing_project_users_only
+async def get_batch(request, userdata, batch_id):  # pylint: disable=unused-argument
+    ws = web.WebSocketResponse()
+    await ws.prepare(request)
+    ws_pool: WebsocketUpdatePool = request.app['ws_pool']
+    await ws_pool.subscribe_and_wait(batch_id, ws)
+    return ws
+
+
 @routes.patch('/api/v1alpha/batches/{batch_id}/cancel')
 @rest_billing_project_users_only
 async def cancel_batch(request, userdata, batch_id):  # pylint: disable=unused-argument
@@ -2918,7 +2973,7 @@ class BatchFrontEndAccessLogger(AccessLogger):
         super().log(request, response, time)
 
 
-async def on_startup(app):
+async def on_startup(app: web.Application):
     app['task_manager'] = aiotools.BackgroundTaskManager()
     app['client_session'] = httpx.client_session()
 
@@ -2964,6 +3019,24 @@ SELECT instance_id, internal_token, n_tokens, frozen FROM globals;
     app['task_manager'].ensure_future(
         retry_long_running('cancel_batch_loop', run_if_changed, cancel_batch_state_changed, cancel_batch_loop_body, app)
     )
+
+    ws_pool = WebsocketUpdatePool(app)
+    app['ws_pool'] = ws_pool
+
+    async def receive_notifications_from_batch(app):
+        batch_driver_ws = await retry_transient_errors(
+            app['client_session'].ws_connect,
+            deploy_config.url('batch-driver', f'/api/v1alpha/batchwss'),
+            headers=app['batch_headers'],
+        )
+        app['ws_pool'].set_driver_wss(batch_driver_ws)
+        try:
+            async for msg in WebSocketResponseWithMetrics(batch_driver_ws):
+                await ws_pool.update_batch(int(msg.data))
+        except Exception:
+            app['ws_pool'].set_driver_wss(None)
+
+    app['task_manager'].ensure_future(periodically_call(5, receive_notifications_from_batch, app))
 
     delete_batch_state_changed = asyncio.Event()
     app['delete_batch_state_changed'] = delete_batch_state_changed
