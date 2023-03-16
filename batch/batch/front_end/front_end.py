@@ -44,6 +44,7 @@ from hailtop.config import get_deploy_config
 from hailtop.hail_logging import AccessLogger
 from hailtop.tls import internal_server_ssl_context
 from hailtop.utils import (
+    check_exec_output,
     cost_str,
     dump_all_stacktraces,
     humanize_timedelta_msecs,
@@ -1110,6 +1111,19 @@ WHERE batch_updates.batch_id = %s AND batch_updates.update_id = %s AND user = %s
         if user != 'ci' and not (network is None or network == 'public'):
             raise web.HTTPBadRequest(reason=f'unauthorized network {network}')
 
+        vpn = spec.get('vpn')
+        if vpn is not None:
+            if 'privatekey' not in vpn:
+                privatekey_bytes, _ = await check_exec_output('wg', 'genkey')
+                privatekey = privatekey_bytes.decode('utf-8').strip()
+                publickey_bytes, _ = await check_exec_output('wg', 'pubkey', stdin=privatekey.encode('utf-8'))
+                publickey = publickey_bytes.decode('utf-8').strip()
+
+                spec['vpn']['privatekey'] = privatekey
+                spec['vpn']['publickey'] = publickey
+            if 'peers' not in vpn:
+                vpn['peers'] = []
+
         unconfined = spec.get('unconfined')
         if user != 'ci' and unconfined:
             raise web.HTTPBadRequest(reason=f'unauthorized use of unconfined={unconfined}')
@@ -1470,6 +1484,7 @@ async def create_update(request, userdata):
         raise web.HTTPBadRequest(reason=e.reason)
 
     update_id, _ = await _create_batch_update(batch_id, update_spec['token'], update_spec['n_jobs'], user, db)
+    # TODO Could return the public keys of jobs in here
     return web.json_response({'update_id': update_id})
 
 

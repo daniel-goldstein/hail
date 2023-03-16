@@ -17,6 +17,8 @@ import org.apache.log4j.Logger
 import scala.collection.mutable
 import scala.concurrent.duration.{Duration, MILLISECONDS}
 import scala.concurrent.{Future, Await, ExecutionContext}
+import org.apache.http.client.methods.{HttpGet, HttpPost}
+import org.apache.http.entity.{ByteArrayEntity, ContentType}
 
 class ServiceTaskContext(val partitionId: Int) extends HailTaskContext {
   override def stageId(): Int = 0
@@ -113,6 +115,7 @@ object Worker {
     DeployConfig.set(deployConfig)
     val userTokens = Tokens.fromFile(s"$scratchDir/secrets/user-tokens/tokens.json")
     Tokens.set(userTokens)
+    val requester = new Requester(userTokens, null)
     tls.setSSLConfigFromDir(s"$scratchDir/secrets/ssl-config")
 
     log.info(s"is.hail.backend.service.Worker $myRevision")
@@ -125,25 +128,21 @@ object Worker {
 
     val (open, write) = ((x: String) => fs.openNoCompression(x), fs.writePDOS _)
 
+    val driverVpnBaseUrl = "http://10.0.0.1:5000"
+
     val fFuture = Future {
       retryTransientErrors {
-        using(new ExplicitClassLoaderInputStream(open(s"$root/f"), theHailClassLoader)) { is =>
-          is.readObject().asInstanceOf[(Array[Byte], HailTaskContext, HailClassLoader, FS) => Array[Byte]]
-        }
+        requester.requestWithHandler(new HttpGet(s"$driverVpnBaseUrl/f"), null, { is =>
+          using(new ExplicitClassLoaderInputStream(is, theHailClassLoader)) { ois =>
+            ois.readObject().asInstanceOf[(Array[Byte], HailTaskContext, HailClassLoader, FS) => Array[Byte]]
+          }
+        })
       }
     }
 
     val contextFuture = Future {
       retryTransientErrors {
-        using(open(s"$root/contexts")) { is =>
-          is.seek(i * 12)
-          val offset = is.readLong()
-          val length = is.readInt()
-          is.seek(offset)
-          val context = new Array[Byte](length)
-          is.readFully(context)
-          context
-        }
+        requester.requestAsByteStream(new HttpGet(s"$driverVpnBaseUrl/$i"))
       }
     }
 
@@ -154,11 +153,11 @@ object Worker {
     timer.start("executeFunction")
 
     if (HailContext.isInitialized) {
-      HailContext.get.backend = new ServiceBackend(null, null, new HailClassLoader(getClass().getClassLoader()), null, None)
+      HailContext.get.backend = new ServiceBackend(null, null, new HailClassLoader(getClass().getClassLoader()), null, None, null, null)
     } else {
       HailContext(
         // FIXME: workers should not have backends, but some things do need hail contexts
-        new ServiceBackend(null, null, new HailClassLoader(getClass().getClassLoader()), null, None))
+        new ServiceBackend(null, null, new HailClassLoader(getClass().getClassLoader()), null, None, null, null))
     }
     val htc = new ServiceTaskContext(i)
     var result: Array[Byte] = null
@@ -176,22 +175,7 @@ object Worker {
     timer.start("writeOutputs")
 
     retryTransientErrors {
-      write(s"$root/result.$i") { dos =>
-        if (result != null) {
-          assert(userError == null)
-
-          dos.writeBoolean(true)
-          dos.write(result)
-        } else {
-          assert(userError != null)
-          val (shortMessage, expandedMessage, errorId) = handleForPython(userError)
-
-          dos.writeBoolean(false)
-          writeString(dos, shortMessage)
-          writeString(dos, expandedMessage)
-          dos.writeInt(errorId)
-        }
-      }
+      requester.requestAsByteStream(new HttpPost(s"$driverVpnBaseUrl/$i"), new ByteArrayEntity(result))
     }
 
     timer.end("writeOutputs")

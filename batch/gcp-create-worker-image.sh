@@ -8,7 +8,7 @@ PROJECT=$(get_global_config_field gcp_project)
 ZONE=$(get_global_config_field gcp_zone)
 DOCKER_ROOT_IMAGE=$(get_global_config_field docker_root_image)
 
-WORKER_IMAGE_VERSION=12
+WORKER_IMAGE_VERSION="dgoldste-2204"
 BUILDER=build-batch-worker-image
 
 create_build_image_instance() {
@@ -18,10 +18,7 @@ create_build_image_instance() {
     python3 ../ci/jinja2_render.py '{"global":{"docker_root_image":"'${DOCKER_ROOT_IMAGE}'"}}' \
         build-batch-worker-image-startup-gcp.sh build-batch-worker-image-startup-gcp.sh.out
 
-    UBUNTU_IMAGE=$(gcloud compute images list \
-        --standard-images \
-        --filter 'family="ubuntu-minimal-2004-lts"' \
-        --format='value(name)')
+    UBUNTU_IMAGE=ubuntu-minimal-2204-jammy-v20230302
 
     gcloud -q compute instances create ${BUILDER} \
         --project ${PROJECT}  \

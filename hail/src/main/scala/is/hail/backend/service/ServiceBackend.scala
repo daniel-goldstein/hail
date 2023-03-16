@@ -1,5 +1,7 @@
 package is.hail.backend.service
 
+import com.sun.net.httpserver.{HttpContext, HttpExchange, HttpHandler, HttpServer}
+
 import java.io._
 import java.nio.charset._
 import java.net._
@@ -42,6 +44,7 @@ import scala.reflect.ClassTag
 import scala.{concurrent => scalaConcurrent}
 import scala.collection.mutable
 import scala.collection.parallel.ExecutionContextTaskSupport
+import scala.sys.process._
 
 
 class ServiceBackendContext(
@@ -56,8 +59,91 @@ class ServiceBackendContext(
     new Tokens(Map((DeployConfig.get.defaultNamespace, sessionID)))
 }
 
+object ServiceBackendHttpServer {
+
+  def main(argv: Array[String]): Unit = {
+    System.err.println("FOO")
+    val server = new ServiceBackendHttpServer(5432)
+    try {
+      server.start()
+      server.update((_: Array[Byte], _: HailTaskContext, _: HailClassLoader, _: FS) => "Hello".getBytes, Array("World".getBytes), Array())
+      Thread.sleep(100000)
+    } finally {
+      server.stop()
+    }
+  }
+}
+
+class ServiceBackendHttpServer(port: Int) {
+  private val httpServer = HttpServer.create(new InetSocketAddress(port), 1000)
+  private val handler = new HttpRequestHandler()
+
+  def start(): Unit = {
+    httpServer.createContext("/", handler)
+    httpServer.setExecutor(null)
+    httpServer.start
+  }
+
+  def update(function: ServiceBackend.CompiledFunction, contexts: Array[Array[Byte]], results: Array[Array[Byte]]): Unit = {
+    handler.update(function, contexts, results)
+  }
+
+  def stop(): Unit = {
+    httpServer.stop(10)
+  }
+}
+
+class HttpRequestHandler extends HttpHandler {
+  private[this] var functionBytes: Array[Byte] = _
+  private[this] var contexts: Array[Array[Byte]] = _
+  private[this] var results: Array[Array[Byte]] = _
+
+  def handle(exchange: HttpExchange): Unit = {
+    exchange.getRequestMethod match {
+      case "GET" => handleGet(exchange)
+      case "POST" => handlePost(exchange)
+    }
+  }
+
+  def handleGet(exchange: HttpExchange): Unit = {
+    val path = exchange.getRequestURI.getPath.stripPrefix("/")
+    val response = try {
+      val jobId = Integer.parseInt(path)
+      contexts(jobId)
+    } catch {
+      case _: NumberFormatException => functionBytes
+    }
+    exchange.sendResponseHeaders(200, response.length)
+    val os = exchange.getResponseBody()
+    os.write(response)
+    os.close()
+  }
+
+  def handlePost(exchange: HttpExchange): Unit = {
+    val path = exchange.getRequestURI.getPath.stripPrefix("/")
+    val jobId = Integer.parseInt(path)
+
+    results(jobId) = using(exchange.getRequestBody)(IOUtils.toByteArray)
+
+    exchange.sendResponseHeaders(200, 0)
+    exchange.getResponseBody().close()
+  }
+
+  def update(function: ServiceBackend.CompiledFunction, contexts: Array[Array[Byte]], results: Array[Array[Byte]]): Unit = {
+    this.contexts = contexts
+    this.results = results
+
+    using(new ByteArrayOutputStream()) { baos =>
+      using(new ObjectOutputStream(baos)) { oos => oos.writeObject(function) }
+      this.functionBytes = baos.toByteArray
+    }
+  }
+}
+
 object ServiceBackend {
   private val log = Logger.getLogger(getClass.getName())
+
+  type CompiledFunction = (Array[Byte], HailTaskContext, HailClassLoader, FS) => Array[Byte]
 }
 
 class ServiceBackend(
@@ -66,6 +152,8 @@ class ServiceBackend(
   val theHailClassLoader: HailClassLoader,
   val batchClient: BatchClient,
   val curBatchId: Option[Long],
+  val wgPublicKey: String,
+  val wgEndpoint: String,
   val scratchDir: String = sys.env.get("HAIL_WORKER_SCRATCH_DIR").getOrElse(""),
 ) extends Backend with BackendWithNoCodeCache {
   import ServiceBackend.log
@@ -75,6 +163,12 @@ class ServiceBackend(
     Executors.newCachedThreadPool())
   private[this] val MAX_AVAILABLE_GCS_CONNECTIONS = 100
   private[this] val availableGCSConnections = new Semaphore(MAX_AVAILABLE_GCS_CONNECTIONS, true)
+
+  private[this] var functionServer: ServiceBackendHttpServer = null
+  if (name != null) {
+    functionServer = new ServiceBackendHttpServer(5000)
+    functionServer.start()
+  }
 
   override def shouldCacheQueryInfo: Boolean = false
 
@@ -107,47 +201,20 @@ class ServiceBackend(
     collection: Array[Array[Byte]],
     stageIdentifier: String,
     dependency: Option[TableStageDependency] = None
-  )(f: (Array[Byte], HailTaskContext, HailClassLoader, FS) => Array[Byte]
-  ): Array[Array[Byte]] = {
+  )(f: ServiceBackend.CompiledFunction): Array[Array[Byte]] = {
     val backendContext = _backendContext.asInstanceOf[ServiceBackendContext]
     val n = collection.length
     val token = tokenUrlSafe(32)
     val root = s"${ backendContext.remoteTmpDir }parallelizeAndComputeWithIndex/$token"
 
+    // TODO Consider using a channel
+    var results = Array.fill[Array[Byte]](n)(Array())
+
     val (open, write) = ((x: String) => fs.openNoCompression(x), fs.writePDOS _)
 
     log.info(s"parallelizeAndComputeWithIndex: $token: nPartitions $n")
-    log.info(s"parallelizeAndComputeWithIndex: $token: writing f and contexts")
 
-    val uploadFunction = scalaConcurrent.Future {
-      retryTransientErrors {
-        write(s"$root/f") { fos =>
-          using(new ObjectOutputStream(fos)) { oos => oos.writeObject(f) }
-        }
-      }
-    }
-
-    val uploadContexts = scalaConcurrent.Future {
-      retryTransientErrors {
-        write(s"$root/contexts") { os =>
-          var o = 12L * n
-          var i = 0
-          while (i < n) {
-            val len = collection(i).length
-            os.writeLong(o)
-            os.writeInt(len)
-            i += 1
-            o += len
-          }
-          collection.foreach { context =>
-            os.write(context)
-          }
-        }
-      }
-    }
-
-    scalaConcurrent.Await.result(uploadFunction, scalaConcurrent.duration.Duration.Inf)
-    scalaConcurrent.Await.result(uploadContexts, scalaConcurrent.duration.Duration.Inf)
+    functionServer.update(f, collection, results)
 
     val jobs = new Array[JObject](n)
     var i = 0
@@ -159,6 +226,15 @@ class ServiceBackend(
       if (backendContext.workerMemory != "None") {
         resources = resources.merge(JObject(("memory" -> JString(backendContext.workerMemory))))
       }
+
+      val privatekey = "wg genkey".!!.filterNot(_.isWhitespace)
+      val is = new ByteArrayInputStream(privatekey.getBytes(StandardCharsets.UTF_8))
+      val publickey = ("wg pubkey" #< is).!!.filterNot(_.isWhitespace)
+
+      val ipNum = i + 2
+      val ip = s"10.0.${ipNum / 255}.${ipNum % 255}"
+      s"wg set wg0 peer $publickey allowed-ips $ip".!!
+
       jobs(i) = JObject(
         "always_run" -> JBool(false),
         "job_id" -> JInt(i + 1),
@@ -179,7 +255,19 @@ class ServiceBackend(
         ),
         "mount_tokens" -> JBool(true),
         "resources" -> resources,
-        "regions" -> JArray(backendContext.regions.map(JString).toList)
+        "regions" -> JArray(backendContext.regions.map(JString).toList),
+        "vpn" -> JObject(
+          "ip" -> JString(ip),
+          "privatekey" -> JString(privatekey),
+          "publickey" -> JString(publickey),
+          "peers" -> JArray(List(
+            JObject(
+              "ip" -> JString("10.0.0.1"),
+              "publickey" -> JString(wgPublicKey),
+              "endpoint" -> JString(wgEndpoint)
+            )
+          ))
+        )
       )
       i += 1
     }
@@ -226,27 +314,15 @@ class ServiceBackend(
       }
     }
 
-
-    val results = Array.range(0, n).par.map { i =>
-      availableGCSConnections.acquire()
-      try {
-        val bytes = retryTransientErrors {
-          using(open(s"$root/result.$i")) { is =>
-            resultOrHailException(new DataInputStream(is))
-          }
-        }
-        log.info(s"result $i complete - ${bytes.length} bytes")
-        bytes
-      } finally {
-        availableGCSConnections.release()
-      }
-    }
-
+    // TODO Error handling
     log.info(s"all results complete")
-    results.toArray[Array[Byte]]
+    results.foreach(a => log.info(s"Result has length ${a.length} and contents: $a"))
+    results
   }
 
-  def stop(): Unit = ()
+  def stop(): Unit = {
+    functionServer.stop()
+  }
 
   def valueType(
     ctx: ExecuteContext,
@@ -424,11 +500,14 @@ object ServiceBackendSocketAPI2 {
     val sessionId = userTokens.namespaceToken(deployConfig.defaultNamespace)
     val batchClient = BatchClient.fromSessionID(sessionId)
 
-    var batchId = BatchConfig.fromConfigFile(s"$scratchDir/batch-config/batch-config.json").map(_.batchId)
+    val batchConfig = BatchConfig.fromConfigFile(s"$scratchDir/batch-config/batch-config.json").get
+    var batchId = batchConfig.batchId
+    val driverWgPublicKey = batchConfig.wireguardPublicKey
+    val driverWgEndpoint = batchConfig.wireguardEndpoint
 
     // FIXME: when can the classloader be shared? (optimizer benefits!)
     val backend = new ServiceBackend(
-      jarLocation, name, new HailClassLoader(getClass().getClassLoader()), batchClient, batchId, scratchDir)
+      jarLocation, name, new HailClassLoader(getClass().getClassLoader()), batchClient, Some(batchId), driverWgPublicKey, driverWgEndpoint, scratchDir)
     if (HailContext.isInitialized) {
       HailContext.get.backend = backend
       backend.addDefaultReferences()
@@ -436,15 +515,19 @@ object ServiceBackendSocketAPI2 {
       HailContext(backend, 50, 3)
     }
 
-    retryTransientErrors {
-      using(fs.openNoCompression(input)) { in =>
-        retryTransientErrors {
-          using(fs.createNoCompression(output)) { out =>
-            new ServiceBackendSocketAPI2(backend, in, out, sessionId).executeOneCommand()
-            out.flush()
+    try {
+      retryTransientErrors {
+        using(fs.openNoCompression(input)) { in =>
+          retryTransientErrors {
+            using(fs.createNoCompression(output)) { out =>
+              new ServiceBackendSocketAPI2(backend, in, out, sessionId).executeOneCommand()
+              out.flush()
+            }
           }
         }
       }
+    } finally {
+      backend.stop()
     }
   }
 }

@@ -1,4 +1,4 @@
-from typing import Tuple, List
+from typing import Tuple, List, Optional
 import asyncio
 import subprocess
 
@@ -21,15 +21,17 @@ class CalledProcessError(Exception):
 
 async def check_exec_output(command: str,
                             *args: str,
-                            echo: bool = False
+                            echo: bool = False,
+                            stdin: Optional[bytes] = None
                             ) -> Tuple[bytes, bytes]:
     if echo:
         print([command, *args])
     proc = await asyncio.create_subprocess_exec(
         command, *args,
+        stdin=asyncio.subprocess.PIPE if stdin else None,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE)
-    outerr = await proc.communicate()
+    outerr = await proc.communicate(stdin)
     assert proc.returncode is not None
     if proc.returncode != 0:
         raise CalledProcessError([command, *args], proc.returncode, outerr)

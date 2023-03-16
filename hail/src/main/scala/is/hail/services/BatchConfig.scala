@@ -22,8 +22,12 @@ object BatchConfig {
 
   def fromConfig(config: JValue): BatchConfig = {
     implicit val formats: Formats = DefaultFormats
-    new BatchConfig((config \ "batch_id").extract[Int])
+    new BatchConfig(
+      (config \ "batch_id").extract[Int],
+      (config \ "wireguard_publickey").extract[String],
+      (config \ "wireguard_endpoint").extract[String],
+    )
   }
 }
 
-class BatchConfig(val batchId: Long)
+class BatchConfig(val batchId: Long, val wireguardPublicKey: String, val wireguardEndpoint: String)

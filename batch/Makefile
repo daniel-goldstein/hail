@@ -26,7 +26,7 @@ hail-ubuntu:
 .PHONY: build-batch
 build-batch: hail-ubuntu
 	python3 ../ci/jinja2_render.py '{"hail_ubuntu_image":{"image":"'$$(cat ../docker/hail-ubuntu-image-ref)'"}}' Dockerfile Dockerfile.out
-	../docker-build.sh . Dockerfile.out $(BATCH_IMAGE)
+	../docker-build.sh .. batch/Dockerfile.out $(BATCH_IMAGE)
 
 jars/junixsocket-selftest-2.3.3-jar-with-dependencies.jar:
 	mkdir jars
