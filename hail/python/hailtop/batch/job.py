@@ -83,6 +83,7 @@ class Job:
         self._cloudfuse: List[Tuple[str, str, bool]] = []
         self._always_copy_output: bool = False
         self._env: Dict[str, str] = {}
+        self._vpn = None
         self._wrapper_code: List[str] = []
         self._user_code: List[str] = []
         self._regions: Optional[List[str]] = None
@@ -181,6 +182,9 @@ class Job:
 
     def env(self, variable: str, value: str):
         self._env[variable] = value
+
+    def vpn(self, vpn_config):
+        self._vpn = vpn_config
 
     def storage(self, storage: Optional[Union[str, int]]) -> 'Job':
         """

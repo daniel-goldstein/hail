@@ -40,6 +40,11 @@ class BatchFormatVersion:
             storage = resources['storage_gib']
             machine_spec = [machine_type, preemptible, storage]
 
+        vpn = spec.get('vpn')
+        vpn_spec = []
+        if vpn:
+            vpn_spec.append(vpn['publickey'])
+
         if self.format_version < 5:
             return [
                 secrets,
@@ -54,6 +59,7 @@ class BatchFormatVersion:
             int(len(spec.get('input_files', [])) > 0),
             int(len(spec.get('output_files', [])) > 0),
             machine_spec,
+            vpn_spec,
         ]
 
     def get_spec_secrets(self, spec):

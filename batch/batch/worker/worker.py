@@ -215,7 +215,7 @@ class PortAllocator:
     def __init__(self):
         self.ports: asyncio.Queue[int] = asyncio.Queue()
         port_base = 46572
-        for port in range(port_base, port_base + 10):
+        for port in range(port_base, port_base + 100):
             self.ports.put_nowait(port)
 
     async def allocate(self):
@@ -245,6 +245,8 @@ class NetworkNamespace:
 
         self.port = None
         self.host_port = None
+
+        self.wg_peers = set()
 
     async def init(self):
         await self.create_netns()
@@ -317,6 +319,49 @@ iptables -w {IPTABLES_WAIT_TIMEOUT_SECS} -t mangle -A POSTROUTING --out-interfac
             f'--jump DNAT --to-destination {self.job_ip}:{self.port}'
         )
 
+    async def add_wireguard_interface(self, host_port):
+        assert network_allocator
+        # TODO I don't really need this lock, just easier at first to call everything wg0
+        async with network_allocator.wg_lock:
+            await check_exec_output('ip', 'link', 'add', 'wg0', 'type', 'wireguard')
+            await check_exec_output('ip', 'link', 'set', 'wg0', 'netns', self.network_ns_name)
+
+        await self._exec_in_ns('ip', 'link', 'set', 'up', 'dev', 'wg0')
+        await self._exec_in_ns('wg', 'set', 'wg0', 'listen-port', str(host_port))
+
+    async def configure_wireguard_interface(self, vpn):
+        vpn_ip = vpn['ip']
+        privatekey = vpn['privatekey']
+
+        await self._exec_in_ns('ip', 'addr', 'add', f'{vpn_ip}/16', 'dev', 'wg0')
+        with tempfile.NamedTemporaryFile() as keyfile:
+            keyfile.write(privatekey.encode('utf-8'))
+            keyfile.flush()
+            await self._exec_in_ns('wg', 'set', 'wg0', 'private-key', keyfile.name)
+
+        new_peers = set()
+        for peer in vpn['peers']:
+            publickey = peer['publickey']
+            new_peers.add(publickey)
+            if peer['publickey'] not in self.wg_peers:
+                await self._exec_in_ns(
+                    'wg',
+                    'set',
+                    'wg0',
+                    'peer',
+                    publickey,
+                    'endpoint',
+                    peer['endpoint'],
+                    'allowed-ips',
+                    f'{peer["ip"]}/32',
+                )
+        for old_peer in self.wg_peers.difference(new_peers):
+            await self._exec_in_ns('wg', 'set', 'wg0', 'peer', old_peer, 'remove')
+        self.wg_peers = new_peers
+
+    async def _exec_in_ns(self, command, *args):
+        await check_exec_output('ip', 'netns', 'exec', self.network_ns_name, command, *args, echo=True)
+
     async def cleanup(self):
         if self.host_port:
             assert self.port
@@ -337,6 +382,12 @@ class NetworkAllocator:
         self.private_networks: asyncio.Queue[NetworkNamespace] = asyncio.Queue()
         self.public_networks: asyncio.Queue[NetworkNamespace] = asyncio.Queue()
         self.internet_interface = INTERNET_INTERFACE
+
+        self._wg_lock = asyncio.Lock()
+
+    @property
+    def wg_lock(self):
+        return self._wg_lock
 
     async def reserve(self):
         for subnet_index in range(N_SLOTS):
@@ -667,6 +718,7 @@ class Container:
         memory_in_bytes: int,
         network: Optional[Union[bool, str]] = None,
         port: Optional[int] = None,
+        vpn: Optional[dict] = None,
         timeout: Optional[int] = None,
         unconfined: Optional[bool] = None,
         volume_mounts: Optional[List[dict]] = None,
@@ -683,6 +735,7 @@ class Container:
         self.memory_in_bytes = memory_in_bytes
         self.network = network
         self.port = port
+        self.vpn = vpn
         self.timeout = timeout
         self.unconfined = unconfined
         self.volume_mounts = volume_mounts or []
@@ -928,6 +981,10 @@ class Container:
         if self.port is not None:
             self.host_port = await port_allocator.allocate()
             await self.netns.expose_port(self.port, self.host_port)
+        elif self.vpn is not None:
+            self.host_port = await port_allocator.allocate()
+            await self.netns.add_wireguard_interface(self.host_port)
+            await self.netns.configure_wireguard_interface(self.vpn)
 
     async def _run_container(self) -> bool:
         self.started_at = time_msecs()
@@ -994,6 +1051,8 @@ class Container:
             'CAP_SETFCAP',
             'CAP_SETPCAP',
             'CAP_NET_BIND_SERVICE',
+            'CAP_NET_ADMIN',  # TODO Remove, ideally we don't need to grant this
+            # It's worth trying to just add an endpoint that adds pubkeys to a running job's peers
             'CAP_SYS_CHROOT',
             'CAP_KILL',
             'CAP_AUDIT_WRITE',
@@ -1182,7 +1241,7 @@ class Container:
     def _env(self):
         assert self.image.image_config
         env = self.image.image_config['Config']['Env'] + self.env
-        if self.port is not None:
+        if self.port is not None or self.vpn is not None:
             assert self.host_port is not None
             env.append(f'HAIL_BATCH_WORKER_PORT={self.host_port}')
             env.append(f'HAIL_BATCH_WORKER_IP={IP_ADDRESS}')
@@ -1457,6 +1516,7 @@ class Job:
         secrets = job_spec.get('secrets')
         self.secrets = secrets
         self.env = job_spec.get('env', [])
+        self.vpn = job_spec.get('vpn')
 
         self.project_id = Job.get_next_xfsquota_project_id()
 
@@ -1580,8 +1640,13 @@ class DockerJob(Job):
         hail_extra_env = [
             {'name': 'HAIL_REGION', 'value': REGION},
             {'name': 'HAIL_BATCH_ID', 'value': str(batch_id)},
+            {'name': 'HAIL_JOB_ID', 'value': str(job_spec['job_id'])},
         ]
         self.env += hail_extra_env
+
+        vpn = job_spec.get('vpn')
+        if vpn:
+            self.env.append({'name': 'HAIL_WIREGUARD_PUBLICKEY', 'value': vpn['publickey']})
 
         if self.secrets:
             for secret in self.secrets:
@@ -1629,6 +1694,7 @@ class DockerJob(Job):
             unconfined=job_spec.get('unconfined'),
             volume_mounts=self.main_volume_mounts,
             env=[f'{var["name"]}={var["value"]}' for var in self.env],
+            vpn=self.vpn,
         )
 
         if output_files:
@@ -1928,9 +1994,20 @@ class JVMJob(Job):
         assert self.worker.fs is not None
 
     def write_batch_config(self):
+        assert self.jvm
+        assert self.jvm.container
         os.makedirs(f'{self.scratch}/batch-config')
         with open(f'{self.scratch}/batch-config/batch-config.json', 'wb') as config:
-            config.write(orjson.dumps({'version': 1, 'batch_id': self.batch_id}))
+            config.write(
+                orjson.dumps(
+                    {
+                        'version': 1,
+                        'batch_id': self.batch_id,
+                        'wireguard_publickey': self.vpn['publickey'],
+                        'wireguard_endpoint': f'{IP_ADDRESS}:{self.jvm.container.host_port}',
+                    }
+                )
+            )
 
     def step(self, name):
         return self.timings.step(name)
@@ -1984,14 +2061,6 @@ class JVMJob(Job):
             self.start_time = time_msecs()
             os.makedirs(f'{self.scratch}/')
 
-            # We use a configuration file (instead of environment variables) to pass job-specific
-            # configuration options for a JVMJob because we cannot alter the JVM container's
-            # environment variables after it has been started and it is difficult to make
-            # passing additional command line arguments to the job backwards compatible. In anticipation
-            # of future additional job parameters, we decided to write the batch configuration to a
-            # file with explicit versioning to make sure we maintain backwards compatibility.
-            self.write_batch_config()
-
             mjs_fut = self.mark_started()
             try:
                 with self.step('connecting_to_jvm'):
@@ -2013,6 +2082,20 @@ class JVMJob(Job):
 
                 with self.step('downloading_jar'):
                     local_jar_location = await self.download_jar()
+
+                with self.step('setting up vpn'):
+                    if self.vpn:
+                        assert port_allocator
+                        assert self.jvm.container.container.netns
+                        await self.jvm.container.container.netns.configure_wireguard_interface(self.vpn)
+
+                # We use a configuration file (instead of environment variables) to pass job-specific
+                # configuration options for a JVMJob because we cannot alter the JVM container's
+                # environment variables after it has been started and it is difficult to make
+                # passing additional command line arguments to the job backwards compatible. In anticipation
+                # of future additional job parameters, we decided to write the batch configuration to a
+                # file with explicit versioning to make sure we maintain backwards compatibility.
+                self.write_batch_config()
 
                 with self.step('running'):
                     await self.jvm.execute(local_jar_location, self.scratch, self.log_file, self.jar_url, self.argv)
@@ -2056,6 +2139,13 @@ class JVMJob(Job):
         assert self.worker
         assert self.worker.file_store is not None
         assert self.worker.fs
+
+        if self.vpn is not None:
+            assert self.jvm
+            assert self.jvm.container.container.netns
+            await self.jvm.container.container.netns._exec_in_ns(
+                'ip', 'addr', 'del', f'{self.vpn["ip"]}/16', 'dev', 'wg0'
+            )
 
         if self.jvm is not None:
             self.worker.return_jvm(self.jvm)
@@ -2238,11 +2328,17 @@ class JVMContainer:
         await c.create()
         c.start()
 
-        return JVMContainer(c, fs)
+        assert c.netns
+        assert port_allocator
+        host_port = await port_allocator.allocate()
+        await c.netns.add_wireguard_interface(host_port)
 
-    def __init__(self, container: Container, fs: AsyncFS):
+        return JVMContainer(c, fs, host_port)
+
+    def __init__(self, container: Container, fs: AsyncFS, host_port: int):
         self.container = container
         self.fs: AsyncFS = fs
+        self.host_port = host_port
 
     @property
     def returncode(self) -> Optional[int]:

@@ -25,8 +25,8 @@ fi
 DOCKER_BUILDKIT=1 docker build \
        --platform linux/amd64 \
        --file ${DOCKERFILE} \
-       --cache-from ${MAIN_CACHE} \
        ${DEV_CACHE:+--cache-from ${DEV_CACHE}} \
+       --cache-from ${MAIN_CACHE} \
        ${EXTRA_CACHE:+--cache-from ${EXTRA_CACHE}} \
        --build-arg BUILDKIT_INLINE_CACHE=1 \
        --tag ${REMOTE_IMAGE_NAME} \

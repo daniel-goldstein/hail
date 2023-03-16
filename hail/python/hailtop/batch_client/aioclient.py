@@ -509,6 +509,7 @@ class BatchBuilder:
                     process: dict,
                     *,
                     env: Optional[Dict[str, str]] = None,
+                    vpn: Optional[Dict[str, str]] = None,
                     port: Optional[int] = None,
                     resources: Optional[dict] = None,
                     secrets: Optional[dict] = None,
@@ -579,6 +580,8 @@ class BatchBuilder:
 
         if env:
             job_spec['env'] = [{'name': k, 'value': v} for (k, v) in env.items()]
+        if vpn:
+            job_spec['vpn'] = vpn
         if port is not None:
             job_spec['port'] = port
         if resources:

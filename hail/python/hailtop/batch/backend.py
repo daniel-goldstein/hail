@@ -729,6 +729,7 @@ class ServiceBackend(Backend[bc.Batch]):
                                             timeout=job._timeout,
                                             cloudfuse=job._cloudfuse if len(job._cloudfuse) > 0 else None,
                                             env=env,
+                                            vpn=job._vpn,
                                             requester_pays_project=batch.requester_pays_project,
                                             mount_tokens=True,
                                             user_code=user_code,

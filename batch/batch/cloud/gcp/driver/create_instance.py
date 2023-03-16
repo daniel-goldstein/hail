@@ -101,7 +101,7 @@ def create_vm_config(
                 'boot': True,
                 'autoDelete': True,
                 'initializeParams': {
-                    'sourceImage': f'projects/{project}/global/images/batch-worker-12',
+                    'sourceImage': f'projects/{project}/global/images/batch-worker-dgoldste-2204',
                     'diskType': f'projects/{project}/zones/{zone}/diskTypes/pd-ssd',
                     'diskSizeGb': str(boot_disk_size_gb),
                 },
@@ -156,54 +156,54 @@ nohup /bin/bash run.sh >run.log 2>&1 &
 set -x
 
 # Setup fluentd
-touch /worker.log
-touch /run.log
-
-sudo rm /etc/google-fluentd/config.d/*  # remove unused config files
-
-sudo tee /etc/google-fluentd/config.d/worker-log.conf <<EOF
-<source>
-@type tail
-format json
-path /worker.log
-pos_file /var/lib/google-fluentd/pos/worker-log.pos
-read_from_head true
-tag worker.log
-</source>
-
-<filter worker.log>
-@type record_transformer
-enable_ruby
-<record>
-    severity \${{ record["levelname"] }}
-    timestamp \${{ record["asctime"] }}
-</record>
-</filter>
-EOF
-
-sudo tee /etc/google-fluentd/config.d/run-log.conf <<EOF
-<source>
-@type tail
-format none
-path /run.log
-pos_file /var/lib/google-fluentd/pos/run-log.pos
-read_from_head true
-tag run.log
-</source>
-EOF
-
-sudo cp /etc/google-fluentd/google-fluentd.conf /etc/google-fluentd/google-fluentd.conf.bak
-head -n -1 /etc/google-fluentd/google-fluentd.conf.bak | sudo tee /etc/google-fluentd/google-fluentd.conf
-sudo tee -a /etc/google-fluentd/google-fluentd.conf <<EOF
-labels {{
-"namespace": "$NAMESPACE",
-"instance_id": "$INSTANCE_ID"
-}}
-</match>
-EOF
-rm /etc/google-fluentd/google-fluentd.conf.bak
-
-sudo service google-fluentd restart
+# touch /worker.log
+# touch /run.log
+#
+# sudo rm /etc/google-fluentd/config.d/*  # remove unused config files
+#
+# sudo tee /etc/google-fluentd/config.d/worker-log.conf <<EOF
+# <source>
+# @type tail
+# format json
+# path /worker.log
+# pos_file /var/lib/google-fluentd/pos/worker-log.pos
+# read_from_head true
+# tag worker.log
+# </source>
+#
+# <filter worker.log>
+# @type record_transformer
+# enable_ruby
+# <record>
+#     severity \${{ record["levelname"] }}
+#     timestamp \${{ record["asctime"] }}
+# </record>
+# </filter>
+# EOF
+#
+# sudo tee /etc/google-fluentd/config.d/run-log.conf <<EOF
+# <source>
+# @type tail
+# format none
+# path /run.log
+# pos_file /var/lib/google-fluentd/pos/run-log.pos
+# read_from_head true
+# tag run.log
+# </source>
+# EOF
+#
+# sudo cp /etc/google-fluentd/google-fluentd.conf /etc/google-fluentd/google-fluentd.conf.bak
+# head -n -1 /etc/google-fluentd/google-fluentd.conf.bak | sudo tee /etc/google-fluentd/google-fluentd.conf
+# sudo tee -a /etc/google-fluentd/google-fluentd.conf <<EOF
+# labels {{
+# "namespace": "$NAMESPACE",
+# "instance_id": "$INSTANCE_ID"
+# }}
+# </match>
+# EOF
+# rm /etc/google-fluentd/google-fluentd.conf.bak
+#
+# sudo service google-fluentd restart
 
 WORKER_DATA_DISK_NAME="{worker_data_disk_name}"
 UNRESERVED_WORKER_DATA_DISK_SIZE_GB="{unreserved_disk_storage_gb}"
@@ -322,6 +322,7 @@ docker run \
 --cap-add SYS_ADMIN \
 --security-opt apparmor:unconfined \
 --network host \
+--cgroupns host \
 $BATCH_WORKER_IMAGE \
 python3 -u -m batch.worker.worker >worker.log 2>&1
 
