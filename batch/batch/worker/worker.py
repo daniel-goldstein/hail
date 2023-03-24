@@ -2894,7 +2894,7 @@ class Worker:
 
     async def register_wg_publickey(self, request):
         user = request.match_info['user']
-        if not user in self.wg_interfaces:
+        if user not in self.wg_interfaces:
             raise web.HTTPBadRequest()
         body = await request.json()
         peer = WireguardPeer(body['publickey'], body['endpoint'], body['allowed_ips'])
