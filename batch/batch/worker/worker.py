@@ -1703,9 +1703,9 @@ class DockerJob(Job):
         ]
         self.env += hail_extra_env
 
-        vpn = job_spec.get('vpn')
-        if vpn:
-            self.env.append({'name': 'HAIL_WIREGUARD_PUBLICKEY', 'value': vpn['publickey']})
+        # vpn = job_spec.get('vpn')
+        # if vpn:
+        #     self.env.append({'name': 'HAIL_WIREGUARD_PUBLICKEY', 'value': vpn['publickey']})
 
         if self.secrets:
             for secret in self.secrets:
@@ -2056,6 +2056,7 @@ class JVMJob(Job):
     def write_batch_config(self):
         assert self.jvm
         assert self.jvm.container
+        assert self.jvm.container.container.netns
         os.makedirs(f'{self.scratch}/batch-config')
         with open(f'{self.scratch}/batch-config/batch-config.json', 'wb') as config:
             config.write(
@@ -2063,7 +2064,8 @@ class JVMJob(Job):
                     {
                         'version': 1,
                         'batch_id': self.batch_id,
-                        'wireguard_publickey': self.worker.wg_interfaces[self.user].publickey,
+                        'wireguard_ip': self.jvm.container.container.netns.wg.ip,
+                        'wireguard_publickey': self.worker.wg_interfaces[self.user].publickey,  # TODO Remove
                         'wireguard_endpoint': self.worker.wg_interfaces[self.user].endpoint,
                     }
                 )

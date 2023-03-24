@@ -227,14 +227,6 @@ class ServiceBackend(
         resources = resources.merge(JObject(("memory" -> JString(backendContext.workerMemory))))
       }
 
-      val privatekey = "wg genkey".!!.filterNot(_.isWhitespace)
-      val is = new ByteArrayInputStream(privatekey.getBytes(StandardCharsets.UTF_8))
-      val publickey = ("wg pubkey" #< is).!!.filterNot(_.isWhitespace)
-
-      val ipNum = i + 2
-      val ip = s"10.0.${ipNum / 255}.${ipNum % 255}"
-      s"wg set wg0 peer $publickey allowed-ips $ip".!!
-
       jobs(i) = JObject(
         "always_run" -> JBool(false),
         "job_id" -> JInt(i + 1),
@@ -257,13 +249,8 @@ class ServiceBackend(
         "resources" -> resources,
         "regions" -> JArray(backendContext.regions.map(JString).toList),
         "vpn" -> JObject(
-          "ip" -> JString(ip),
-          "privatekey" -> JString(privatekey),
-          "publickey" -> JString(publickey),
           "peers" -> JArray(List(
             JObject(
-              "ip" -> JString("10.0.0.1"),
-              "publickey" -> JString(wgPublicKey),
               "endpoint" -> JString(wgEndpoint)
             )
           ))
