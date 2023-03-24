@@ -1,7 +1,5 @@
 FROM {{ hail_ubuntu_image.image }}
 
-RUN hail-apt-get-install wireguard
-
 COPY hail/python/hailtop/pinned-requirements.txt hailtop-requirements.txt
 COPY gear/pinned-requirements.txt gear-requirements.txt
 COPY web_common/pinned-requirements.txt web_common-requirements.txt

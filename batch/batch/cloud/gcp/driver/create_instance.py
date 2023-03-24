@@ -262,14 +262,14 @@ iptables --table nat --append POSTROUTING --source 172.20.0.0/15 --jump MASQUERA
 
 # [public]
 # Block public traffic to the metadata server
-iptables --append FORWARD --source 172.21.0.0/16 --destination 169.254.169.254 --jump DROP
+# iptables --append FORWARD --source 172.21.0.0/16 --destination 169.254.169.254 --jump DROP
 # But allow the internal gateway
-iptables --append FORWARD --destination $INTERNAL_GATEWAY_IP --jump ACCEPT
+# iptables --append FORWARD --destination $INTERNAL_GATEWAY_IP --jump ACCEPT
 # And this worker
-iptables --append FORWARD --destination $IP_ADDRESS --jump ACCEPT
+# iptables --append FORWARD --destination $IP_ADDRESS --jump ACCEPT
 # Forbid outgoing requests to cluster-internal IP addresses
 INTERNET_INTERFACE=$(ip link list | grep ens | awk -F": " '{{ print $2 }}')
-iptables --append FORWARD --out-interface $INTERNET_INTERFACE ! --destination 10.128.0.0/16 --jump ACCEPT
+iptables --append FORWARD --jump ACCEPT
 
 {make_global_config_str}
 

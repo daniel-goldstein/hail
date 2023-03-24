@@ -397,7 +397,7 @@ class ServiceBackend(Backend):
                     resources=resources,
                     attributes={'name': name + '_driver'},
                     regions=self.regions,
-                    vpn={'ip': '10.0.0.1'},
+                    vpn={'peers': []},
                 )
                 self._batch = await bb.submit(disable_progress_bar=True)
 

@@ -25,8 +25,10 @@ from typing import (
     Dict,
     List,
     MutableMapping,
+    NamedTuple,
     Optional,
     Tuple,
+    Set,
     Union,
 )
 
@@ -154,6 +156,7 @@ IPTABLES_WAIT_TIMEOUT_SECS = 60
 CLOUD = os.environ['CLOUD']
 CORES = int(os.environ['CORES'])
 NAME = os.environ['NAME']
+NP = 1 if '-np-' in NAME else 0
 NAMESPACE = os.environ['NAMESPACE']
 # ACTIVATION_TOKEN
 IP_ADDRESS = os.environ['IP_ADDRESS']
@@ -209,6 +212,8 @@ worker: Optional['Worker'] = None
 image_configs: Dict[str, Dict[str, Any]] = {}
 
 image_lock: Optional[aiorwlock.RWLock] = None
+
+last_ip_number = 128
 
 
 class PortAllocator:
@@ -319,45 +324,12 @@ iptables -w {IPTABLES_WAIT_TIMEOUT_SECS} -t mangle -A POSTROUTING --out-interfac
             f'--jump DNAT --to-destination {self.job_ip}:{self.port}'
         )
 
-    async def add_wireguard_interface(self, host_port):
+    async def add_wireguard_interface(self, host_port, ip):
         assert network_allocator
         # TODO I don't really need this lock, just easier at first to call everything wg0
         async with network_allocator.wg_lock:
-            await check_exec_output('ip', 'link', 'add', 'wg0', 'type', 'wireguard')
-            await check_exec_output('ip', 'link', 'set', 'wg0', 'netns', self.network_ns_name)
-
-        await self._exec_in_ns('ip', 'link', 'set', 'up', 'dev', 'wg0')
-        await self._exec_in_ns('wg', 'set', 'wg0', 'listen-port', str(host_port))
-
-    async def configure_wireguard_interface(self, vpn):
-        vpn_ip = vpn['ip']
-        privatekey = vpn['privatekey']
-
-        await self._exec_in_ns('ip', 'addr', 'add', f'{vpn_ip}/16', 'dev', 'wg0')
-        with tempfile.NamedTemporaryFile() as keyfile:
-            keyfile.write(privatekey.encode('utf-8'))
-            keyfile.flush()
-            await self._exec_in_ns('wg', 'set', 'wg0', 'private-key', keyfile.name)
-
-        new_peers = set()
-        for peer in vpn['peers']:
-            publickey = peer['publickey']
-            new_peers.add(publickey)
-            if peer['publickey'] not in self.wg_peers:
-                await self._exec_in_ns(
-                    'wg',
-                    'set',
-                    'wg0',
-                    'peer',
-                    publickey,
-                    'endpoint',
-                    peer['endpoint'],
-                    'allowed-ips',
-                    f'{peer["ip"]}/32',
-                )
-        for old_peer in self.wg_peers.difference(new_peers):
-            await self._exec_in_ns('wg', 'set', 'wg0', 'peer', old_peer, 'remove')
-        self.wg_peers = new_peers
+            self.wg = await WireguardInterface.create('wg0', self.network_ns_name, host_port, ip)
+            await self.wg.set_addr(f'{ip}/16')
 
     async def _exec_in_ns(self, command, *args):
         await check_exec_output('ip', 'netns', 'exec', self.network_ns_name, command, *args, echo=True)
@@ -374,6 +346,94 @@ ip link delete {self.veth_host} && \
 ip netns delete {self.network_ns_name}'''
         )
         await self.create_netns()
+
+
+class WireguardPeer(NamedTuple):
+    publickey: str
+    endpoint: str
+    allowed_ips: str
+
+    def to_dict(self):
+        return {
+            'publickey': self.publickey,
+            'endpoint': self.endpoint,
+            'allowed_ips': self.allowed_ips,
+        }
+
+    @staticmethod
+    def from_dict(d):
+        return WireguardPeer(d['publickey'], d['endpoint'], d['allowed_ips'])
+
+
+class WireguardInterface:
+    @staticmethod
+    async def create(name: str, namespace_name: Optional[str], listen_port: int, ip: str) -> 'WireguardInterface':
+        await check_exec_output('ip', 'link', 'add', name, 'type', 'wireguard')
+        await check_exec_output('wg', 'set', name, 'listen-port', str(listen_port))
+
+        privatekey_bytes, _ = await check_exec_output('wg', 'genkey')
+        privatekey = privatekey_bytes.decode('utf-8').strip()
+        publickey_bytes, _ = await check_exec_output('wg', 'pubkey', stdin=privatekey.encode('utf-8'))
+        publickey = publickey_bytes.decode('utf-8').strip()
+        with tempfile.NamedTemporaryFile() as keyfile:
+            keyfile.write(privatekey.encode('utf-8'))
+            keyfile.flush()
+            await check_exec_output('wg', 'set', name, 'private-key', keyfile.name)
+
+        if namespace_name is not None:
+            await check_exec_output('ip', 'link', 'set', 'wg0', 'netns', namespace_name)
+
+        wg = WireguardInterface(name, namespace_name, publickey, listen_port, ip)
+        await wg.up()
+        return wg
+
+    def __init__(self, name: str, namespace_name: Optional[str], publickey: str, listen_port: int, ip: str):
+        self._name = name
+        self._namespace_name = namespace_name
+        self._publickey = publickey
+        self._listen_port = listen_port
+        self._ip = ip
+        self._peers: Set[WireguardPeer] = set()
+
+    @property
+    def publickey(self):
+        return self._publickey
+
+    @property
+    def endpoint(self):
+        return f'{IP_ADDRESS}:{self._listen_port}'
+
+    @property
+    def ip(self):
+        return self._ip
+
+    @property
+    def peers(self):
+        return self._peers
+
+    def as_peer(self, allowed_ips: str) -> WireguardPeer:
+        return WireguardPeer(self._publickey, f'{IP_ADDRESS}:{self._listen_port}', allowed_ips)
+
+    async def up(self):
+        await self._exec('ip', 'link', 'set', 'up', 'dev', self._name)
+
+    async def set_addr(self, ip_range):
+        await self._exec('ip', 'addr', 'add', ip_range, 'dev', self._name)
+
+    async def add_peer(self, peer: WireguardPeer):
+        self._peers.add(peer)
+        await self._exec(
+            'wg', 'set', self._name, 'peer', peer.publickey, 'endpoint', peer.endpoint, 'allowed-ips', peer.allowed_ips
+        )
+
+    async def remove_peer(self, peer_publickey):
+        await self._exec('wg', 'set', self._name, 'peer', peer_publickey, 'remove')
+
+    async def _exec(self, command, *args):
+        if self._namespace_name is not None:
+            await check_exec_output('ip', 'netns', 'exec', self._namespace_name, command, *args, echo=True)
+        else:
+            await check_exec_output(command, *args, echo=True)
 
 
 class NetworkAllocator:
@@ -719,6 +779,7 @@ class Container:
         network: Optional[Union[bool, str]] = None,
         port: Optional[int] = None,
         vpn: Optional[dict] = None,
+        user_gateway: Optional[WireguardInterface] = None,
         timeout: Optional[int] = None,
         unconfined: Optional[bool] = None,
         volume_mounts: Optional[List[dict]] = None,
@@ -736,6 +797,7 @@ class Container:
         self.network = network
         self.port = port
         self.vpn = vpn
+        self.user_gateway = user_gateway
         self.timeout = timeout
         self.unconfined = unconfined
         self.volume_mounts = volume_mounts or []
@@ -982,9 +1044,17 @@ class Container:
             self.host_port = await port_allocator.allocate()
             await self.netns.expose_port(self.port, self.host_port)
         elif self.vpn is not None:
+            # TODO This stuff should move into DockerJob this doesn't make sense for JVMJobs
             self.host_port = await port_allocator.allocate()
-            await self.netns.add_wireguard_interface(self.host_port)
-            await self.netns.configure_wireguard_interface(self.vpn)
+            global last_ip_number
+            end_of_ip = last_ip_number
+            last_ip_number += 1
+            await self.netns.add_wireguard_interface(self.host_port, f'10.0.{NP}.{end_of_ip}')
+            assert self.user_gateway
+
+            job_interface = self.netns.wg
+            await self.netns.wg.add_peer(self.user_gateway.as_peer('10.0.0.0/16'))
+            await self.user_gateway.add_peer(job_interface.as_peer(f'{job_interface.ip}/32'))
 
     async def _run_container(self) -> bool:
         self.started_at = time_msecs()
@@ -1644,9 +1714,9 @@ class DockerJob(Job):
         ]
         self.env += hail_extra_env
 
-        vpn = job_spec.get('vpn')
-        if vpn:
-            self.env.append({'name': 'HAIL_WIREGUARD_PUBLICKEY', 'value': vpn['publickey']})
+        # vpn = job_spec.get('vpn')
+        # if vpn:
+        #     self.env.append({'name': 'HAIL_WIREGUARD_PUBLICKEY', 'value': vpn['publickey']})
 
         if self.secrets:
             for secret in self.secrets:
@@ -1695,6 +1765,7 @@ class DockerJob(Job):
             volume_mounts=self.main_volume_mounts,
             env=[f'{var["name"]}={var["value"]}' for var in self.env],
             vpn=self.vpn,
+            user_gateway=worker.wg_interfaces.get(user),
         )
 
         if output_files:
@@ -1996,6 +2067,7 @@ class JVMJob(Job):
     def write_batch_config(self):
         assert self.jvm
         assert self.jvm.container
+        assert self.jvm.container.container.netns
         os.makedirs(f'{self.scratch}/batch-config')
         with open(f'{self.scratch}/batch-config/batch-config.json', 'wb') as config:
             config.write(
@@ -2003,8 +2075,8 @@ class JVMJob(Job):
                     {
                         'version': 1,
                         'batch_id': self.batch_id,
-                        'wireguard_publickey': self.vpn['publickey'],
-                        'wireguard_endpoint': f'{IP_ADDRESS}:{self.jvm.container.host_port}',
+                        'wireguard_ip': self.jvm.container.container.netns.wg.ip,
+                        'wireguard_endpoint': self.worker.wg_interfaces[self.user].endpoint,
                     }
                 )
             )
@@ -2087,7 +2159,17 @@ class JVMJob(Job):
                     if self.vpn:
                         assert port_allocator
                         assert self.jvm.container.container.netns
-                        await self.jvm.container.container.netns.configure_wireguard_interface(self.vpn)
+                        user_gateway = self.worker.wg_interfaces[self.user]
+                        job_interface = self.jvm.container.container.netns.wg
+                        await job_interface.add_peer(user_gateway.as_peer('10.0.0.0/16'))
+                        await user_gateway.add_peer(job_interface.as_peer(f'{job_interface.ip}/32'))
+                        ns_name = self.jvm.container.container.netns.network_ns_name
+                        with open(f'/etc/netns/{ns_name}/hosts', 'r', encoding='utf-8') as hosts:
+                            self.old_hosts = hosts.read()
+                        with open(f'/etc/netns/{ns_name}/hosts', 'a', encoding='utf-8') as hosts:
+                            for peer in self.vpn.get('peers', []):
+                                if 'ip' in peer and 'name' in peer:
+                                    hosts.write(f'{peer["ip"]} {peer["name"]}\n')
 
                 # We use a configuration file (instead of environment variables) to pass job-specific
                 # configuration options for a JVMJob because we cannot alter the JVM container's
@@ -2143,9 +2225,14 @@ class JVMJob(Job):
         if self.vpn is not None:
             assert self.jvm
             assert self.jvm.container.container.netns
-            await self.jvm.container.container.netns._exec_in_ns(
-                'ip', 'addr', 'del', f'{self.vpn["ip"]}/16', 'dev', 'wg0'
-            )
+
+            user_gateway = self.worker.wg_interfaces[self.user]
+            job_interface = self.jvm.container.container.netns.wg
+            await user_gateway.remove_peer(job_interface.publickey)
+            await job_interface.remove_peer(user_gateway.publickey)
+            ns_name = self.jvm.container.container.netns.network_ns_name
+            with open(f'/etc/netns/{ns_name}/hosts', 'w', encoding='utf-8') as hosts:
+                hosts.write(self.old_hosts)
 
         if self.jvm is not None:
             self.worker.return_jvm(self.jvm)
@@ -2331,7 +2418,7 @@ class JVMContainer:
         assert c.netns
         assert port_allocator
         host_port = await port_allocator.allocate()
-        await c.netns.add_wireguard_interface(host_port)
+        await c.netns.add_wireguard_interface(host_port, f'10.0.{NP}.{index + 2}')
 
         return JVMContainer(c, fs, host_port)
 
@@ -2608,6 +2695,8 @@ class Worker:
         self._jvm_initializer_task = asyncio.create_task(self._initialize_jvms())
         self._jvms: SortedSet[JVM] = SortedSet([], key=lambda jvm: jvm.n_cores)
 
+        self.wg_interfaces: Dict[str, WireguardInterface] = {}
+
     async def _initialize_jvms(self):
         assert instance_config
         if instance_config.worker_type() in ('standard', 'D', 'highmem', 'E'):
@@ -2714,9 +2803,41 @@ class Worker:
         assert CLOUD_WORKER_API
         credentials = CLOUD_WORKER_API.user_credentials(body['gsa_key'])
 
+        user = body['user']
+        vpn = job_spec.get('vpn')
+        if vpn:
+            if user not in self.wg_interfaces:
+                assert port_allocator
+                listen_port = await port_allocator.allocate()
+                self.wg_interfaces[user] = await WireguardInterface.create(
+                    f'wg-{user}', None, listen_port, f'10.0.{NP}.1'
+                )
+                await check_shell(
+                    f'''
+iptables -w {IPTABLES_WAIT_TIMEOUT_SECS} --table nat --append POSTROUTING -o wg-{user} --jump MASQUERADE
+        '''
+                )
+                # This means we have to partition the address space per user...
+                # but we might be able to do it dynamically, since in the worker-to-worker
+                # communication we tell it specifically what subnet it covers
+                await self.wg_interfaces[user].set_addr(f'10.0.{NP}.1/16')
+            user_gateway = self.wg_interfaces[user]
+
+            # TODO This needs much scrutiny.
+            for peer in vpn['peers']:
+                if 'endpoint' in peer:
+                    worker_ip = peer['endpoint'].split(':')[0]
+                    resp = await request_retry_transient_errors(
+                        self.client_session,
+                        'POST',
+                        f'http://{worker_ip}:5000/api/v1alpha/users/{user}/register_publickey',
+                        json=user_gateway.as_peer(user_gateway.ip + '/24').to_dict(),
+                    )
+                    await user_gateway.add_peer(WireguardPeer.from_dict(await resp.json()))
+
         job = Job.create(
             batch_id,
-            body['user'],
+            user,
             credentials,
             job_spec,
             format_version,
@@ -2804,6 +2925,16 @@ class Worker:
         body = {'name': NAME}
         return web.json_response(body)
 
+    async def register_wg_publickey(self, request):
+        user = request.match_info['user']
+        if user not in self.wg_interfaces:
+            raise web.HTTPBadRequest()
+        body = await request.json()
+        peer = WireguardPeer(body['publickey'], body['endpoint'], body['allowed_ips'])
+        user_gateway = self.wg_interfaces[user]
+        await user_gateway.add_peer(peer)
+        return web.json_response(self.wg_interfaces[user].as_peer(user_gateway.ip + '/24').to_dict())
+
     async def run(self):
         app = web.Application(client_max_size=HTTP_CLIENT_MAX_SIZE)
         app.add_routes(
@@ -2814,6 +2945,7 @@ class Worker:
                 web.get('/api/v1alpha/batches/{batch_id}/jobs/{job_id}/log/{container}', self.get_job_container_log),
                 web.get('/api/v1alpha/batches/{batch_id}/jobs/{job_id}/resource_usage', self.get_job_resource_usage),
                 web.get('/api/v1alpha/batches/{batch_id}/jobs/{job_id}/status', self.get_job_status),
+                web.post('/api/v1alpha/users/{user}/register_publickey', self.register_wg_publickey),
                 web.get('/healthcheck', self.healthcheck),
             ]
         )

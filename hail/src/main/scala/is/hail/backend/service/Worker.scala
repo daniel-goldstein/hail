@@ -128,7 +128,7 @@ object Worker {
 
     val (open, write) = ((x: String) => fs.openNoCompression(x), fs.writePDOS _)
 
-    val driverVpnBaseUrl = "http://10.0.0.1:5000"
+    val driverVpnBaseUrl = "http://query-driver:5000"
 
     val fFuture = Future {
       retryTransientErrors {
