@@ -25,8 +25,10 @@ from typing import (
     Dict,
     List,
     MutableMapping,
+    NamedTuple,
     Optional,
     Tuple,
+    Set,
     Union,
 )
 
@@ -319,45 +321,15 @@ iptables -w {IPTABLES_WAIT_TIMEOUT_SECS} -t mangle -A POSTROUTING --out-interfac
             f'--jump DNAT --to-destination {self.job_ip}:{self.port}'
         )
 
-    async def add_wireguard_interface(self, host_port):
+    async def add_wireguard_interface(self, host_port, ip_range):
         assert network_allocator
         # TODO I don't really need this lock, just easier at first to call everything wg0
         async with network_allocator.wg_lock:
-            await check_exec_output('ip', 'link', 'add', 'wg0', 'type', 'wireguard')
-            await check_exec_output('ip', 'link', 'set', 'wg0', 'netns', self.network_ns_name)
-
-        await self._exec_in_ns('ip', 'link', 'set', 'up', 'dev', 'wg0')
-        await self._exec_in_ns('wg', 'set', 'wg0', 'listen-port', str(host_port))
+            self.wg = await WireguardInterface.create('wg0', self.network_ns_name, host_port)
+            await self.wg.set_addr(ip_range)
 
     async def configure_wireguard_interface(self, vpn):
-        vpn_ip = vpn['ip']
-        privatekey = vpn['privatekey']
-
-        await self._exec_in_ns('ip', 'addr', 'add', f'{vpn_ip}/16', 'dev', 'wg0')
-        with tempfile.NamedTemporaryFile() as keyfile:
-            keyfile.write(privatekey.encode('utf-8'))
-            keyfile.flush()
-            await self._exec_in_ns('wg', 'set', 'wg0', 'private-key', keyfile.name)
-
-        new_peers = set()
-        for peer in vpn['peers']:
-            publickey = peer['publickey']
-            new_peers.add(publickey)
-            if peer['publickey'] not in self.wg_peers:
-                await self._exec_in_ns(
-                    'wg',
-                    'set',
-                    'wg0',
-                    'peer',
-                    publickey,
-                    'endpoint',
-                    peer['endpoint'],
-                    'allowed-ips',
-                    f'{peer["ip"]}/32',
-                )
-        for old_peer in self.wg_peers.difference(new_peers):
-            await self._exec_in_ns('wg', 'set', 'wg0', 'peer', old_peer, 'remove')
-        self.wg_peers = new_peers
+        pass
 
     async def _exec_in_ns(self, command, *args):
         await check_exec_output('ip', 'netns', 'exec', self.network_ns_name, command, *args, echo=True)
@@ -374,6 +346,69 @@ ip link delete {self.veth_host} && \
 ip netns delete {self.network_ns_name}'''
         )
         await self.create_netns()
+
+
+class WireguardPeer(NamedTuple):
+    publickey: str
+    endpoint: str
+    allowed_ips: str
+
+
+class WireguardInterface:
+    @staticmethod
+    async def create(name: str, namespace_name: Optional[str], listen_port: int) -> 'WireguardInterface':
+        await check_exec_output('ip', 'link', 'add', name, 'type', 'wireguard')
+        await check_exec_output('wg', 'set', name, 'listen-port', str(listen_port))
+
+        privatekey_bytes, _ = await check_exec_output('wg', 'genkey')
+        privatekey = privatekey_bytes.decode('utf-8').strip()
+        publickey_bytes, _ = await check_exec_output('wg', 'pubkey', stdin=privatekey.encode('utf-8'))
+        publickey = publickey_bytes.decode('utf-8').strip()
+        with tempfile.NamedTemporaryFile() as keyfile:
+            keyfile.write(privatekey.encode('utf-8'))
+            keyfile.flush()
+            await check_exec_output('wg', 'set', name, 'private-key', keyfile.name)
+
+        if namespace_name is not None:
+            await check_exec_output('ip', 'link', 'set', 'wg0', 'netns', namespace_name)
+
+        wg = WireguardInterface(name, namespace_name, publickey)
+        await wg.up()
+        return wg
+
+    def __init__(self, name: str, namespace_name: Optional[str], publickey: str):
+        self._name = name
+        self._namespace_name = namespace_name
+        self._publickey = publickey
+        self._peers: Set[WireguardPeer] = set()
+
+    @property
+    def publickey(self):
+        return self._publickey
+
+    @property
+    def peers(self):
+        return self._peers
+
+    async def up(self):
+        await self._exec('ip', 'link', 'set', 'up', 'dev', self._name)
+
+    async def set_addr(self, ip_range):
+        await self._exec('ip', 'addr', 'add', ip_range, 'dev', self._name)
+
+    async def add_peer(self, peer: WireguardPeer):
+        await self._exec(
+            'wg', 'set', self._name, 'peer', peer.publickey, 'endpoint', peer.endpoint, 'allowed-ips', peer.allowed_ips
+        )
+
+    async def remove_peer(self, peer: WireguardPeer):
+        await self._exec('wg', 'set', self._name, 'peer', peer.publickey, 'remove')
+
+    async def _exec(self, command, *args):
+        if self._namespace_name is not None:
+            await check_exec_output('ip', 'netns', 'exec', self._namespace_name, command, *args, echo=True)
+        else:
+            await check_exec_output(command, *args, echo=True)
 
 
 class NetworkAllocator:
