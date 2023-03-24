@@ -156,6 +156,7 @@ IPTABLES_WAIT_TIMEOUT_SECS = 60
 CLOUD = os.environ['CLOUD']
 CORES = int(os.environ['CORES'])
 NAME = os.environ['NAME']
+NP = 1 if '-np-' in NAME else 0
 NAMESPACE = os.environ['NAMESPACE']
 # ACTIVATION_TOKEN
 IP_ADDRESS = os.environ['IP_ADDRESS']
@@ -350,6 +351,17 @@ class WireguardPeer(NamedTuple):
     endpoint: str
     allowed_ips: str
 
+    def to_dict(self):
+        return {
+            'publickey': self.publickey,
+            'endpoint': self.endpoint,
+            'allowed_ips': self.allowed_ips,
+        }
+
+    @staticmethod
+    def from_dict(d):
+        return WireguardPeer(d['publickey'], d['endpoint'], d['allowed_ips'])
+
 
 class WireguardInterface:
     @staticmethod
@@ -407,6 +419,7 @@ class WireguardInterface:
         await self._exec('ip', 'addr', 'add', f'{ip}/8', 'dev', self._name)
 
     async def add_peer(self, peer: WireguardPeer):
+        self._peers.add(peer)
         await self._exec(
             'wg', 'set', self._name, 'peer', peer.publickey, 'endpoint', peer.endpoint, 'allowed-ips', peer.allowed_ips
         )
@@ -761,6 +774,7 @@ class Container:
         network: Optional[Union[bool, str]] = None,
         port: Optional[int] = None,
         vpn: Optional[dict] = None,
+        user_gateway: Optional[WireguardInterface] = None,
         timeout: Optional[int] = None,
         unconfined: Optional[bool] = None,
         volume_mounts: Optional[List[dict]] = None,
@@ -778,6 +792,7 @@ class Container:
         self.network = network
         self.port = port
         self.vpn = vpn
+        self.user_gateway = user_gateway
         self.timeout = timeout
         self.unconfined = unconfined
         self.volume_mounts = volume_mounts or []
@@ -1025,7 +1040,10 @@ class Container:
             await self.netns.expose_port(self.port, self.host_port)
         elif self.vpn is not None:
             self.host_port = await port_allocator.allocate()
-            await self.netns.add_wireguard_interface(self.host_port, f'{self.vpn["ip"]}/16')
+            await self.netns.add_wireguard_interface(self.host_port, f'10.0.{NP}.128')
+            assert self.user_gateway
+
+            await self.netns.wg.add_peer(self.user_gateway.as_peer('10.0.0.0/8'))
 
     async def _run_container(self) -> bool:
         self.started_at = time_msecs()
@@ -1736,6 +1754,7 @@ class DockerJob(Job):
             volume_mounts=self.main_volume_mounts,
             env=[f'{var["name"]}={var["value"]}' for var in self.env],
             vpn=self.vpn,
+            user_gateway=worker.wg_interfaces[user],
         )
 
         if output_files:
@@ -2044,8 +2063,8 @@ class JVMJob(Job):
                     {
                         'version': 1,
                         'batch_id': self.batch_id,
-                        'wireguard_publickey': self.vpn['publickey'],
-                        'wireguard_endpoint': f'{IP_ADDRESS}:{self.jvm.container.host_port}',
+                        'wireguard_publickey': self.worker.wg_interfaces[self.user].publickey,
+                        'wireguard_endpoint': self.worker.wg_interfaces[self.user].endpoint,
                     }
                 )
             )
@@ -2377,7 +2396,7 @@ class JVMContainer:
         assert c.netns
         assert port_allocator
         host_port = await port_allocator.allocate()
-        await c.netns.add_wireguard_interface(host_port, f'10.0.0.{index + 2}/8')
+        await c.netns.add_wireguard_interface(host_port, f'10.0.{NP}.{index + 2}')
 
         return JVMContainer(c, fs, host_port)
 
@@ -2763,6 +2782,24 @@ class Worker:
         credentials = CLOUD_WORKER_API.user_credentials(body['gsa_key'])
 
         user = body['user']
+        if user not in self.wg_interfaces:
+            assert port_allocator
+            listen_port = await port_allocator.allocate()
+            self.wg_interfaces[user] = await WireguardInterface.create(f'wg-{user}', None, listen_port, f'10.0.{NP}.1')
+        user_gateway = self.wg_interfaces[user]
+
+        # TODO This needs much scrutiny.
+        vpn = job_spec['vpn']
+        for peer in vpn['peers']:
+            worker_ip = peer['endpoint'].split(':')[0]
+            resp = await request_retry_transient_errors(
+                self.client_session,
+                'POST',
+                f'{worker_ip}:5000/api/v1alpha/users/{user}/register_publickey',
+                json=user_gateway.as_peer(user_gateway.ip + '/24').to_dict(),
+            )
+            await user_gateway.add_peer(WireguardPeer.from_dict(await resp.json()))
+
         job = Job.create(
             batch_id,
             user,
@@ -2774,11 +2811,6 @@ class Worker:
             self.client_session,
             self,
         )
-
-        if user not in self.wg_interfaces:
-            assert port_allocator
-            listen_port = await port_allocator.allocate()
-            self.wg_interfaces[user] = await WireguardInterface.create(f'wg-{user}', None, listen_port, '10.0.0.1')
 
         log.info(f'created {job} attempt {job.attempt_id}')
 
@@ -2858,6 +2890,16 @@ class Worker:
         body = {'name': NAME}
         return web.json_response(body)
 
+    async def register_wg_publickey(self, request):
+        user = request.match_info['user']
+        if not user in self.wg_interfaces:
+            raise web.HTTPBadRequest()
+        body = await request.json()
+        peer = WireguardPeer(body['publickey'], body['endpoint'], body['allowed_ips'])
+        user_gateway = self.wg_interfaces[user]
+        await user_gateway.add_peer(peer)
+        return web.json_response(self.wg_interfaces[user].as_peer(user_gateway.ip + '/24').to_dict())
+
     async def run(self):
         app = web.Application(client_max_size=HTTP_CLIENT_MAX_SIZE)
         app.add_routes(
@@ -2868,6 +2910,7 @@ class Worker:
                 web.get('/api/v1alpha/batches/{batch_id}/jobs/{job_id}/log/{container}', self.get_job_container_log),
                 web.get('/api/v1alpha/batches/{batch_id}/jobs/{job_id}/resource_usage', self.get_job_resource_usage),
                 web.get('/api/v1alpha/batches/{batch_id}/jobs/{job_id}/status', self.get_job_status),
+                web.post('/api/v1alpha/users/{user}/register_publickey', self.register_wg_publickey),
                 web.get('/healthcheck', self.healthcheck),
             ]
         )

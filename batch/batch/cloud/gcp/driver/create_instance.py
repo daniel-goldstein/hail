@@ -269,7 +269,7 @@ iptables --append FORWARD --destination $INTERNAL_GATEWAY_IP --jump ACCEPT
 iptables --append FORWARD --destination $IP_ADDRESS --jump ACCEPT
 # Forbid outgoing requests to cluster-internal IP addresses
 INTERNET_INTERFACE=$(ip link list | grep ens | awk -F": " '{{ print $2 }}')
-iptables --append FORWARD --out-interface $INTERNET_INTERFACE ! --destination 10.128.0.0/16 --jump ACCEPT
+iptables --append FORWARD --out-interface $INTERNET_INTERFACE --jump ACCEPT
 
 {make_global_config_str}
 
