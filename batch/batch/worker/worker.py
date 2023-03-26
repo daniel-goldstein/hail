@@ -329,7 +329,7 @@ iptables -w {IPTABLES_WAIT_TIMEOUT_SECS} -t mangle -A POSTROUTING --out-interfac
         # TODO I don't really need this lock, just easier at first to call everything wg0
         async with network_allocator.wg_lock:
             self.wg = await WireguardInterface.create('wg0', self.network_ns_name, host_port, ip)
-            await self.wg.set_addr(ip)
+            await self.wg.set_addr(f'{ip}/16')
 
     async def _exec_in_ns(self, command, *args):
         await check_exec_output('ip', 'netns', 'exec', self.network_ns_name, command, *args, echo=True)
@@ -417,8 +417,8 @@ class WireguardInterface:
     async def up(self):
         await self._exec('ip', 'link', 'set', 'up', 'dev', self._name)
 
-    async def set_addr(self, ip):
-        await self._exec('ip', 'addr', 'add', f'{ip}/16', 'dev', self._name)
+    async def set_addr(self, ip_range):
+        await self._exec('ip', 'addr', 'add', ip_range, 'dev', self._name)
 
     async def add_peer(self, peer: WireguardPeer):
         self._peers.add(peer)
@@ -1761,7 +1761,7 @@ class DockerJob(Job):
             volume_mounts=self.main_volume_mounts,
             env=[f'{var["name"]}={var["value"]}' for var in self.env],
             vpn=self.vpn,
-            user_gateway=worker.wg_interfaces[user],
+            user_gateway=worker.wg_interfaces.get(user),
         )
 
         if output_files:
@@ -2799,6 +2799,10 @@ class Worker:
                 self.wg_interfaces[user] = await WireguardInterface.create(
                     f'wg-{user}', None, listen_port, f'10.0.{NP}.1'
                 )
+                # This means we have to partition the address space per user...
+                # but we might be able to do it dynamically, since in the worker-to-worker
+                # communication we tell it specifically what subnet it covers
+                await self.wg_interfaces[user].set_addr(f'10.0.0.0/16')
             user_gateway = self.wg_interfaces[user]
 
             # TODO This needs much scrutiny.
