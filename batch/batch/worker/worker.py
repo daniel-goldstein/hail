@@ -213,6 +213,8 @@ image_configs: Dict[str, Dict[str, Any]] = {}
 
 image_lock: Optional[aiorwlock.RWLock] = None
 
+last_ip_number = 128
+
 
 class PortAllocator:
     def __init__(self):
@@ -416,7 +418,7 @@ class WireguardInterface:
         await self._exec('ip', 'link', 'set', 'up', 'dev', self._name)
 
     async def set_addr(self, ip):
-        await self._exec('ip', 'addr', 'add', f'{ip}/8', 'dev', self._name)
+        await self._exec('ip', 'addr', 'add', f'{ip}/16', 'dev', self._name)
 
     async def add_peer(self, peer: WireguardPeer):
         self._peers.add(peer)
@@ -1040,10 +1042,15 @@ class Container:
             await self.netns.expose_port(self.port, self.host_port)
         elif self.vpn is not None:
             self.host_port = await port_allocator.allocate()
-            await self.netns.add_wireguard_interface(self.host_port, f'10.0.{NP}.128')
+            global last_ip_number
+            end_of_ip = last_ip_number
+            last_ip_number += 1
+            await self.netns.add_wireguard_interface(self.host_port, f'10.0.{NP}.{end_of_ip}')
             assert self.user_gateway
 
-            await self.netns.wg.add_peer(self.user_gateway.as_peer('10.0.0.0/8'))
+            job_interface = self.netns.wg
+            await self.netns.wg.add_peer(self.user_gateway.as_peer('10.0.0.0/16'))
+            await self.user_gateway.add_peer(job_interface.as_peer(f'{job_interface.ip}/32'))
 
     async def _run_container(self) -> bool:
         self.started_at = time_msecs()
@@ -2151,7 +2158,7 @@ class JVMJob(Job):
                         assert self.jvm.container.container.netns
                         user_gateway = self.worker.wg_interfaces[self.user]
                         job_interface = self.jvm.container.container.netns.wg
-                        await job_interface.add_peer(user_gateway.as_peer('10.0.0.0/8'))
+                        await job_interface.add_peer(user_gateway.as_peer('10.0.0.0/16'))
                         await user_gateway.add_peer(job_interface.as_peer(f'{job_interface.ip}/32'))
 
                 # We use a configuration file (instead of environment variables) to pass job-specific
@@ -2784,23 +2791,27 @@ class Worker:
         credentials = CLOUD_WORKER_API.user_credentials(body['gsa_key'])
 
         user = body['user']
-        if user not in self.wg_interfaces:
-            assert port_allocator
-            listen_port = await port_allocator.allocate()
-            self.wg_interfaces[user] = await WireguardInterface.create(f'wg-{user}', None, listen_port, f'10.0.{NP}.1')
-        user_gateway = self.wg_interfaces[user]
+        vpn = job_spec.get('vpn')
+        if vpn:
+            if user not in self.wg_interfaces:
+                assert port_allocator
+                listen_port = await port_allocator.allocate()
+                self.wg_interfaces[user] = await WireguardInterface.create(
+                    f'wg-{user}', None, listen_port, f'10.0.{NP}.1'
+                )
+            user_gateway = self.wg_interfaces[user]
 
-        # TODO This needs much scrutiny.
-        vpn = job_spec['vpn']
-        for peer in vpn['peers']:
-            worker_ip = peer['endpoint'].split(':')[0]
-            resp = await request_retry_transient_errors(
-                self.client_session,
-                'POST',
-                f'{worker_ip}:5000/api/v1alpha/users/{user}/register_publickey',
-                json=user_gateway.as_peer(user_gateway.ip + '/24').to_dict(),
-            )
-            await user_gateway.add_peer(WireguardPeer.from_dict(await resp.json()))
+            # TODO This needs much scrutiny.
+            for peer in vpn:
+                if 'endpoint' in peer:
+                    worker_ip = peer['endpoint'].split(':')[0]
+                    resp = await request_retry_transient_errors(
+                        self.client_session,
+                        'POST',
+                        f'{worker_ip}:5000/api/v1alpha/users/{user}/register_publickey',
+                        json=user_gateway.as_peer(user_gateway.ip + '/24').to_dict(),
+                    )
+                    await user_gateway.add_peer(WireguardPeer.from_dict(await resp.json()))
 
         job = Job.create(
             batch_id,

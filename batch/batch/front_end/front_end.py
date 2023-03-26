@@ -1111,19 +1111,6 @@ WHERE batch_updates.batch_id = %s AND batch_updates.update_id = %s AND user = %s
         if user != 'ci' and not (network is None or network == 'public'):
             raise web.HTTPBadRequest(reason=f'unauthorized network {network}')
 
-        vpn = spec.get('vpn')
-        if vpn is not None:
-            if 'privatekey' not in vpn:
-                privatekey_bytes, _ = await check_exec_output('wg', 'genkey')
-                privatekey = privatekey_bytes.decode('utf-8').strip()
-                publickey_bytes, _ = await check_exec_output('wg', 'pubkey', stdin=privatekey.encode('utf-8'))
-                publickey = publickey_bytes.decode('utf-8').strip()
-
-                spec['vpn']['privatekey'] = privatekey
-                spec['vpn']['publickey'] = publickey
-            if 'peers' not in vpn:
-                vpn['peers'] = []
-
         unconfined = spec.get('unconfined')
         if user != 'ci' and unconfined:
             raise web.HTTPBadRequest(reason=f'unauthorized use of unconfined={unconfined}')
