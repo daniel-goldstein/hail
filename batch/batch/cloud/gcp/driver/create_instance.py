@@ -259,6 +259,7 @@ INTERNAL_GATEWAY_IP=$(curl -s -H "Metadata-Flavor: Google" "http://metadata.goog
 # public job network = 172.21.0.0/16
 # [all networks] Rewrite traffic coming from containers to masquerade as the host
 iptables --table nat --append POSTROUTING --source 172.20.0.0/15 --jump MASQUERADE
+iptables --table nat --append POSTROUTING --source 10.0.0.0/16 --jump MASQUERADE
 
 # [public]
 # Block public traffic to the metadata server
