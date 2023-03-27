@@ -2806,7 +2806,7 @@ class Worker:
             user_gateway = self.wg_interfaces[user]
 
             # TODO This needs much scrutiny.
-            for peer in vpn:
+            for peer in vpn['peers']:
                 if 'endpoint' in peer:
                     worker_ip = peer['endpoint'].split(':')[0]
                     resp = await request_retry_transient_errors(
