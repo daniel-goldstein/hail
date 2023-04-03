@@ -24,10 +24,9 @@ object BatchConfig {
     implicit val formats: Formats = DefaultFormats
     new BatchConfig(
       (config \ "batch_id").extract[Int],
-      (config \ "wireguard_ip").extract[String],
-      (config \ "wireguard_endpoint").extract[String],
+      (config \ "job_ip").extract[String],
     )
   }
 }
 
-class BatchConfig(val batchId: Long, val wireguardIp: String, val wireguardEndpoint: String)
+class BatchConfig(val batchId: Long, val jobIp: String)

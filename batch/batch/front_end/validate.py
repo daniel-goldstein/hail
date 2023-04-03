@@ -68,7 +68,7 @@ job_validator = keyed(
         'port': int_type,
         'vpn': keyed(
             {
-                'peers': listof(keyed({'ip': str_type, 'name': str_type, 'endpoint': str_type})),
+                'peers': listof(keyed({'ip': str_type, 'name': str_type, 'worker_ip': str_type})),
             }
         ),
         required('process'): switch(

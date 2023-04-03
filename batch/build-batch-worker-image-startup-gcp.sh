@@ -2,11 +2,8 @@
 
 set -ex
 
-# Ugh the logging agent doesn't work for ubuntu 22.04, gotta upgrade
-
-# curl --silent --show-error --remote-name --fail https://dl.google.com/cloudagents/add-logging-agent-repo.sh
-# bash add-logging-agent-repo.sh
-
+curl -sSO https://dl.google.com/cloudagents/add-google-cloud-ops-agent-repo.sh
+sudo bash add-google-cloud-ops-agent-repo.sh --also-install
 
 # Get the latest GPG key as it might not always be up to date
 # https://cloud.google.com/compute/docs/troubleshooting/known-issues#keyexpired
@@ -17,9 +14,8 @@ apt-get install -y \
     apt-transport-https \
     ca-certificates \
     curl \
-    # google-fluentd \
-    # google-fluentd-catch-all-config-structured \
     jq \
+    wireguard \
     software-properties-common
 
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -

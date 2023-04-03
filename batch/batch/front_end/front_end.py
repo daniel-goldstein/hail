@@ -44,7 +44,6 @@ from hailtop.config import get_deploy_config
 from hailtop.hail_logging import AccessLogger
 from hailtop.tls import internal_server_ssl_context
 from hailtop.utils import (
-    check_exec_output,
     cost_str,
     dump_all_stacktraces,
     humanize_timedelta_msecs,
@@ -1471,7 +1470,6 @@ async def create_update(request, userdata):
         raise web.HTTPBadRequest(reason=e.reason)
 
     update_id, _ = await _create_batch_update(batch_id, update_spec['token'], update_spec['n_jobs'], user, db)
-    # TODO Could return the public keys of jobs in here
     return web.json_response({'update_id': update_id})
 
 

@@ -150,8 +150,7 @@ class ServiceBackend(
   val theHailClassLoader: HailClassLoader,
   val batchClient: BatchClient,
   val curBatchId: Option[Long],
-  val wgIp: String,
-  val wgEndpoint: String,
+  val driverIp: String,
   val scratchDir: String = sys.env.get("HAIL_WORKER_SCRATCH_DIR").getOrElse(""),
 ) extends Backend with BackendWithNoCodeCache {
   import ServiceBackend.log
@@ -250,8 +249,8 @@ class ServiceBackend(
           "peers" -> JArray(List(
             JObject(
               "name" -> JString("query-driver"),
-              "ip" -> JString(wgIp),
-              "endpoint" -> JString(wgEndpoint)
+              "ip" -> JString(driverIp),
+              "worker_ip" -> JString(sys.env.get("HAIL_BATCH_WORKER_IP").get)
             )
           ))
         )
@@ -476,12 +475,11 @@ object ServiceBackendSocketAPI2 {
 
     val batchConfig = BatchConfig.fromConfigFile(s"$scratchDir/batch-config/batch-config.json").get
     var batchId = batchConfig.batchId
-    val driverWgIp = batchConfig.wireguardIp
-    val driverWgEndpoint = batchConfig.wireguardEndpoint
+    val driverIp = batchConfig.jobIp
 
     // FIXME: when can the classloader be shared? (optimizer benefits!)
     val backend = new ServiceBackend(
-      jarLocation, name, new HailClassLoader(getClass().getClassLoader()), batchClient, Some(batchId), driverWgIp, driverWgEndpoint, scratchDir)
+      jarLocation, name, new HailClassLoader(getClass().getClassLoader()), batchClient, Some(batchId), driverIp, scratchDir)
     if (HailContext.isInitialized) {
       HailContext.get.backend = backend
       backend.addDefaultReferences()

@@ -42,6 +42,7 @@ def create_vm_config(
     _, cores = gcp_machine_type_to_worker_type_and_cores(machine_type)
 
     region = instance_config.region_for(zone)
+    worker_net_id = 1 if preemptible else 0
 
     if local_ssd_data_disk:
         worker_data_disk = {
@@ -156,54 +157,48 @@ nohup /bin/bash run.sh >run.log 2>&1 &
 set -x
 
 # Setup fluentd
-# touch /worker.log
-# touch /run.log
-#
-# sudo rm /etc/google-fluentd/config.d/*  # remove unused config files
-#
-# sudo tee /etc/google-fluentd/config.d/worker-log.conf <<EOF
-# <source>
-# @type tail
-# format json
-# path /worker.log
-# pos_file /var/lib/google-fluentd/pos/worker-log.pos
-# read_from_head true
-# tag worker.log
-# </source>
-#
-# <filter worker.log>
-# @type record_transformer
-# enable_ruby
-# <record>
-#     severity \${{ record["levelname"] }}
-#     timestamp \${{ record["asctime"] }}
-# </record>
-# </filter>
-# EOF
-#
-# sudo tee /etc/google-fluentd/config.d/run-log.conf <<EOF
-# <source>
-# @type tail
-# format none
-# path /run.log
-# pos_file /var/lib/google-fluentd/pos/run-log.pos
-# read_from_head true
-# tag run.log
-# </source>
-# EOF
-#
-# sudo cp /etc/google-fluentd/google-fluentd.conf /etc/google-fluentd/google-fluentd.conf.bak
-# head -n -1 /etc/google-fluentd/google-fluentd.conf.bak | sudo tee /etc/google-fluentd/google-fluentd.conf
-# sudo tee -a /etc/google-fluentd/google-fluentd.conf <<EOF
-# labels {{
-# "namespace": "$NAMESPACE",
-# "instance_id": "$INSTANCE_ID"
-# }}
-# </match>
-# EOF
-# rm /etc/google-fluentd/google-fluentd.conf.bak
-#
-# sudo service google-fluentd restart
+touch /worker.log
+touch /run.log
+
+sudo tee /etc/google-cloud-ops-agent/config.yaml <<EOF
+logging:
+  receivers:
+    worker_log:
+      type: files
+      include_paths:
+        - /worker.log
+  processors:
+    parse_json:
+      type: parse_json
+    move_severity:
+      type: modify_fields
+      fields:
+        jsonPayload."logging.googleapis.com/severity":
+          move_from: jsonPayload.severity
+    add_instance_and_namespace_fields:
+      type: modify_fields
+      fields:
+        labels.namespace:
+          static_value: "$NAMESPACE"
+  service:
+    pipelines:
+      pipeline:
+        receivers: [worker_log]
+        processors: [parse_json, move_severity, add_instance_and_namespace_fields]
+metrics: # Disable the default metrics collection
+  processors:
+    metrics_filter:
+      type: exclude_metrics
+      metrics_pattern: ["agent.googleapis.com/*"]
+  service:
+    pipelines:
+      default_pipeline:
+        receivers: []
+        processors: []
+        exporters: []
+EOF
+
+sudo service google-cloud-ops-agent restart
 
 WORKER_DATA_DISK_NAME="{worker_data_disk_name}"
 UNRESERVED_WORKER_DATA_DISK_SIZE_GB="{unreserved_disk_storage_gb}"
@@ -255,6 +250,12 @@ DOCKER_PREFIX=$(curl -s -H "Metadata-Flavor: Google" "http://metadata.google.int
 
 INTERNAL_GATEWAY_IP=$(curl -s -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/attributes/internal_ip")
 
+# The hail subnet is a /64
+HAIL_SUBNET=fd00:4325:1304:f630
+# /80  Probably also want to put region in here as well for egress reasons?
+THIS_MACHINE=$HAIL_SUBNET:{ worker_net_id }
+sysctl -w net.ipv6.conf.all.forwarding=1
+
 # private job network = 172.20.0.0/16
 # public job network = 172.21.0.0/16
 # [all networks] Rewrite traffic coming from containers to masquerade as the host
@@ -270,6 +271,15 @@ iptables --table nat --append POSTROUTING --source 172.20.0.0/15 --jump MASQUERA
 # Forbid outgoing requests to cluster-internal IP addresses
 INTERNET_INTERFACE=$(ip link list | grep ens | awk -F": " '{{ print $2 }}')
 iptables --append FORWARD --jump ACCEPT
+
+WIREGUARD_PORT=46750
+ip link add wg0 type wireguard
+wg genkey | tee privatekey | wg pubkey > publickey
+wg set wg0 private-key privatekey listen-port $WIREGUARD_PORT
+rm privatekey
+
+ip -6 addr add $THIS_MACHINE::/64 dev wg0
+ip link set up dev wg0
 
 {make_global_config_str}
 
@@ -302,6 +312,9 @@ docker run \
 -e UNRESERVED_WORKER_DATA_DISK_SIZE_GB=$UNRESERVED_WORKER_DATA_DISK_SIZE_GB \
 -e ACCEPTABLE_QUERY_JAR_URL_PREFIX=$ACCEPTABLE_QUERY_JAR_URL_PREFIX \
 -e INTERNAL_GATEWAY_IP=$INTERNAL_GATEWAY_IP \
+-e WIREGUARD_PORT=$WIREGUARD_PORT \
+-e WIREGUARD_PUBLICKEY=$(cat publickey) \
+-e WIREGUARD_IPV6_PREFIX=$THIS_MACHINE \
 -v /var/run/docker.sock:/var/run/docker.sock \
 -v /var/run/netns:/var/run/netns:shared \
 -v /usr/bin/docker:/usr/bin/docker \
