@@ -85,9 +85,13 @@ class GoogleCredentials(CloudCredentials):
         return AnonymousCloudCredentials()
 
     async def auth_headers(self) -> Dict[str, str]:
+        token = await self.access_token()
+        return {'Authorization': f'Bearer {token}'}
+
+    async def access_token(self) -> str:
         if self._access_token is None or self._access_token.expired():
             self._access_token = await self._get_access_token()
-        return {'Authorization': f'Bearer {self._access_token.token}'}
+        return self._access_token.token
 
     async def _get_access_token(self) -> GoogleExpiringAccessToken:
         raise NotImplementedError

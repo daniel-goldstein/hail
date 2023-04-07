@@ -358,6 +358,8 @@ async def job_config(app, record, attempt_id):
     # backwards compatibility
     gsa_key_secret_name = userdata.get('hail_credentials_secret_name') or userdata['gsa_key_secret_name']
 
+    user_identity = userdata['hail_identity']
+
     for secret, k8s_secret in zip(secrets, k8s_secrets):
         if secret['name'] == gsa_key_secret_name:
             gsa_key = k8s_secret.data
@@ -434,6 +436,7 @@ users:
         'start_job_id': start_job_id,
         'user': record['user'],
         'gsa_key': gsa_key,
+        'user_identity': user_identity,
         'job_spec': job_spec,
     }
 

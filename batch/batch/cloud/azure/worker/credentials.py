@@ -15,11 +15,11 @@ class AzureUserCredentials(CloudUserCredentials):
         return 'AZURE_APPLICATION_CREDENTIALS'
 
     @property
-    def username(self):
+    def user_identity(self) -> str:
         return self._credentials['appId']
 
     @property
-    def password(self):
+    def password(self) -> str:
         return self._credentials['password']
 
     @property
@@ -31,7 +31,7 @@ class AzureUserCredentials(CloudUserCredentials):
         return f'''
 accountName {account}
 authType SPN
-servicePrincipalClientId {self.username}
+servicePrincipalClientId {self.user_identity}
 servicePrincipalClientSecret {self.password}
 servicePrincipalTenantId {self._credentials['tenant']}
 containerName {container}

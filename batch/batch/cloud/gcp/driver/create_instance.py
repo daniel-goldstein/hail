@@ -262,8 +262,8 @@ INTERNAL_GATEWAY_IP=$(curl -s -H "Metadata-Flavor: Google" "http://metadata.goog
 iptables --table nat --append POSTROUTING --source 172.20.0.0/15 --jump MASQUERADE
 
 # [public]
-# Block public traffic to the metadata server
-iptables --append FORWARD --source 172.21.0.0/16 --destination 169.254.169.254 --jump DROP
+# Send public jobs' metadata server requests to the batch worker itself
+iptables --table nat --append PREROUTING --source 172.21.0.0/16 --destination 169.254.169.254 -p tcp -j REDIRECT --to-ports 5555
 # But allow the internal gateway
 iptables --append FORWARD --destination $INTERNAL_GATEWAY_IP --jump ACCEPT
 # And this worker

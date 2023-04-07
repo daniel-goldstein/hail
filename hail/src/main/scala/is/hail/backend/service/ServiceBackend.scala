@@ -432,7 +432,7 @@ object ServiceBackendSocketAPI2 {
     val input = argv(5)
     val output = argv(6)
 
-    val fs = FS.cloudSpecificCacheableFS(s"$scratchDir/secrets/gsa-key/key.json", None)
+    val fs = FS.cloudSpecificCacheableFS(None)
     val deployConfig = DeployConfig.fromConfigFile(
       s"$scratchDir/secrets/deploy-config/deploy-config.json")
     DeployConfig.set(deployConfig)
@@ -634,7 +634,7 @@ class ServiceBackendSocketAPI2(
     def withExecuteContext(methodName: String, method: ExecuteContext => Array[Byte]): Array[Byte] = ExecutionTimer.logTime(methodName) { timer =>
       val flags = HailFeatureFlags.fromMap(flagsMap)
       val shouldProfile = flags.get("profile") != null
-      val fs = FS.cloudSpecificCacheableFS(s"${backend.scratchDir}/secrets/gsa-key/key.json", Some(flags))
+      val fs = FS.cloudSpecificCacheableFS(Some(flags))
       ExecuteContext.scoped(
         tmpdir,
         "file:///tmp",

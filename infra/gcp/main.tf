@@ -523,6 +523,7 @@ resource "google_project_iam_member" "batch_agent_iam_member" {
   for_each = toset([
     "compute.instanceAdmin.v1",
     "iam.serviceAccountUser",
+    "iam.serviceAccountTokenCreator",
     "logging.logWriter",
     "storage.objectAdmin",
   ])

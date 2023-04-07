@@ -1,7 +1,7 @@
 import abc
 import asyncio
 import base64
-import concurrent
+import concurrent.futures
 import errno
 import json
 import logging
@@ -85,7 +85,7 @@ from ..publicly_available_images import publicly_available_images
 from ..resource_usage import ResourceUsageMonitor
 from ..semaphore import FIFOWeightedSemaphore
 from ..utils import Box
-from ..worker.worker_api import CloudDisk, CloudWorkerAPI, ContainerRegistryCredentials
+from ..worker.worker_api import CloudDisk, CloudWorkerAPI, ContainerRegistryCredentials, MetadataServer
 from .credentials import CloudUserCredentials
 from .jvm_entryway_protocol import EndOfStream, read_bool, read_int, read_str, write_int, write_str
 
@@ -205,6 +205,7 @@ docker: Optional[aiodocker.Docker] = None
 
 port_allocator: Optional['PortAllocator'] = None
 network_allocator: Optional['NetworkAllocator'] = None
+metadata_server: Optional[MetadataServer] = None
 
 worker: Optional['Worker'] = None
 
@@ -261,6 +262,8 @@ class NetworkNamespace:
                 for service in HAIL_SERVICES:
                     hosts.write(f'{INTERNAL_GATEWAY_IP} {service}.hail\n')
             hosts.write(f'{INTERNAL_GATEWAY_IP} internal.hail\n')
+            if CLOUD == 'gcp':
+                hosts.write('169.254.169.254 metadata metadata.google.internal')
 
         # Jobs on the private network should have access to the metadata server
         # and our vdc. The public network should not so we use google's public
@@ -532,7 +535,7 @@ class Image:
                 if not self.is_cloud_image:
                     await self._ensure_image_is_pulled()
                 elif self.is_public_image:
-                    await self._ensure_image_is_pulled(auth=self._batch_worker_registry_credentials)
+                    await self._ensure_image_is_pulled(auth=self._batch_worker_container_registry_credentials)
                 elif self.image_ref_str == BATCH_WORKER_IMAGE and isinstance(
                     self.credentials, (JVMUserCredentials, CopyStepCredentials)
                 ):
@@ -547,7 +550,7 @@ class Image:
                         str(self),
                         self._pull_with_auth_refresh,
                         self.image_ref_str,
-                        auth=self._current_user_registry_credentials,
+                        auth=self._current_user_container_registry_credentials,
                     )
             except DockerError as e:
                 if e.status == 404 and 'pull access denied' in e.message:
@@ -597,13 +600,13 @@ class Image:
             else:
                 raise
 
-    async def _batch_worker_registry_credentials(self) -> ContainerRegistryCredentials:
+    async def _batch_worker_container_registry_credentials(self) -> ContainerRegistryCredentials:
         assert CLOUD_WORKER_API
-        return await CLOUD_WORKER_API.worker_container_registry_credentials(self.client_session)
+        return await CLOUD_WORKER_API.worker_container_registry_credentials()
 
-    async def _current_user_registry_credentials(self) -> ContainerRegistryCredentials:
-        assert self.credentials and isinstance(self.credentials, CloudUserCredentials)
+    async def _current_user_container_registry_credentials(self) -> ContainerRegistryCredentials:
         assert CLOUD_WORKER_API
+        assert self.credentials and isinstance(self.credentials, CloudUserCredentials)
         return await CLOUD_WORKER_API.user_container_registry_credentials(self.credentials)
 
     async def _extract_rootfs(self):
@@ -760,6 +763,7 @@ class Container:
         command: List[str],
         cpu_in_mcpu: int,
         memory_in_bytes: int,
+        user_credentials: Optional[CloudUserCredentials],
         network: Optional[Union[bool, str]] = None,
         port: Optional[int] = None,
         timeout: Optional[int] = None,
@@ -783,6 +787,8 @@ class Container:
         self.volume_mounts: List[MountSpecification] = volume_mounts or []
         self.env = env or []
         self.stdin = stdin
+
+        self.user_credentials = user_credentials
 
         maybe_io_mount = [vm['source'] for vm in self.volume_mounts if vm['destination'] == '/io']
         self.io_mount_path = maybe_io_mount[0] if maybe_io_mount else None
@@ -976,6 +982,9 @@ class Container:
 
             if self.netns:
                 assert network_allocator
+                assert metadata_server
+                if self.user_credentials:
+                    metadata_server.remove_user_from_ip(self.netns.job_ip)
                 network_allocator.free(self.netns)
                 self.netns = None
         finally:
@@ -1021,6 +1030,9 @@ class Container:
         else:
             assert self.network is None or self.network == 'public'
             self.netns = await network_allocator.allocate_public()
+            if self.user_credentials:
+                assert metadata_server
+                metadata_server.set_ip_address_user(self.netns.job_ip, self.user_credentials)
 
         if self.port is not None:
             self.host_port = await port_allocator.allocate()
@@ -1412,8 +1424,8 @@ def copy_container(
         command=command,
         cpu_in_mcpu=cpu_in_mcpu,
         memory_in_bytes=memory_in_bytes,
+        user_credentials=job.credentials,
         volume_mounts=volume_mounts,
-        env=[f'{job.credentials.cloud_env_name}={job.credentials.mount_path}'],
         stdin=json.dumps(files),
     )
 
@@ -1738,6 +1750,7 @@ class DockerJob(Job):
             command=job_spec['process']['command'],
             cpu_in_mcpu=self.cpu_in_mcpu,
             memory_in_bytes=self.memory_in_bytes,
+            user_credentials=self.credentials,
             network=job_spec.get('network'),
             port=job_spec.get('port'),
             timeout=job_spec.get('timeout'),
@@ -1786,6 +1799,7 @@ class DockerJob(Job):
                     size_in_gb=self.external_storage_in_gib,
                     mount_path=self.io_host_path(),
                 )
+                assert self.disk
                 labels = {'namespace': NAMESPACE, 'batch': '1', 'instance-name': NAME, 'uid': uid}
                 await self.disk.create(labels=labels)
                 log.info(f'created disk {self.disk.name} for job {self.id}')
@@ -2167,6 +2181,10 @@ class JVMJob(Job):
 
                 self.state = 'initializing'
 
+                assert self.jvm.container.container.netns
+                assert metadata_server
+                metadata_server.set_ip_address_user(self.jvm.container.container.netns.job_ip, self.credentials)
+
                 await check_shell_output(f'xfs_quota -x -c "project -s -p {self.scratch} {self.project_id}" /host/')
                 await check_shell_output(
                     f'xfs_quota -x -c "limit -p bsoft={self.data_disk_storage_in_gib} bhard={self.data_disk_storage_in_gib} {self.project_id}" /host/'
@@ -2307,6 +2325,10 @@ class JVMJob(Job):
                         raise IncompleteJVMCleanupError(
                             f'while unmounting fuse blob storage {bucket} from {mount_path} for {self.jvm_name} for job {self.id}'
                         ) from e
+
+        assert self.jvm.container.container.netns
+        assert metadata_server
+        metadata_server.remove_user_from_ip(self.jvm.container.container.netns.job_ip)
 
         if self.jvm is not None:
             self.worker.return_jvm(self.jvm)
@@ -2491,6 +2513,7 @@ class JVMContainer:
             command=command,
             cpu_in_mcpu=n_cores * 1000,
             memory_in_bytes=total_memory_bytes,
+            user_credentials=None,
             env=[f'HAIL_WORKER_OFF_HEAP_MEMORY_PER_CORE_MB={off_heap_memory_per_core_mib}', f'HAIL_CLOUD={CLOUD}'],
             volume_mounts=volume_mounts,
         )
@@ -2874,7 +2897,7 @@ class Worker:
         self.cloudfuse_mount_manager = ReadOnlyCloudfuseManager()
 
         self._jvm_initializer_task = asyncio.create_task(self._initialize_jvms())
-        self._jvms: SortedSet[JVM] = SortedSet([], key=lambda jvm: jvm.n_cores)
+        self._jvms: SortedSet = SortedSet([], key=lambda jvm: jvm.n_cores)
 
     async def _initialize_jvms(self):
         assert instance_config
@@ -3088,6 +3111,15 @@ class Worker:
         return json_response(body)
 
     async def run(self):
+        global metadata_server
+        assert CLOUD_WORKER_API
+        assert network_allocator
+        metadata_server = CLOUD_WORKER_API.metadata_server()
+        metadata_app_runner = web.AppRunner(metadata_server.create_app(), access_log_class=BatchWorkerAccessLogger)
+        await metadata_app_runner.setup()
+        metadata_site = web.TCPSite(metadata_app_runner, '0.0.0.0', 5555)
+        await metadata_site.start()
+
         app = web.Application(client_max_size=HTTP_CLIENT_MAX_SIZE)
         app.add_routes(
             [

@@ -547,5 +547,6 @@ wrapt==1.15.0
     #   astroid
 zipp==3.15.0
     # via
+    #   -c hail/hail/python/dev/../pinned-requirements.txt
     #   importlib-metadata
     #   importlib-resources

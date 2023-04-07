@@ -121,7 +121,7 @@ object Worker {
     timer.start(s"Job $i/$n")
 
     timer.start("readInputs")
-    val fs = FS.cloudSpecificCacheableFS(s"$scratchDir/secrets/gsa-key/key.json", None)
+    val fs = FS.cloudSpecificCacheableFS(None)
 
     val (open, write) = ((x: String) => fs.openNoCompression(x), fs.writePDOS _)
 
@@ -154,11 +154,11 @@ object Worker {
     timer.start("executeFunction")
 
     if (HailContext.isInitialized) {
-      HailContext.get.backend = new ServiceBackend(null, null, new HailClassLoader(getClass().getClassLoader()), null, None)
+      HailContext.get.backend = new ServiceBackend(null, null, new HailClassLoader(getClass().getClassLoader()), null, None, scratchDir)
     } else {
       HailContext(
         // FIXME: workers should not have backends, but some things do need hail contexts
-        new ServiceBackend(null, null, new HailClassLoader(getClass().getClassLoader()), null, None))
+        new ServiceBackend(null, null, new HailClassLoader(getClass().getClassLoader()), null, None, scratchDir))
     }
     val htc = new ServiceTaskContext(i)
     var result: Array[Byte] = null

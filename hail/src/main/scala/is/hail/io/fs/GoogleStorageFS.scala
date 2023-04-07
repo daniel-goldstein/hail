@@ -180,8 +180,6 @@ class GoogleStorageFS(
       case Some(keyData) =>
         log.info("Initializing google storage client from service account key")
         StorageOptions.newBuilder()
-          .setCredentials(
-            ServiceAccountCredentials.fromStream(new ByteArrayInputStream(keyData.getBytes)))
           .setTransportOptions(transportOptions)
           .build()
           .getService

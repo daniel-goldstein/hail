@@ -4,13 +4,15 @@ import tempfile
 from typing import Dict, Optional, Tuple
 
 import aiohttp
+from aiohttp import web
 
 from gear.cloud_config import get_azure_config
 from hailtop import httpx
 from hailtop.aiocloud import aioazure
 from hailtop.utils import check_exec_output, retry_transient_errors, time_msecs
 
-from ....worker.worker_api import CloudWorkerAPI, ContainerRegistryCredentials
+from ....globals import HTTP_CLIENT_MAX_SIZE
+from ....worker.worker_api import CloudWorkerAPI, ContainerRegistryCredentials, MetadataServer
 from ..instance_config import AzureSlimInstanceConfig
 from .credentials import AzureUserCredentials
 from .disk import AzureDisk
@@ -25,14 +27,16 @@ class AzureWorkerAPI(CloudWorkerAPI[AzureUserCredentials]):
         resource_group = os.environ['RESOURCE_GROUP']
         acr_url = os.environ['DOCKER_PREFIX']
         assert acr_url.endswith('azurecr.io'), acr_url
-        return AzureWorkerAPI(subscription_id, resource_group, acr_url)
+        session = httpx.ClientSession()
+        return AzureWorkerAPI(subscription_id, resource_group, acr_url, session)
 
-    def __init__(self, subscription_id: str, resource_group: str, acr_url: str):
+    def __init__(self, subscription_id: str, resource_group: str, acr_url: str, session: httpx.ClientSession):
         self.subscription_id = subscription_id
         self.resource_group = resource_group
         self.acr_refresh_token = AcrRefreshToken(acr_url, AadAccessToken())
         self.azure_credentials = aioazure.AzureCredentials.default_credentials()
         self._blobfuse_credential_files: Dict[str, str] = {}
+        self._session = session
 
     def create_disk(self, instance_name: str, disk_name: str, size_in_gb: int, mount_path: str) -> AzureDisk:
         return AzureDisk(disk_name, instance_name, size_in_gb, mount_path)
@@ -47,20 +51,23 @@ class AzureWorkerAPI(CloudWorkerAPI[AzureUserCredentials]):
     def user_credentials(self, credentials: Dict[str, str]) -> AzureUserCredentials:
         return AzureUserCredentials(credentials)
 
-    async def worker_container_registry_credentials(self, session: httpx.ClientSession) -> ContainerRegistryCredentials:
+    async def worker_container_registry_credentials(self) -> ContainerRegistryCredentials:
         # https://docs.microsoft.com/en-us/azure/container-registry/container-registry-authentication?tabs=azure-cli#az-acr-login-with---expose-token
         return {
             'username': '00000000-0000-0000-0000-000000000000',
-            'password': await self.acr_refresh_token.token(session),
+            'password': await self.acr_refresh_token.token(self._session),
         }
 
     async def user_container_registry_credentials(
-        self, user_credentials: AzureUserCredentials
+        self, credentials: AzureUserCredentials
     ) -> ContainerRegistryCredentials:
         return {
-            'username': user_credentials.username,
-            'password': user_credentials.password,
+            'username': credentials.user_identity,
+            'password': credentials.password,
         }
+
+    def metadata_server(self) -> 'AzureMetadataServer':
+        return AzureMetadataServer()
 
     def instance_config_from_config_dict(self, config_dict: Dict[str, str]) -> AzureSlimInstanceConfig:
         return AzureSlimInstanceConfig.from_dict(config_dict)
@@ -180,3 +187,13 @@ class AcrRefreshToken(LazyShortLivedToken):
         refresh_token: str = resp_json['refresh_token']
         expiration_time_ms = time_msecs() + 60 * 60 * 1000  # token expires in 3 hours so we refresh after 1 hour
         return refresh_token, expiration_time_ms
+
+
+class AzureMetadataServer(MetadataServer):
+    def __init__(self):
+        super().__init__()
+
+    def create_app(self) -> web.Application:
+        metadata_app = web.Application(client_max_size=HTTP_CLIENT_MAX_SIZE, middlewares=[self.user_identity_from_ip])
+        metadata_app.add_routes([])
+        return metadata_app

@@ -1355,6 +1355,7 @@ async def _create_batch(batch_spec: dict, userdata: dict, db: Database):
     userdata = {
         'username': user,
         'hail_credentials_secret_name': userdata['hail_credentials_secret_name'],
+        'hail_identity': userdata['hail_identity'],
         'tokens_secret_name': userdata['tokens_secret_name'],
     }
 
