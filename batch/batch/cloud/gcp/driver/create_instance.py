@@ -42,7 +42,6 @@ def create_vm_config(
     _, cores = gcp_machine_type_to_worker_type_and_cores(machine_type)
 
     region = instance_config.region_for(zone)
-    worker_net_id = 1 if preemptible else 0
 
     if local_ssd_data_disk:
         worker_data_disk = {

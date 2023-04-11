@@ -156,7 +156,6 @@ IPTABLES_WAIT_TIMEOUT_SECS = 60
 CLOUD = os.environ['CLOUD']
 CORES = int(os.environ['CORES'])
 NAME = os.environ['NAME']
-NP = 1 if '-np-' in NAME else 0
 NAMESPACE = os.environ['NAMESPACE']
 # ACTIVATION_TOKEN
 IP_ADDRESS = os.environ['IP_ADDRESS']
