@@ -328,8 +328,10 @@ iptables -w {IPTABLES_WAIT_TIMEOUT_SECS} -t mangle -A POSTROUTING --out-interfac
         )
 
     async def add_ipv6_addr(self, user_net_id):
-        host_ip = f'{WIREGUARD_IPV6_PREFIX}:{user_net_id}:{self.subnet_index}:1'
-        job_ip = f'{WIREGUARD_IPV6_PREFIX}:{user_net_id}:{self.subnet_index}:2'
+        host_side = 2 * self.subnet_index
+        job_side = 2 * self.subnet_index + 1
+        host_ip = f'{WIREGUARD_IPV6_PREFIX}:{user_net_id}:{host_side}'
+        job_ip = f'{WIREGUARD_IPV6_PREFIX}:{user_net_id}:{job_side}'
 
         if host_ip == self.host_ipv6_ip:
             assert job_ip == self.job_ipv6_ip
