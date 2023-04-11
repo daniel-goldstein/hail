@@ -252,8 +252,9 @@ INTERNAL_GATEWAY_IP=$(curl -s -H "Metadata-Flavor: Google" "http://metadata.goog
 
 # The hail subnet is a /64
 HAIL_SUBNET=fd00:4325:1304:f630
-# /80  Probably also want to put region in here as well for egress reasons?
-THIS_MACHINE=$HAIL_SUBNET:{ worker_net_id }
+THIS_MACHINE_SUBNET=$(python3 -c 'import socket; hex_ip = socket.inet_aton("'$IP_ADDRESS'").hex(); print(":".join([hex_ip[:4], hex_ip[4:]]))')
+# The subnet spanned by this machine is /96
+THIS_MACHINE=$HAIL_SUBNET:$THIS_MACHINE_SUBNET
 sysctl -w net.ipv6.conf.all.forwarding=1
 
 # private job network = 172.20.0.0/16
@@ -278,6 +279,8 @@ wg genkey | tee privatekey | wg pubkey > publickey
 wg set wg0 private-key privatekey listen-port $WIREGUARD_PORT
 rm privatekey
 
+# We set /64 here because this interface will manage all hailnet ipv6 traffic,
+# and send those destined for other workers across the network through wireguard
 ip -6 addr add $THIS_MACHINE::/64 dev wg0
 ip link set up dev wg0
 

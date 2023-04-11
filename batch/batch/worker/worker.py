@@ -400,7 +400,7 @@ class WireguardInterface:
 
     def as_peer(self) -> WireguardPeer:
         return WireguardPeer(
-            publickey=self._publickey, endpoint=f'{IP_ADDRESS}:{self._listen_port}', allowed_ips=self.ip + '/80'
+            publickey=self._publickey, endpoint=f'{IP_ADDRESS}:{self._listen_port}', allowed_ips=self.ip + '/96'
         )
 
     async def add_peer(self, peer: WireguardPeer):
