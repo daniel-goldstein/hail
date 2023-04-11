@@ -280,7 +280,7 @@ rm privatekey
 
 # We set /64 here because this interface will manage all hailnet ipv6 traffic,
 # and send those destined for other workers across the network through wireguard
-ip -6 addr add $THIS_MACHINE::/64 dev wg0
+ip -6 addr add $THIS_MACHINE::1/64 dev wg0
 ip link set up dev wg0
 
 {make_global_config_str}
