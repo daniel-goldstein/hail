@@ -243,7 +243,7 @@ object FS {
           }
           ("gs", new GoogleStorageFS(credentialsStr, requesterPaysConfiguration).asCacheable())
         case Some("azure") =>
-          ("hail-az", new AzureStorageFS(credentialsStr).asCacheable())
+          ("https", new AzureStorageFS(credentialsStr).asCacheable())
         case cloud =>
           throw new IllegalArgumentException(s"Bad cloud: $cloud")
         case None =>
@@ -599,4 +599,3 @@ trait FS extends Serializable {
 
   def setConfiguration(config: Any): Unit
 }
-
