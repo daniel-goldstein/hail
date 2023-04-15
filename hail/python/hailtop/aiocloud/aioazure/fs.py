@@ -1,8 +1,9 @@
-from typing import Any, AsyncContextManager, AsyncIterator, Dict, List, Optional, Set, Type
+from typing import Any, AsyncContextManager, AsyncIterator, Dict, List, Optional, Set, Type, Tuple
 from types import TracebackType
 
 import re
 import asyncio
+from functools import wraps
 import secrets
 import logging
 import datetime
@@ -313,6 +314,22 @@ class AzureAsyncFSHttpsURL(AzureAsyncFSURL):
         return f'https://{self._account}.blob.core.windows.net/{self._container}/{self._path}'
 
 
+# ABS errors if you attempt credentialed access for a public container,
+# so we try once with credentials, if that fails use anonymous access for
+# that container going forward.
+def handle_public_access_error(fun):
+    @wraps(fun)
+    async def wrapped(self, url, *args, **kwargs):
+        try:
+            return await fun(self, url, *args, **kwargs)
+        except azure.core.exceptions.ClientAuthenticationError:
+            fs_url = self.parse_url(url)
+            anon_client = BlobServiceClient(f'https://{fs_url.account}.blob.core.windows.net', credential=None)
+            self._blob_service_clients[(fs_url.account, fs_url.container)] = anon_client
+            return await fun(self, url, *args, **kwargs)
+    return wrapped
+
+
 class AzureAsyncFS(AsyncFS):
     schemes: Set[str] = {'hail-az', 'https'}
     PATH_REGEX = re.compile('/(?P<container>[^/]+)(?P<name>.*)')
@@ -329,7 +346,7 @@ class AzureAsyncFS(AsyncFS):
                 raise ValueError('credential and credential_file cannot both be defined')
 
         self._credential = credentials.credential
-        self._blob_service_clients: Dict[str, BlobServiceClient] = {}
+        self._blob_service_clients: Dict[Tuple[str, str], BlobServiceClient] = {}
 
     @staticmethod
     def valid_url(url: str) -> bool:
@@ -376,21 +393,23 @@ class AzureAsyncFS(AsyncFS):
 
         assert scheme == 'https'
         assert len(authority) > len('.blob.core.windows.net')
-        account = authority[:-len('.blob.core.windows.net')]
+        account = authority.split('.', maxsplit=1)[0]
         return AzureAsyncFSHttpsURL(account, container, name)
 
-    def get_blob_service_client(self, account: str) -> BlobServiceClient:
-        if account not in self._blob_service_clients:
-            self._blob_service_clients[account] = BlobServiceClient(f'https://{account}.blob.core.windows.net', credential=self._credential)
-        return self._blob_service_clients[account]
+    def get_blob_service_client(self, url: AzureAsyncFSURL) -> BlobServiceClient:
+        key = tuple(url.bucket_parts)
+        if key not in self._blob_service_clients:
+            self._blob_service_clients[key] = BlobServiceClient(f'https://{url.account}.blob.core.windows.net', credential=self._credential)
+        return self._blob_service_clients[key]
 
     def get_blob_client(self, url: AzureAsyncFSURL) -> BlobClient:
-        blob_service_client = self.get_blob_service_client(url.account)
+        blob_service_client = self.get_blob_service_client(url)
         return blob_service_client.get_blob_client(url.container, url.path)
 
     def get_container_client(self, url: AzureAsyncFSURL) -> ContainerClient:
-        return self.get_blob_service_client(url.account).get_container_client(url.container)
+        return self.get_blob_service_client(url).get_container_client(url.container)
 
+    @handle_public_access_error
     async def open(self, url: str) -> ReadableStream:
         if not await self.exists(url):
             raise FileNotFoundError
@@ -404,6 +423,7 @@ class AzureAsyncFS(AsyncFS):
         client = self.get_blob_client(self.parse_url(url))
         return AzureReadableStream(client, url, offset=start, length=length)
 
+    @handle_public_access_error
     async def create(self, url: str, *, retry_writes: bool = True) -> AsyncContextManager[WritableStream]:  # pylint: disable=unused-argument
         return AzureCreateManager(self.get_blob_client(self.parse_url(url)))
 
@@ -415,6 +435,7 @@ class AzureAsyncFS(AsyncFS):
         client = self.get_blob_client(self.parse_url(url))
         return AzureMultiPartCreate(sema, client, num_parts)
 
+    @handle_public_access_error
     async def isfile(self, url: str) -> bool:
         fs_url = self.parse_url(url)
         # if object name is empty, get_object_metadata behaves like list objects
@@ -424,11 +445,13 @@ class AzureAsyncFS(AsyncFS):
 
         return await self.get_blob_client(fs_url).exists()
 
+    @handle_public_access_error
     async def isdir(self, url: str) -> bool:
         fs_url = self.parse_url(url)
-        assert not fs_url.path or fs_url.path.endswith('/'), fs_url.path
+        name = fs_url.path
+        dir_name = name if not name or name.endswith('/') else name + '/'
         client = self.get_container_client(fs_url)
-        async for _ in client.walk_blobs(name_starts_with=fs_url.path,
+        async for _ in client.walk_blobs(name_starts_with=dir_name,
                                          include=['metadata'],
                                          delimiter='/'):
             return True
@@ -440,6 +463,7 @@ class AzureAsyncFS(AsyncFS):
     async def makedirs(self, url: str, exist_ok: bool = False) -> None:
         pass
 
+    @handle_public_access_error
     async def statfile(self, url: str) -> FileStatus:
         try:
             blob_props = await self.get_blob_client(self.parse_url(url)).get_blob_properties()
@@ -466,6 +490,7 @@ class AzureAsyncFS(AsyncFS):
                 assert isinstance(item, BlobProperties)
                 yield AzureFileListEntry(original_url.with_path(item.name), item)  # type: ignore
 
+    @handle_public_access_error
     async def listfiles(self,
                         url: str,
                         recursive: bool = False,
@@ -513,9 +538,11 @@ class AzureAsyncFS(AsyncFS):
 
         return cons(first_entry, it)
 
+    @handle_public_access_error
     async def staturl(self, url: str) -> str:
         return await self._staturl_parallel_isfile_isdir(url)
 
+    @handle_public_access_error
     async def remove(self, url: str) -> None:
         try:
             await self.get_blob_client(self.parse_url(url)).delete_blob()
