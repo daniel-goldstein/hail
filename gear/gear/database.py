@@ -6,8 +6,8 @@ import ssl
 import traceback
 from typing import Optional
 
-import aiomysql
-import pymysql
+import aioodbc
+import aioodbc.cursor
 
 from gear.metrics import DB_CONNECTION_QUEUE_SIZE, SQL_TRANSACTIONS, PrometheusSQLTimer
 from hailtop.aiotools import BackgroundTaskManager
@@ -30,28 +30,7 @@ def retry_transient_mysql_errors(f):
     @functools.wraps(f)
     async def wrapper(*args, **kwargs):
         delay = 0.1
-        while True:
-            try:
-                return await f(*args, **kwargs)
-            except pymysql.err.InternalError as e:
-                if e.args[0] in internal_error_retry_codes:
-                    log.warning(
-                        f'encountered pymysql error, retrying {e}',
-                        exc_info=True,
-                        extra={'full_stacktrace': '\n'.join(traceback.format_stack())},
-                    )
-                else:
-                    raise
-            except pymysql.err.OperationalError as e:
-                if e.args[0] in operational_error_retry_codes:
-                    log.warning(
-                        f'encountered pymysql error, retrying {e}',
-                        exc_info=True,
-                        extra={'full_stacktrace': '\n'.join(traceback.format_stack())},
-                    )
-                else:
-                    raise
-            delay = await sleep_and_backoff(delay)
+        return await f(*args, **kwargs)
 
     return wrapper
 
@@ -106,11 +85,27 @@ def get_database_ssl_context(sql_config: Optional[SQLConfig] = None) -> ssl.SSLC
 
 
 @retry_transient_mysql_errors
-async def create_database_pool(config_file: Optional[str] = None, autocommit: bool = True, maxsize: int = 10):
+async def create_database_pool(
+    config_file: Optional[str] = None, autocommit: bool = True, maxsize: int = 10
+) -> aioodbc.Pool:
     sql_config = get_sql_config(config_file)
     ssl_context = get_database_ssl_context(sql_config)
     assert ssl_context is not None
-    return await aiomysql.create_pool(
+    dsn = (
+        'DRIVER=MySQL ODBC 8.0 ANSI Driver;'
+        f'SERVER={sql_config.host};'
+        f'PORT={sql_config.port};'
+        f'DATABASE={sql_config.db};'
+        f'USER={sql_config.user};'
+        f'PWD={sql_config.password};'
+        f'CHARSET=utf-8;'
+        f'SSL-CA={sql_config.ssl_ca};'
+        f'SSL-CERT={sql_config.ssl_cert};'
+        f'SSL-KEY={sql_config.ssl_key};'
+        f'SSL-MODE=REQUIRED;'
+    )
+    return await aioodbc.create_pool(
+        dsn=dsn,
         maxsize=maxsize,
         # connection args
         host=sql_config.host,
@@ -120,7 +115,6 @@ async def create_database_pool(config_file: Optional[str] = None, autocommit: bo
         port=sql_config.port,
         charset='utf8',
         ssl=ssl_context,
-        cursorclass=aiomysql.cursors.DictCursor,
         autocommit=autocommit,
         # Discard stale connections, see https://stackoverflow.com/questions/69373128/db-connection-issue-with-encode-databases-library.
         pool_recycle=3600,
@@ -128,7 +122,7 @@ async def create_database_pool(config_file: Optional[str] = None, autocommit: bo
 
 
 class TransactionAsyncContextManager:
-    def __init__(self, db_pool, read_only, task_manager: BackgroundTaskManager):
+    def __init__(self, db_pool: aioodbc.Pool, read_only: bool, task_manager: BackgroundTaskManager):
         self.db_pool = db_pool
         self.read_only = read_only
         self.tx: Optional['Transaction'] = None
@@ -158,10 +152,10 @@ async def _release_connection(conn_context_manager):
 class Transaction:
     def __init__(self, task_manager: BackgroundTaskManager):
         self.conn_context_manager = None
-        self.conn = None
+        self.conn: Optional[aioodbc.Connection] = None
         self._task_manager = task_manager
 
-    async def async_init(self, db_pool, read_only):
+    async def async_init(self, db_pool: aioodbc.Pool, read_only: bool):
         try:
             self.conn_context_manager = db_pool.acquire()
             DB_CONNECTION_QUEUE_SIZE.inc()
@@ -202,55 +196,67 @@ class Transaction:
         # await shield becuase we want to wait for commit/rollback to finish
         await asyncio.shield(self._aexit_1(exc_type))
 
+    async def _execute(self, cursor: aioodbc.cursor.Cursor, sql: str, args):
+        sql = sql.replace('%s', '?')
+        if args is None:
+            return await cursor.execute(sql)
+        return await cursor.execute(sql, args)
+
     async def just_execute(self, sql, args=None):
         assert self.conn
         async with self.conn.cursor() as cursor:
-            await cursor.execute(sql, args)
+            await self._execute(cursor, sql, args)
 
     async def execute_and_fetchone(self, sql, args=None, query_name=None):
         assert self.conn
         async with self.conn.cursor() as cursor:
             if query_name is None:
-                await cursor.execute(sql, args)
+                res = await self._execute(cursor, sql, args)
             else:
                 async with PrometheusSQLTimer(query_name):
-                    await cursor.execute(sql, args)
-            return await cursor.fetchone()
+                    res = await self._execute(cursor, sql, args)
+            columns = [col[0] for col in res.description]
+            row = await cursor.fetchone()
+            try:
+                return dict(zip(columns, row))
+            except Exception:
+                return row
 
     async def execute_and_fetchall(self, sql, args=None, query_name=None):
         assert self.conn
         async with self.conn.cursor() as cursor:
             if query_name is None:
-                await cursor.execute(sql, args)
+                res = await self._execute(cursor, sql, args)
             else:
                 async with PrometheusSQLTimer(query_name):
-                    await cursor.execute(sql, args)
+                    res = await self._execute(cursor, sql, args)
+            columns = [col[0] for col in res.description]
             while True:
                 rows = await cursor.fetchmany(100)
                 if not rows:
                     break
                 for row in rows:
-                    yield row
+                    yield dict(zip(columns, row))
 
     async def execute_insertone(self, sql, args=None, *, query_name=None):
         assert self.conn
         async with self.conn.cursor() as cursor:
             if query_name is None:
-                await cursor.execute(sql, args)
+                await self._execute(cursor, sql, args)
             else:
                 async with PrometheusSQLTimer(query_name):
-                    await cursor.execute(sql, args)
-            return cursor.lastrowid
+                    await self._execute(cursor, sql, args)
 
     async def execute_update(self, sql, args=None, query_name=None):
         assert self.conn
         async with self.conn.cursor() as cursor:
             if query_name is None:
-                return await cursor.execute(sql, args)
+                return await self._execute(cursor, sql, args)
             async with PrometheusSQLTimer(query_name):
-                return await cursor.execute(sql, args)
+                return await self._execute(cursor, sql, args)
 
     async def execute_many(self, sql, args_array, query_name=None):
+        sql = sql.replace('%s', '?')
         assert self.conn
         async with self.conn.cursor() as cursor:
             if query_name is None:
@@ -269,7 +275,7 @@ class CallError(Exception):
 
 class Database:
     def __init__(self):
-        self.pool = None
+        self.pool: Optional[aioodbc.Pool] = None
         self.connection_release_task_manager = None
 
     async def async_init(self, config_file=None, maxsize=10):
@@ -278,6 +284,7 @@ class Database:
 
     def start(self, read_only=False):
         assert self.connection_release_task_manager
+        assert self.pool
         return TransactionAsyncContextManager(self.pool, read_only, self.connection_release_task_manager)
 
     @retry_transient_mysql_errors

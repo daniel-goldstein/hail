@@ -6,6 +6,8 @@
 # dev is installed in the batch tests
 -c ../hail/python/dev/pinned-requirements.txt
 
+aioodbc>=0.4.0,<1
+pyodbc>=4.0.39,<5
 aiohttp_session>=2.7,<2.13
 aiomysql>=0.0.20,<1
 google-cloud-profiler<4.0.0

@@ -14,6 +14,8 @@ aiohttp-session==2.12.0
     # via -r hail/gear/requirements.txt
 aiomysql==0.1.1
     # via -r hail/gear/requirements.txt
+aioodbc==0.4.0
+    # via -r hail/gear/requirements.txt
 aiosignal==1.3.1
     # via
     #   -c hail/gear/../hail/python/hailtop/pinned-requirements.txt
@@ -128,6 +130,10 @@ pymysql==1.0.3
     # via
     #   -r hail/gear/requirements.txt
     #   aiomysql
+pyodbc==4.0.39
+    # via
+    #   -r hail/gear/requirements.txt
+    #   aioodbc
 pyparsing==3.0.9
     # via
     #   -c hail/gear/../hail/python/dev/pinned-requirements.txt
