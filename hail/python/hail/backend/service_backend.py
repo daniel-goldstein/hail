@@ -433,19 +433,12 @@ class ServiceBackend(Backend):
                 self._batch = await bb.submit(disable_progress_bar=True)
 
             with timings.step("wait driver"):
-                try:
-                    await self._batch.wait(
-                        description=name,
-                        disable_progress_bar=self.disable_progress_bar,
-                        progress=progress,
-                        starting_job=j.job_id,
-                    )
-                except KeyboardInterrupt:
-                    raise
-                except Exception:
-                    await self._batch.cancel()
-                    self._batch = None
-                    raise
+                await self._batch.wait(
+                    description=name,
+                    disable_progress_bar=self.disable_progress_bar,
+                    progress=progress,
+                    starting_job=j.job_id,
+                )
 
             with timings.step("read output"):
                 result_bytes = await retry_transient_errors(self._read_output, ir, iodir + '/out')
