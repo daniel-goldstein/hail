@@ -3,15 +3,11 @@ FROM ensemblorg/ensembl-vep:release_95.3
 USER root
 
 RUN apt-get update && \
-    apt-get install curl gpg jq && \
-    curl 'https://keyserver.ubuntu.com/pks/lookup?search=0xF23C5A6CF475977595C89F51BA6932366A755776&hash=on&exact=on&options=mr&op=get' \
-         | gpg --dearmor > /usr/share/keyrings/deadsnakes-ppa-archive-keyring.gpg && \
-    echo 'deb [signed-by=/usr/share/keyrings/deadsnakes-ppa-archive-keyring.gpg] http://ppa.launchpad.net/deadsnakes/ppa/ubuntu xenial main' \
-         >> /etc/apt/sources.list && \
-    echo 'deb-src [signed-by=/usr/share/keyrings/deadsnakes-ppa-archive-keyring.gpg] http://ppa.launchpad.net/deadsnakes/ppa/ubuntu xenial main' \
-         >> /etc/apt/sources.list && \
-    apt-get install python3.8 && \
-    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.8 1
+    apt-get install -y software-properties-common && \
+    add-apt-repository ppa:deadsnakes/ppa && \
+    apt-get update && \
+    apt-get install -y python3.5 && \
+    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.5 1
 
 ENV VEP_VERSION 95
 ENV VEP_DIR /vep
