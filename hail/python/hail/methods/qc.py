@@ -837,8 +837,8 @@ class VEPConfigGRCh38Version95(VEPConfig):
 --minimal \
 --assembly GRCh38 \
 --fasta {self.data_mount}/homo_sapiens/95_GRCh38/Homo_sapiens.GRCh38.dna.toplevel.fa.gz \
---plugin "LoF,loftee_path:/vep/ensembl-vep/Plugins/,gerp_bigwig:{self.data_mount}/gerp_conservation_scores.homo_sapiens.GRCh38.bw,human_ancestor_fa:{self.data_mount}/human_ancestor.fa.gz,conservation_file:{self.data_mount}/loftee.sql" \
---dir_plugins /vep/ensembl-vep/Plugins/ \
+--plugin "LoF,loftee_path:/vep/Plugins/,gerp_bigwig:{self.data_mount}/gerp_conservation_scores.homo_sapiens.GRCh38.bw,human_ancestor_fa:{self.data_mount}/human_ancestor.fa.gz,conservation_file:{self.data_mount}/loftee.sql" \
+--dir_plugins /vep/Plugins/ \
 --dir_cache {self.data_mount} \
 -o STDOUT
 '''

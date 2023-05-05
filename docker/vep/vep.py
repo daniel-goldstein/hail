@@ -9,7 +9,7 @@ import shlex
 import subprocess as sp
 import sys
 import time
-from typing import List
+from typing import List, Optional
 
 
 CONSEQUENCE_REGEX = re.compile(r'CSQ=[^;^\t]+')
@@ -93,10 +93,11 @@ def get_csq_header(vep_cmd: List[str]):
         v = Variant(1, 13372, 'G', ['C'])
         data = VCF_HEADER + '\n' + v.to_vcf_line()
 
-        stdout, stderr = proc.communicate(data)
-        if stderr:
-            print(stderr)
+        stdout_bytes, stderr_bytes = proc.communicate(data.encode())
+        if stderr_bytes:
+            print(stderr_bytes)
 
+        stdout = stdout_bytes.decode()
         for line in stdout.split('\n'):
             line = line.rstrip()
             for match in CONSEQUENCE_HEADER_REGEX.finditer(line):
@@ -120,9 +121,9 @@ def run_vep(vep_cmd, input_file, block_size, consequence, tolerate_parse_error, 
             with sp.Popen(vep_cmd, env=env, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE) as proc:
                 data = header + "".join(block)
 
-                stdout, stderr = proc.communicate(data)
-                if stderr:
-                    print(stderr)
+                stdout_bytes, stderr_bytes = proc.communicate(data.encode())
+                if stderr_bytes:
+                    print(stderr_bytes)
 
                 if proc.returncode != 0:
                     raise ValueError(
@@ -132,9 +133,10 @@ def run_vep(vep_cmd, input_file, block_size, consequence, tolerate_parse_error, 
                         + str(proc.returncode)
                         + '\n'
                         + 'VEP error output:\n'
-                        + stderr
+                        + stderr_bytes.decode()
                     )
 
+            stdout = stdout_bytes.decode()
             for line in stdout.split('\n'):
                 line = line.rstrip()
 
@@ -201,7 +203,7 @@ def main(
     consequence: bool,
     tolerate_parse_error: bool,
     block_size: int,
-    input_file: str,
+    input_file: Optional[str],
     output_file: str,
     part_id: str,
     vep_cmd: str,
@@ -214,11 +216,12 @@ def main(
             out.write(csq_header + '\n')
     else:
         assert action == 'vep'
+        assert input_file is not None
         results = run_vep(vep_cmd_list, input_file, block_size, consequence, tolerate_parse_error, part_id, os.environ)
         with gzip.open(output_file, 'wt') as out:
             out.write('variant\tvep\tpart_id\tblock_id\n')
             for v, a, part_id, block_id in results:
-                out.write('\t'.join((v, a, part_id, block_id)) + '\n')
+                out.write('\t'.join((str(x) for x in (v, a, part_id, block_id))) + '\n')
 
 
 if __name__ == '__main__':
