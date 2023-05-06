@@ -1,4 +1,5 @@
 import hail as hl
+
 S = 500
 V = 2000
 mt = hl.balding_nichols_model(1, S, V, 500)
