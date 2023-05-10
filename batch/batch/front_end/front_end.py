@@ -1413,7 +1413,7 @@ WHERE token = %s AND user = %s FOR UPDATE;
             return maybe_batch['id']
 
         now = time_msecs()
-        id = await tx.execute_insertone(
+        await tx.execute_insertone(
             '''
 INSERT INTO batches (userdata, user, billing_project, attributes, callback, n_jobs, time_created, time_completed, token, state, format_version, cancel_after_n_failures)
 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
@@ -1434,6 +1434,8 @@ VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
             ),
             query_name='insert_batches',
         )
+
+        id = (await tx.execute_and_fetchone('SELECT MAX(id) as id FROM batches'))['id']
         await tx.execute_insertone(
             '''
 INSERT INTO batches_n_jobs_in_complete_states (id) VALUES (%s);
