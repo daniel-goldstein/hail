@@ -256,6 +256,8 @@ class Transaction:
                 return await self._execute(cursor, sql, args)
 
     async def execute_many(self, sql, args_array, query_name=None):
+        if not args_array:
+            return
         sql = sql.replace('%s', '?')
         assert self.conn
         async with self.conn.cursor() as cursor:
