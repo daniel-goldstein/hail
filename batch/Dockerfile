@@ -6,7 +6,7 @@ RUN curl --remote-name https://dev.mysql.com/get/mysql-apt-config_0.8.25-1_all.d
     dpkg -i mysql-apt-config_0.8.25-1_all.deb && \
     hail-apt-get-install mysql-connector-odbc
 
-RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.7 1
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.8 1
 
 COPY hail/python/hailtop/pinned-requirements.txt hailtop-requirements.txt
 COPY gear/pinned-requirements.txt gear-requirements.txt
