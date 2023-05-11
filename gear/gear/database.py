@@ -215,11 +215,12 @@ class Transaction:
             else:
                 async with PrometheusSQLTimer(query_name):
                     res = await self._execute(cursor, sql, args)
-            columns = [col[0] for col in res.description]
-            row = await cursor.fetchone()
             try:
+                columns = [col[0] for col in res.description]
+                row = await cursor.fetchone()
                 return dict(zip(columns, row))
             except Exception:
+                log.exception("When fetching results")
                 return row
 
     async def execute_and_fetchall(self, sql, args=None, query_name=None):
@@ -246,6 +247,10 @@ class Transaction:
             else:
                 async with PrometheusSQLTimer(query_name):
                     await self._execute(cursor, sql, args)
+        async with self.conn.cursor() as cursor:
+            await cursor.execute('SELECT LAST_INSERT_ID()')
+            res = await cursor.fetchone()
+            return res[0]
 
     async def execute_update(self, sql, args=None, query_name=None):
         assert self.conn
