@@ -59,7 +59,8 @@ async def insert_user_if_not_exists(db, username, login_id, is_developer, is_ser
             namespace_name = None
         else:
             hail_credentials_secret_name = f'{username}-gsa-key'
-            hail_identity = await copy_identity_from_default(hail_credentials_secret_name)
+            hail_identity = 'jigold-59hi5@hail-vdc.iam.gserviceaccount.com'
+            # hail_identity = await copy_identity_from_default(hail_credentials_secret_name)
             namespace_name = NAMESPACE
 
         return await tx.execute_insertone(
