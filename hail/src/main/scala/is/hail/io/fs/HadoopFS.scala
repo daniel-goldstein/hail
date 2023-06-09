@@ -69,7 +69,17 @@ object HadoopFS {
     }
 }
 
+
+case class LocalFSURL(val path: String) extends FSURL[LocalFSURL] {
+  def withPath(newPath: String): LocalFSURL = LocalFSURL(newPath)
+  def getPath: String = path
+  override def toString(): String = path
+}
+
+
 class HadoopFS(private[this] var conf: SerializableHadoopConfiguration) extends FS {
+  type URL = LocalFSURL
+
   def validUrl(filename: String): Boolean = {
     val uri = new java.net.URI(filename)
     uri.getScheme == null || uri.getScheme == "file"

@@ -28,11 +28,11 @@ abstract class AzureStorageFSURL(
   val account: String,
   val container: String,
   val path: String
-) {
-
-  def withPath(newPath: String): AzureStorageFSURL
+) extends FSURL[AzureStorageFSURL] {
 
   def withoutPath(): String
+
+  def getPath: String = path
 }
 
 class AzureStorageFSHailAzURL(
@@ -47,7 +47,11 @@ class AzureStorageFSHailAzURL(
 
   override def withoutPath(): String = s"hail-az://$account/$container"
 
-  override def toString(): String = s"hail-az://$account/$container/$path"
+  override def toString(): String = if (path.isEmpty) {
+    s"hail-az://$account/$container"
+  } else {
+    s"hail-az://$account/$container/$path"
+  }
 }
 
 class AzureStorageFSHttpsURL(
@@ -61,7 +65,11 @@ class AzureStorageFSHttpsURL(
   }
 
   override def withoutPath(): String = s"https://$account.blob.core.windows.net/$container"
-  override def toString(): String = s"https://$account.blob.core.windows.net/$container/$path"
+  override def toString(): String = if (path.isEmpty) {
+    s"https://$account.blob.core.windows.net/$container"
+  } else {
+    s"https://$account.blob.core.windows.net/$container/$path"
+  }
 }
 
 
@@ -132,6 +140,8 @@ class AzureBlobServiceClientCache(credential: TokenCredential) {
 
 
 class AzureStorageFS(val credentialsJSON: Option[String] = None) extends FS {
+  type URL = AzureStorageFSURL
+
   import AzureStorageFS.log
 
   def validUrl(filename: String): Boolean = {
@@ -342,10 +352,10 @@ class AzureStorageFS(val credentialsJSON: Option[String] = None) extends FS {
 
   def glob(filename: String): Array[FileStatus] = handlePublicAccessError(filename) {
     val url = AzureStorageFS.parseUrl(filename)
-    globWithPrefix(prefix = url.withoutPath(), path = dropTrailingSlash(url.path))
+    globWithPrefix(prefix = url.withPath(""), path = dropTrailingSlash(url.path))
   }
 
-  def fileStatus(url: AzureStorageFSURL): FileStatus = retryTransientErrors {
+  override def fileStatus(url: AzureStorageFSURL): FileStatus = retryTransientErrors {
     if (url.path == "") {
       return new BlobStorageFileStatus(url.withoutPath.toString, null, 0, true)
     }
