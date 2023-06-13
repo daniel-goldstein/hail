@@ -42,6 +42,11 @@ steps:
       - name: registry-push-credentials
       - name: hail-ci-0-1-github-oauth-token
       - name: test-gsa-key
+      - name: test-dev-gsa-key
+      - name: auth-gsa-key
+      - name: batch-gsa-key
+      - name: ci-gsa-key
+      - name: grafana-gsa-key
       - name: test-aws-key
         clouds:
           - gcp
@@ -469,29 +474,6 @@ steps:
     dependsOn:
       - default_ns
       - ci_utils_image
-  - kind: runImage
-    name: create_test_gsa_keys
-    resources:
-      memory: standard
-      cpu: '0.25'
-    image:
-      valueFrom: ci_utils_image.image
-    script: |
-      kubectl -n {{ default_ns.name }} get -o json secret test-gsa-key | jq '{apiVersion, kind, type, data, metadata: {name: "auth-gsa-key"}}' | kubectl -n {{ default_ns.name }} apply -f -
-      kubectl -n {{ default_ns.name }} get -o json secret test-gsa-key | jq '{apiVersion, kind, type, data, metadata: {name: "batch-gsa-key"}}' | kubectl -n {{ default_ns.name }} apply -f -
-      kubectl -n {{ default_ns.name }} get -o json secret test-gsa-key | jq '{apiVersion, kind, type, data, metadata: {name: "ci-gsa-key"}}' | kubectl -n {{ default_ns.name }} apply -f -
-      kubectl -n {{ default_ns.name }} get -o json secret test-gsa-key | jq '{apiVersion, kind, type, data, metadata: {name: "test-dev-gsa-key"}}' | kubectl -n {{ default_ns.name }} apply -f -
-      kubectl -n {{ default_ns.name }} get -o json secret test-gsa-key | jq '{apiVersion, kind, type, data, metadata: {name: "grafana-gsa-key"}}' | kubectl -n {{ default_ns.name }} apply -f -
-    scopes:
-      - test
-      - dev
-    serviceAccount:
-      name: admin
-      namespace:
-        valueFrom: default_ns.name
-    dependsOn:
-      - default_ns
-      - ci_utils_image
   - kind: buildImage2
     name: auth_image
     dockerFile: /io/repo/auth/Dockerfile
@@ -574,7 +556,6 @@ steps:
       - auth_image
       - create_deploy_config
       - deploy_auth_driver_service_account
-      - create_test_gsa_keys
       - create_test_database_server_config
   - kind: runImage
     name: create_initial_user
@@ -2399,7 +2380,6 @@ steps:
       - hailgenetics_hailtop_image
       - build_hail_jar_and_wheel
       - merge_code
-      - create_test_gsa_keys
   - kind: deploy
     name: deploy_memory
     namespace:
