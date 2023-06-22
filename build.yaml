@@ -703,7 +703,7 @@ steps:
 
       mkdir gradle_home
       export GRADLE_USER_HOME=gradle_home
-      gcloud storage cp -r {{ global.test_storage_uri }}/gradle_cache/pr-{{ code.pr_number }} $GRADLE_USER_HOME || true
+      gcloud storage cp -r {{ global.test_storage_uri }}/gradle_cache/{{ code.branch }} $GRADLE_USER_HOME || true
 
       chmod 755 ./gradlew
       time retry ./gradlew --version
