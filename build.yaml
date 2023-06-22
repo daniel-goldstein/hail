@@ -717,7 +717,7 @@ steps:
 
       (cd build/deploy/dist/ && tar -cvf wheel-container.tar hail-*-py3-none-any.whl)
 
-      gcloud storage cp -r $GRADLE_USER_HOME {{ global.test_storage_uri }}/gradle_cache/pr-{{ code.pr_number }}
+      gcloud storage cp -r $GRADLE_USER_HOME {{ global.test_storage_uri }}/gradle_cache/{{ code.branch }}
     inputs:
       - from: /repo
         to: /io/repo
