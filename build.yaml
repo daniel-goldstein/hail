@@ -700,6 +700,11 @@ steps:
     script: |
       set -ex
       cd /io/repo/hail
+
+      mkdir gradle_home
+      export GRADLE_USER_HOME=gradle_home
+      gcloud storage cp -r {{ global.test_storage_uri }}/gradle_cache/pr-{{ code.pr_number }} $GRADLE_USER_HOME || true
+
       chmod 755 ./gradlew
       time retry ./gradlew --version
       time retry make shadowJar wheel
@@ -711,6 +716,8 @@ steps:
       $(python3 -c "import os; exit(1) if (os.path.getsize('$WHEEL_PATH')) > (200 * 1024 * 1024) else exit(0)")
 
       (cd build/deploy/dist/ && tar -cvf wheel-container.tar hail-*-py3-none-any.whl)
+
+      gcloud storage cp -r $GRADLE_USER_HOME {{ global.test_storage_uri }}/gradle_cache/pr-{{ code.pr_number }}
     inputs:
       - from: /repo
         to: /io/repo
