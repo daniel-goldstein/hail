@@ -337,13 +337,14 @@ steps:
   - kind: runImage
     name: delete_auth_tables
     image:
-      valueFrom: admin_pod_image.image
+      valueFrom: auth_image.image
     script: |
       set -ex
-      mysql --defaults-extra-file=/sql-config/sql-config.cnf < /io/sql/delete-auth-tables.sql
+      cd /io
+      python3 delete_dev_database.py {{ default_ns.name }} auth
     inputs:
-      - from: /repo/auth/sql
-        to: /io/sql
+      - from: /repo/ci/delete_dev_database.py
+        to: /io/delete_dev_database.py
     secrets:
       - name: database-server-config
         namespace:
@@ -354,7 +355,7 @@ steps:
       - dev
     dependsOn:
       - default_ns
-      - admin_pod_image
+      - auth_image
       - merge_code
       - create_test_database_server_config
   - kind: createDatabase2
@@ -1631,13 +1632,14 @@ steps:
   - kind: runImage
     name: delete_monitoring_tables
     image:
-      valueFrom: admin_pod_image.image
+      valueFrom: monitoring_image.image
     script: |
       set -ex
-      mysql --defaults-extra-file=/sql-config/sql-config.cnf < /io/sql/delete-monitoring-tables.sql
+      cd /io
+      python3 delete_dev_database.py {{ default_ns.name }} batch
     inputs:
-      - from: /repo/monitoring/sql
-        to: /io/sql
+      - from: /repo/ci/delete_dev_database.py
+        to: /io/delete_dev_database.py
     secrets:
       - name: database-server-config
         namespace:
@@ -1648,7 +1650,7 @@ steps:
       - dev
     dependsOn:
       - default_ns
-      - admin_pod_image
+      - monitoring_image
       - merge_code
       - create_test_database_server_config
   - kind: createDatabase2
@@ -1842,13 +1844,14 @@ steps:
   - kind: runImage
     name: delete_batch_tables
     image:
-      valueFrom: admin_pod_image.image
+      valueFrom: batch_image.image
     script: |
       set -ex
-      mysql --defaults-extra-file=/sql-config/sql-config.cnf < /io/sql/delete-batch-tables.sql
+      cd /io
+      python3 delete_dev_database.py {{ default_ns.name }} batch
     inputs:
-      - from: /repo/batch/sql
-        to: /io/sql
+      - from: /repo/ci/delete_dev_database.py
+        to: /io/delete_dev_database.py
     secrets:
       - name: database-server-config
         namespace:
@@ -1859,19 +1862,20 @@ steps:
       - dev
     dependsOn:
       - default_ns
-      - admin_pod_image
+      - batch_image
       - merge_code
       - create_test_database_server_config
   - kind: runImage
     name: delete_ci_tables
     image:
-      valueFrom: admin_pod_image.image
+      valueFrom: ci_image.image
     script: |
       set -ex
-      mysql --defaults-extra-file=/sql-config/sql-config.cnf < /io/sql/delete-ci-tables.sql
+      cd /io
+      python3 delete_dev_database.py {{ default_ns.name }} batch
     inputs:
-      - from: /repo/ci/sql
-        to: /io/sql
+      - from: /repo/ci/delete_dev_database.py
+        to: /io/delete_dev_database.py
     secrets:
       - name: database-server-config
         namespace:
@@ -1882,7 +1886,7 @@ steps:
       - dev
     dependsOn:
       - default_ns
-      - admin_pod_image
+      - ci_image
       - merge_code
       - create_test_database_server_config
   - kind: createDatabase2
