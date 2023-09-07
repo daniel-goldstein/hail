@@ -2,6 +2,8 @@ from typing import Dict
 import os
 import json
 import logging
+from typing import TypedDict, cast
+
 from ..utils import first_extant_file
 
 from .user_config import get_user_config
@@ -9,15 +11,19 @@ from .user_config import get_user_config
 log = logging.getLogger('deploy_config')
 
 
-def env_var_or_default(name: str, defaults: Dict[str, str]) -> str:
+class DeployConfigJson(TypedDict):
+    location: str
+    default_namespace: str
+    domain: str
+
+
+def env_var_or_default(name: str, defaults: DeployConfigJson) -> str:
     return os.environ.get(f'HAIL_{name.upper()}') or defaults[name]
 
 
 class DeployConfig:
     @staticmethod
-    def from_config(config: Dict[str, str]) -> 'DeployConfig':
-        if 'domain' not in config:
-            config['domain'] = 'hail.is'
+    def from_config(config: DeployConfigJson) -> 'DeployConfig':
         return DeployConfig(
             env_var_or_default('location', config),
             env_var_or_default('default_namespace', config),
@@ -41,14 +47,14 @@ class DeployConfig:
         if config_file is not None:
             log.info(f'deploy config file found at {config_file}')
             with open(config_file, 'r', encoding='utf-8') as f:
-                config = json.load(f)
+                config = cast(DeployConfigJson, json.load(f))
             log.info(f'deploy config location: {config["location"]}')
         else:
             log.info(f'deploy config file not found: {config_file}')
-            config = {
+            config: DeployConfigJson = {
                 'location': 'external',
                 'default_namespace': 'default',
-                'domain': get_user_config().get('global', 'domain', fallback=None),
+                'domain': get_user_config().get('global', 'domain', fallback='hail.is'),
             }
         return DeployConfig.from_config(config)
 
