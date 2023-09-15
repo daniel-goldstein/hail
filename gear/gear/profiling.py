@@ -3,14 +3,13 @@ import os
 
 import googlecloudprofiler
 
-HAIL_SHA = os.environ['HAIL_SHA']
 HAIL_SHOULD_PROFILE = 'HAIL_SHOULD_PROFILE' in os.environ
-DEFAULT_NAMESPACE = os.environ['HAIL_DEFAULT_NAMESPACE']
-CLOUD = os.environ['CLOUD']
 
 
 def install_profiler_if_requested(service: str):
-    if HAIL_SHOULD_PROFILE and CLOUD == 'gcp':
+    if HAIL_SHOULD_PROFILE and os.environ['CLOUD'] == 'gcp':
+        HAIL_SHA = os.environ['HAIL_SHA']
+        DEFAULT_NAMESPACE = os.environ['HAIL_DEFAULT_NAMESPACE']
         profiler_tag = DEFAULT_NAMESPACE
         if profiler_tag == 'default':
             profiler_tag = DEFAULT_NAMESPACE + f'-{HAIL_SHA[0:12]}'
