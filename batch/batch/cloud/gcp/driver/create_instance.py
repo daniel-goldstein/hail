@@ -8,7 +8,7 @@ from typing import Dict, List
 from gear.cloud_config import get_global_config
 from hailtop.config import get_deploy_config
 
-from ....batch_configuration import DEFAULT_NAMESPACE, DOCKER_PREFIX, DOCKER_ROOT_IMAGE, INTERNAL_GATEWAY_IP
+from ....batch_configuration import DEFAULT_NAMESPACE, DOCKER_PREFIX, INTERNAL_GATEWAY_IP
 from ....file_store import FileStore
 from ....instance_config import InstanceConfig
 from ...resource_utils import unreserved_worker_data_disk_size_gib
@@ -296,7 +296,6 @@ NAME=$(curl -s http://metadata.google.internal/computeMetadata/v1/instance/name 
 ZONE=$(curl -s http://metadata.google.internal/computeMetadata/v1/instance/zone -H 'Metadata-Flavor: Google')
 
 BATCH_WORKER_IMAGE=$(curl -s -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/attributes/batch_worker_image")
-DOCKER_ROOT_IMAGE=$(curl -s -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/attributes/docker_root_image")
 DOCKER_PREFIX=$(curl -s -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/attributes/docker_prefix")
 
 INTERNAL_GATEWAY_IP=$(curl -s -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/attributes/internal_ip")
@@ -350,7 +349,6 @@ docker run \
 -e ZONE=$ZONE \
 -e REGION=$REGION \
 -e DOCKER_PREFIX=$DOCKER_PREFIX \
--e DOCKER_ROOT_IMAGE=$DOCKER_ROOT_IMAGE \
 -e INSTANCE_CONFIG=$INSTANCE_CONFIG \
 -e MAX_IDLE_TIME_MSECS=$MAX_IDLE_TIME_MSECS \
 -e BATCH_WORKER_IMAGE=$BATCH_WORKER_IMAGE \
@@ -404,7 +402,6 @@ journalctl -u docker.service > dockerd.log
                 },
                 {'key': 'activation_token', 'value': activation_token},
                 {'key': 'batch_worker_image', 'value': BATCH_WORKER_IMAGE},
-                {'key': 'docker_root_image', 'value': DOCKER_ROOT_IMAGE},
                 {'key': 'docker_prefix', 'value': DOCKER_PREFIX},
                 {'key': 'namespace', 'value': DEFAULT_NAMESPACE},
                 {'key': 'internal_ip', 'value': INTERNAL_GATEWAY_IP},

@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional
 from gear.cloud_config import get_global_config
 from hailtop.config import get_deploy_config
 
-from ....batch_configuration import DEFAULT_NAMESPACE, DOCKER_PREFIX, DOCKER_ROOT_IMAGE, INTERNAL_GATEWAY_IP
+from ....batch_configuration import DEFAULT_NAMESPACE, DOCKER_PREFIX, INTERNAL_GATEWAY_IP
 from ....file_store import FileStore
 from ....instance_config import InstanceConfig
 from ...resource_utils import unreserved_worker_data_disk_size_gib
@@ -203,7 +203,6 @@ MAX_IDLE_TIME_MSECS=$(jq -r '.max_idle_time_msecs' userdata)
 NAME=$(curl -s -H Metadata:true --noproxy "*" "http://169.254.169.254/metadata/instance/compute/name?api-version=2021-02-01&format=text")
 
 BATCH_WORKER_IMAGE=$(jq -r '.batch_worker_image' userdata)
-DOCKER_ROOT_IMAGE=$(jq -r '.docker_root_image' userdata)
 DOCKER_PREFIX=$(jq -r '.docker_prefix' userdata)
 REGION=$(jq -r '.region' userdata)
 HAIL_AZURE_OAUTH_SCOPE=$(jq -r '.hail_azure_oauth_scope' userdata)
@@ -263,7 +262,6 @@ docker run \
 -e REGION=$REGION \
 -e HAIL_AZURE_OAUTH_SCOPE=$HAIL_AZURE_OAUTH_SCOPE \
 -e DOCKER_PREFIX=$DOCKER_PREFIX \
--e DOCKER_ROOT_IMAGE=$DOCKER_ROOT_IMAGE \
 -e INSTANCE_CONFIG=$INSTANCE_CONFIG \
 -e MAX_IDLE_TIME_MSECS=$MAX_IDLE_TIME_MSECS \
 -e BATCH_WORKER_IMAGE=$BATCH_WORKER_IMAGE \
@@ -308,7 +306,6 @@ done
         'run_script': run_script,
         'activation_token': activation_token,
         'batch_worker_image': BATCH_WORKER_IMAGE,
-        'docker_root_image': DOCKER_ROOT_IMAGE,
         'docker_prefix': DOCKER_PREFIX,
         'namespace': DEFAULT_NAMESPACE,
         'internal_ip': INTERNAL_GATEWAY_IP,
