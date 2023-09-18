@@ -713,10 +713,14 @@ class WatchedBranch(Code):
 
         self.n_running_batches: int = 0
 
-        self.merge_candidate: Optional[PR] = None
-
     def prs_in_merge_priority_order(self) -> Iterable[PR]:
         return sorted(self.prs.values(), key=lambda pr: pr.merge_priority(), reverse=True)
+
+    async def merge_candidate(self, db: Database) -> Optional[PR]:
+        viable_merge_candidates = [
+            pr for pr in self.prs_in_merge_priority_order() if pr.is_mergeable() and await pr.authorized(db)
+        ]
+        return next(iter(viable_merge_candidates), None)
 
     @property
     def deploy_state(self):
@@ -800,7 +804,6 @@ class WatchedBranch(Code):
                     self.github_changed = True
                     self.sha = None
                     self.state_changed = True
-                    self.merge_candidate = None
                     return
 
     async def _update_github(self, gh):
@@ -912,22 +915,7 @@ url: {url}
         if self.deployable:
             await self._heal_deploy(app, batch_client)
 
-        merge_candidate = None
-        merge_candidate_pri = None
-        for pr in self.prs.values():
-            # merge candidate if up-to-date build passing, or
-            # pending but haven't failed
-            if pr.review_state == 'approved' and not pr.build_failed_on_at_least_one_platform():
-                pri = pr.merge_priority()
-                is_authorized = await pr.authorized(db)
-                if is_authorized and (
-                    not merge_candidate or (merge_candidate_pri is not None and pri > merge_candidate_pri)
-                ):
-                    merge_candidate = pr
-                    merge_candidate_pri = pri
-
-        self.merge_candidate = merge_candidate
-
+        merge_candidate = await self.merge_candidate(db)
         if merge_candidate:
             log.info(f'merge candidate {merge_candidate.number}')
 
