@@ -2,8 +2,10 @@
 
 set -ex
 
-reqs=$1
-pinned_reqs=$2
+package=$1
+reqs=$package/requirements.txt
+pinned_reqs=$package/pinned-requirements.txt
+command="pip-compile --strip-extras --upgrade $reqs --output-file=$pinned_reqs"
 
 # Some service dependencies are linux-specific and the lockfile
 # would differ when generated on MacOS, so we generate the lockfile
@@ -11,10 +13,10 @@ pinned_reqs=$2
 if [[ "$(uname)" == 'Linux' ]]; then
     # `pip install pip-tools` on dataproc by default installs into the
     # user's local bin which is not on the PATH
-    PATH="$PATH:$HOME/.local/bin" pip-compile --upgrade $reqs --output-file=$pinned_reqs
+    PATH="$PATH:$HOME/.local/bin" $command
 else
 	docker run --rm -it \
-        -v ${HAIL_HAIL_DIR}:/hail \
+        -v $(pwd):/hail \
 		python:3.9-slim \
-		/bin/bash -c "pip install 'pip-tools==6.13.0' && cd /hail && pip-compile --upgrade $reqs --output-file=$pinned_reqs"
+		/bin/bash -c "pip install 'pip-tools==6.13.0' && cd /hail && $command"
 fi

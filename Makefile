@@ -76,7 +76,6 @@ check-pip-requirements:
 		hail/python/dev \
 		gear \
 		web_common \
-		auth \
 		batch \
 		ci
 
@@ -88,7 +87,6 @@ check-linux-pip-requirements:
 		hail/python/dev \
 		gear \
 		web_common \
-		auth \
 		batch \
 		ci
 
@@ -103,25 +101,25 @@ install-dev-requirements:
 		-r ci/pinned-requirements.txt
 
 hail/python/hailtop/pinned-requirements.txt: hail/python/hailtop/requirements.txt
-	./generate-linux-pip-lockfile.sh hail/python/hailtop
+	./generate_pip_lockfile.sh.sh hail/python/hailtop
 
 hail/python/pinned-requirements.txt: hail/python/hailtop/pinned-requirements.txt hail/python/requirements.txt
-	./generate-linux-pip-lockfile.sh hail/python
+	./generate_pip_lockfile.sh hail/python
 
 hail/python/dev/pinned-requirements.txt: hail/python/pinned-requirements.txt hail/python/dev/requirements.txt
-	./generate-linux-pip-lockfile.sh hail/python/dev
+	./generate_pip_lockfile.sh hail/python/dev
 
 gear/pinned-requirements.txt: hail/python/pinned-requirements.txt hail/python/dev/pinned-requirements.txt hail/python/hailtop/pinned-requirements.txt gear/requirements.txt
-	./generate-linux-pip-lockfile.sh gear
+	./generate_pip_lockfile.sh gear
 
 web_common/pinned-requirements.txt: gear/pinned-requirements.txt web_common/requirements.txt
-	./generate-linux-pip-lockfile.sh web_common
+	./generate_pip_lockfile.sh web_common
 
 batch/pinned-requirements.txt: web_common/pinned-requirements.txt batch/requirements.txt
-	./generate-linux-pip-lockfile.sh batch
+	./generate_pip_lockfile.sh batch
 
 ci/pinned-requirements.txt: web_common/pinned-requirements.txt ci/requirements.txt
-	./generate-linux-pip-lockfile.sh ci
+	./generate_pip_lockfile.sh ci
 
 .PHONY: generate-pip-lockfiles
 generate-pip-lockfiles: hail/python/hailtop/pinned-requirements.txt
