@@ -7,10 +7,22 @@ build:
 
 run:
 	$(MAKE) -C .. website/website/docs
-	HAIL_DOMAIN=localhost:5555 PORT=5555 python3 -m website local
+	HAIL_DOMAIN=localhost PORT=80 python3 -m website local
+
+.PHONY: typesense-scraper
+typesense-scraper:
+	docker run \
+		-e TYPESENSE_API_KEY=xyz \
+		-e TYPESENSE_HOST=host.docker.internal \
+		-e TYPESENSE_PORT=8108 \
+		-e TYPESENSE_PROTOCOL=http \
+		-e 'CONFIG=$(shell cat typesense/config.json | jq -r tostring)' \
+		typesense/docsearch-scraper:0.8.0
 
 run-docker: build
-	docker run -e HAIL_DOMAIN=localhost:5555 -e PORT=5555 -p 5555:5555 $(shell cat ../website-image) python3 -m website local
+	WEBSITE_IMAGE=$(shell cat ../website-image) \
+	TYPESENSE_SCRAPER_CONFIG='$(shell cat typesense/config.json | jq -r tostring)' \
+	docker compose --profile scrape up
 
 push:
 	$(MAKE) -C .. pushed-private-website-image

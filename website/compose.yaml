@@ -1,0 +1,47 @@
+version: '3.4'
+services:
+  website:
+    image: $WEBSITE_IMAGE
+    environment:
+      HAIL_DOMAIN: localhost
+      PORT: 80
+    ports:
+      - '80:80'
+      - '8108:8108'
+    volumes:
+      - ./website/pages:/website/website/pages
+      - ../web_common/web_common:/web_common/web_common
+    command: 'python3 -m website local'
+    healthcheck:
+      test: "curl http://localhost/"
+      interval: 5s
+  typesense:
+    build:
+      dockerfile_inline: |
+        FROM typesense/typesense:0.25.1
+        RUN apt-get update && apt-get install -y curl
+    volumes:
+      - ./typesense-data:/data
+    command: '--data-dir /data --api-key=xyz --enable-cors'
+    healthcheck:
+      test: "curl http://localhost:8108/health"
+      interval: 5s
+    network_mode: service:website
+  typesense-scraper:
+    image: typesense/docsearch-scraper:0.8.0
+    profiles: ['scrape']
+    environment:
+      TYPESENSE_API_KEY: xyz
+      TYPESENSE_HOST: host.docker.internal
+      TYPESENSE_PORT: 8108
+      TYPESENSE_PROTOCOL: http
+      CONFIG: $TYPESENSE_SCRAPER_CONFIG
+    network_mode: service:website
+    # I guess the typesense healthcheck is really more of a best-effort thing
+    # https://github.com/typesense/typesense/issues/665
+    restart: on-failure
+    depends_on:
+      website:
+        condition: service_healthy
+      typesense:
+        condition: service_healthy

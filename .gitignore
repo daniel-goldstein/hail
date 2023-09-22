@@ -47,3 +47,5 @@ hail/python/hail/backend/extra_classpath
 hail/python/hail/backend/hail.jar
 hail/install-editable
 .helix
+hail-0.1-docs-5a6778710097.tar.gz
+docs-stamp

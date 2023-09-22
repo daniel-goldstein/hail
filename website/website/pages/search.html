@@ -4,7 +4,7 @@
 {% block head %}
 
 <style>
-  .algolia-docsearch-suggestion--highlight {
+  .typesense-docsearch-suggestion--highlight {
     color: #174d8c;
     background: rgba(143, 187, 237, .1);
     padding: .1em .05em;
@@ -147,10 +147,28 @@
 </div>
 <div id='pagination'></div>
 <script src="https://cdn.jsdelivr.net/npm/instantsearch.js@2.8.1/dist/instantsearch.min.js" integrity="sha256-3MjJVIgIfc2tYWt8EQ6kZvg7bebIzz/3C1oFl7XmARE=" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/algoliasearch/4.2.0/algoliasearch-lite.umd.js" integrity="sha512-ls/PfSkHS7QxouIO9SzhOHZTkSr1PqCtKagbn9OXsqaNcSLZ27BNWzUUZpTv7TtVOXFLEXCh/YYjUoDNtMW40g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdn.jsdelivr.net/npm/typesense-instantsearch-adapter@2/dist/typesense-instantsearch-adapter.min.js"></script>
 <script>
   (function () {
-    const client = algoliasearch('BH4D9OD16A', 'd2dee24912091336c40033044c9bac58');
+    const typesenseInstantsearchAdapter = new TypesenseInstantSearchAdapter({
+        server: {
+            apiKey: 'xyz',
+            nodes: [
+                {
+                    host: 'localhost',
+                    port: '8108',
+                    protocol: 'http',
+                },
+            ],
+        },
+        // The following parameters are directly passed to Typesense's search API endpoint.
+        //  So you can pass any parameters supported by the search endpoint below.
+        //  queryBy is required.
+        additionalSearchParameters: {
+            queryBy: "*"
+        },
+    });
+    const client = typesenseInstantsearchAdapter.searchClient;
 
     if (location.search) {
       const cachedSearchInput = document.getElementById("search")
@@ -261,6 +279,8 @@
           let firstNonNull = null;
 
           const values = []
+          console.log(hierarchy)
+          console.log(hit)
           for (const key of Object.keys(hierarchy)) {
             // mutates but we don't really care
             if (hit._highlightResult.hierarchy[key]) {
@@ -292,13 +312,13 @@
           const key = lastPart + "_" + firstNonNull
           const content = hit._highlightResult.content ? hit._highlightResult.content.value : hit.content
           linearRes.push(
-            `<Div class='search-result'>
-                                    <a rel="noopener" href="${hit.url}" target="_blank">
-                                        <div class='url smaller'>${hit.url}</div>
-                                        <div class='search-hits'>${headerRes}</div>
-                                        ${content ? "<p class='small'>" + content + "</p>" : ""}
-                                    </a>
-                                </div>`
+            `<div class='search-result'>
+                <a rel="noopener" href="${hit.url}" target="_blank">
+                    <div class='url smaller'>${hit.url}</div>
+                    <div class='search-hits'>${headerRes}</div>
+                    ${content ? "<p class='small'>" + content + "</p>" : ""}
+                </a>
+            </div>`
           );
         }
 
@@ -333,5 +353,5 @@
     search.start()
 
   })()
-  </script>
+</script>
 {% endblock %}

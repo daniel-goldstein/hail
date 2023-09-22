@@ -1,7 +1,6 @@
 # These values should be lazy so you don't need kubectl for targets that don't
 # require it but also only evaluated at most once every make invocation
 # https://make.mad-scientist.net/deferred-simple-variable-expansion/
-
 ifdef NAMESPACE
 DOCKER_PREFIX = $(eval DOCKER_PREFIX := $$(shell kubectl -n $(NAMESPACE) get secret global-config --template={{.data.docker_prefix}} | base64 --decode))$(DOCKER_PREFIX)
 else
