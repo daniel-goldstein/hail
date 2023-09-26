@@ -342,7 +342,7 @@ pygments==2.16.1
     #   nbconvert
     #   qtconsole
     #   sphinx
-pylint==2.17.5
+pylint==2.17.6
     # via -r hail/hail/python/dev/requirements.txt
 pyparsing==3.0.9
     # via matplotlib
