@@ -14,7 +14,7 @@ argon2-cffi-bindings==21.2.0
     # via argon2-cffi
 arrow==1.2.3
     # via isoduration
-astroid==2.15.7
+astroid==2.15.8
     # via pylint
 asttokens==2.4.0
     # via stack-data
@@ -107,6 +107,7 @@ fonttools==4.42.1
 fqdn==1.5.1
     # via jsonschema
 fswatch==0.1.1
+    # via -r hail/python/dev/requirements.txt
 identify==2.5.29
     # via pre-commit
 idna==3.4
@@ -163,11 +164,7 @@ json5==0.9.14
     # via jupyterlab-server
 jsonpointer==2.4
     # via jsonschema
-<<<<<<< HEAD
-jsonschema[format-nongpl]==4.19.1
-=======
-jsonschema==4.19.0
->>>>>>> 95f8f6b567 (wip)
+jsonschema==4.19.1
     # via
     #   jupyter-events
     #   jupyterlab-server
@@ -229,11 +226,7 @@ markupsafe==2.1.3
     #   jinja2
     #   nbconvert
 matplotlib==3.8.0
-<<<<<<< HEAD
-    # via -r hail/hail/python/dev/requirements.txt
-=======
     # via -r hail/python/dev/requirements.txt
->>>>>>> 95f8f6b567 (wip)
 matplotlib-inline==0.1.6
     # via
     #   ipykernel
@@ -258,11 +251,7 @@ nbformat==5.9.2
     #   nbconvert
     #   nbsphinx
 nbsphinx==0.9.3
-<<<<<<< HEAD
-    # via -r hail/hail/python/dev/requirements.txt
-=======
     # via -r hail/python/dev/requirements.txt
->>>>>>> 95f8f6b567 (wip)
 nest-asyncio==1.5.8
     # via
     #   -c hail/python/dev/../pinned-requirements.txt
@@ -314,6 +303,7 @@ pickleshare==0.7.5
 pillow==10.0.1
     # via
     #   -c hail/python/dev/../pinned-requirements.txt
+    #   -r hail/python/dev/requirements.txt
     #   matplotlib
 platformdirs==3.10.0
     # via
@@ -353,21 +343,12 @@ pygments==2.16.1
     #   nbconvert
     #   qtconsole
     #   sphinx
-<<<<<<< HEAD
 pylint==2.17.6
-    # via -r hail/hail/python/dev/requirements.txt
-pyparsing==3.1.1
-    # via matplotlib
-pyright==1.1.327
-    # via -r hail/hail/python/dev/requirements.txt
-=======
-pylint==2.17.5
     # via -r hail/python/dev/requirements.txt
 pyparsing==3.1.1
     # via matplotlib
-pyright==1.1.327
+pyright==1.1.328
     # via -r hail/python/dev/requirements.txt
->>>>>>> 95f8f6b567 (wip)
 pytest==7.4.2
     # via
     #   -r hail/python/dev/requirements.txt
@@ -441,13 +422,8 @@ rpds-py==0.10.3
     # via
     #   jsonschema
     #   referencing
-<<<<<<< HEAD
 ruff==0.0.291
-    # via -r hail/hail/python/dev/requirements.txt
-=======
-ruff==0.0.290
     # via -r hail/python/dev/requirements.txt
->>>>>>> 95f8f6b567 (wip)
 send2trash==1.8.2
     # via jupyter-server
 six==1.16.0
@@ -523,7 +499,7 @@ tornado==6.3.3
     #   jupyterlab
     #   notebook
     #   terminado
-traitlets==5.10.0
+traitlets==5.10.1
     # via
     #   comm
     #   ipykernel
@@ -550,23 +526,13 @@ types-deprecated==1.2.9.3
 types-pymysql==1.1.0.1
     # via -r hail/python/dev/requirements.txt
 types-python-dateutil==2.8.19.14
-<<<<<<< HEAD
-    # via -r hail/hail/python/dev/requirements.txt
+    # via -r hail/python/dev/requirements.txt
 types-pyyaml==6.0.12.12
-    # via -r hail/hail/python/dev/requirements.txt
+    # via -r hail/python/dev/requirements.txt
 types-requests==2.31.0.5
-    # via -r hail/hail/python/dev/requirements.txt
-types-setuptools==68.2.0.0
-    # via -r hail/hail/python/dev/requirements.txt
-=======
-    # via -r hail/python/dev/requirements.txt
-types-pyyaml==6.0.12.11
-    # via -r hail/python/dev/requirements.txt
-types-requests==2.31.0.2
     # via -r hail/python/dev/requirements.txt
 types-setuptools==68.2.0.0
     # via -r hail/python/dev/requirements.txt
->>>>>>> 95f8f6b567 (wip)
 types-six==1.16.21.9
     # via -r hail/python/dev/requirements.txt
 types-tabulate==0.9.0.3

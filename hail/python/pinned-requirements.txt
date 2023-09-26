@@ -16,7 +16,7 @@ asyncinit==0.2.4
     # via -r hail/python/requirements.txt
 attrs==23.1.0
     # via aiohttp
-avro==1.11.2
+avro==1.11.3
     # via -r hail/python/requirements.txt
 azure-common==1.1.28
     # via azure-mgmt-storage
@@ -31,35 +31,16 @@ azure-identity==1.14.0
 azure-mgmt-core==1.4.0
     # via azure-mgmt-storage
 azure-mgmt-storage==20.1.0
-    # via
-    #   -c hail/hail/python/hailtop/pinned-requirements.txt
-    #   -r hail/hail/python/hailtop/requirements.txt
-azure-storage-blob==12.18.1
-    # via
-    #   -c hail/hail/python/hailtop/pinned-requirements.txt
-    #   -r hail/hail/python/hailtop/requirements.txt
-bokeh==3.2.2
-    # via -r hail/hail/python/requirements.txt
-boto3==1.28.53
-    # via
-    #   -c hail/hail/python/hailtop/pinned-requirements.txt
-    #   -r hail/hail/python/hailtop/requirements.txt
-botocore==1.31.53
-    # via
-    #   -c hail/hail/python/hailtop/pinned-requirements.txt
-    #   -r hail/hail/python/hailtop/requirements.txt
-=======
     # via -r hail/python/hailtop/requirements.txt
-azure-storage-blob==12.18.1
+azure-storage-blob==12.18.2
     # via -r hail/python/hailtop/requirements.txt
 bokeh==3.2.2
     # via -r hail/python/requirements.txt
-boto3==1.28.50
+boto3==1.28.54
     # via -r hail/python/hailtop/requirements.txt
-botocore==1.31.50
+botocore==1.31.54
     # via
     #   -r hail/python/hailtop/requirements.txt
->>>>>>> 95f8f6b567 (wip)
     #   boto3
     #   s3transfer
 cachetools==5.3.1
@@ -79,13 +60,7 @@ charset-normalizer==3.2.0
 click==8.1.7
     # via typer
 commonmark==0.9.1
-<<<<<<< HEAD
-    # via
-    #   -c hail/hail/python/hailtop/pinned-requirements.txt
-    #   rich
-=======
     # via rich
->>>>>>> 95f8f6b567 (wip)
 contourpy==1.1.1
     # via bokeh
 cryptography==41.0.4
@@ -106,7 +81,7 @@ frozenlist==1.4.0
     #   -r hail/python/requirements.txt
     #   aiohttp
     #   aiosignal
-google-api-core==2.11.1
+google-api-core==2.12.0
     # via
     #   google-cloud-core
     #   google-cloud-storage
@@ -120,31 +95,13 @@ google-auth==2.23.0
 google-auth-oauthlib==0.8.0
     # via -r hail/python/hailtop/requirements.txt
 google-cloud-core==2.3.3
-<<<<<<< HEAD
-    # via
-    #   -c hail/hail/python/hailtop/pinned-requirements.txt
-    #   google-cloud-storage
-google-cloud-storage==2.11.0
-    # via
-    #   -c hail/hail/python/hailtop/pinned-requirements.txt
-    #   -r hail/hail/python/hailtop/requirements.txt
-google-crc32c==1.5.0
-    # via
-    #   -c hail/hail/python/hailtop/pinned-requirements.txt
-    #   google-resumable-media
-google-resumable-media==2.6.0
-    # via
-    #   -c hail/hail/python/hailtop/pinned-requirements.txt
-    #   google-cloud-storage
-=======
     # via google-cloud-storage
-google-cloud-storage==2.10.0
+google-cloud-storage==2.11.0
     # via -r hail/python/hailtop/requirements.txt
 google-crc32c==1.5.0
     # via google-resumable-media
 google-resumable-media==2.6.0
     # via google-cloud-storage
->>>>>>> 95f8f6b567 (wip)
 googleapis-common-protos==1.60.0
     # via google-api-core
 humanize==1.1.0
@@ -182,37 +139,18 @@ multidict==6.0.4
     #   aiohttp
     #   yarl
 nest-asyncio==1.5.8
-<<<<<<< HEAD
-    # via
-    #   -c hail/hail/python/hailtop/pinned-requirements.txt
-    #   -r hail/hail/python/hailtop/requirements.txt
-numpy==1.26.0
-    # via
-    #   -r hail/hail/python/requirements.txt
-=======
     # via -r hail/python/hailtop/requirements.txt
 numpy==1.26.0
     # via
     #   -r hail/python/requirements.txt
->>>>>>> 95f8f6b567 (wip)
     #   bokeh
     #   contourpy
     #   pandas
     #   scipy
 oauthlib==3.2.2
-<<<<<<< HEAD
-    # via
-    #   -c hail/hail/python/hailtop/pinned-requirements.txt
-    #   requests-oauthlib
-orjson==3.9.7
-    # via
-    #   -c hail/hail/python/hailtop/pinned-requirements.txt
-    #   -r hail/hail/python/hailtop/requirements.txt
-=======
     # via requests-oauthlib
 orjson==3.9.7
     # via -r hail/python/hailtop/requirements.txt
->>>>>>> 95f8f6b567 (wip)
 packaging==23.1
     # via
     #   bokeh
@@ -222,17 +160,6 @@ pandas==2.1.1
     #   -r hail/python/requirements.txt
     #   bokeh
 parsimonious==0.10.0
-<<<<<<< HEAD
-    # via -r hail/hail/python/requirements.txt
-pillow==10.0.1
-    # via bokeh
-plotly==5.17.0
-    # via -r hail/hail/python/requirements.txt
-portalocker==2.8.2
-    # via
-    #   -c hail/hail/python/hailtop/pinned-requirements.txt
-    #   msal-extensions
-=======
     # via -r hail/python/requirements.txt
 pillow==10.0.1
     # via bokeh
@@ -240,7 +167,6 @@ plotly==5.17.0
     # via -r hail/python/requirements.txt
 portalocker==2.8.2
     # via msal-extensions
->>>>>>> 95f8f6b567 (wip)
 protobuf==3.20.2
     # via
     #   -r hail/python/hailtop/requirements.txt
@@ -318,14 +244,6 @@ typer==0.9.0
     # via -r hail/python/hailtop/requirements.txt
 typing-extensions==4.8.0
     # via
-<<<<<<< HEAD
-    #   -c hail/hail/python/hailtop/pinned-requirements.txt
-    #   -r hail/hail/python/hailtop/requirements.txt
-typing-extensions==4.8.0
-    # via
-    #   -c hail/hail/python/hailtop/pinned-requirements.txt
-=======
->>>>>>> 95f8f6b567 (wip)
     #   azure-core
     #   azure-storage-blob
     #   janus

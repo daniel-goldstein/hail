@@ -101,7 +101,7 @@ install-dev-requirements:
 		-r ci/pinned-requirements.txt
 
 hail/python/hailtop/pinned-requirements.txt: hail/python/hailtop/requirements.txt
-	./generate_pip_lockfile.sh.sh hail/python/hailtop
+	./generate_pip_lockfile.sh hail/python/hailtop
 
 hail/python/pinned-requirements.txt: hail/python/hailtop/pinned-requirements.txt hail/python/requirements.txt
 	./generate_pip_lockfile.sh hail/python
