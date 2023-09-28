@@ -84,7 +84,7 @@ dill==0.3.7
     #   pylint
 distlib==0.3.7
     # via virtualenv
-docutils==0.18.1
+docutils==0.20.1
     # via
     #   nbsphinx
     #   sphinx
