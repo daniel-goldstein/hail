@@ -2444,8 +2444,8 @@ steps:
 
       export HAIL_BATCH_REGION={{ global.gcp_region }}
       {% for region in global.batch_gcp_regions if region != global.gcp_region %}
-      # Pick the first non-default region
       {% if loop.first %}
+      # Pick the first non-default region
       export HAIL_BATCH_REGION={{ region }}
       {% endif %}
       {% endfor %}
