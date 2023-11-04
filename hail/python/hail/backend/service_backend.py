@@ -422,11 +422,16 @@ class ServiceBackend(Backend):
                     'HAIL_CLOUD': 'gcp',
                     'HAIL_QOB_IMAGE': image,
                 }
+                if os.environ.get('HAIL_QOB_WARM_JVM'):
+                    env['HAIL_QOB_WARM_JVM'] = '1'
+                    java_args = '-XX:CRaCRestoreFrom=/opt/crac-files'
+                else:
+                    java_args = '-cp hail.jar:$SPARK_HOME/jars/* is.hail.backend.service.ServiceBackendAPI'
                 command = [
                     '/bin/bash',
                     '-c',
                     f"""
-java -cp hail.jar:$SPARK_HOME/jars/* is.hail.backend.service.ServiceBackendAPI <<'EOF'
+java {java_args} <<'EOF'
 {infile_data.decode('utf-8')}
 EOF
 """,

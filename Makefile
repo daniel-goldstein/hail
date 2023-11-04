@@ -8,7 +8,7 @@ SERVICES_IMAGES := $(patsubst %, %-image, $(SERVICES_PLUS_ADMIN_POD))
 SERVICES_DATABASES := $(patsubst %, %-db, $(SERVICES))
 SERVICES_MODULES := $(SERVICES) gear web_common
 CHECK_SERVICES_MODULES := $(patsubst %, check-%, $(SERVICES_MODULES))
-SPECIAL_IMAGES := hail-ubuntu batch-worker letsencrypt qob
+SPECIAL_IMAGES := hail-ubuntu batch-worker letsencrypt qob checkpoint
 
 HAILGENETICS_IMAGES = $(foreach img,hail vep-grch37-85 vep-grch38-95,hailgenetics-$(img))
 CI_IMAGES = ci-utils ci-buildkit base hail-run
@@ -176,6 +176,48 @@ qob-image: hail-ubuntu-image docker/Dockerfile.qob $(shell git ls-files hail)
 	./docker-build.sh . docker/Dockerfile.qob $(IMAGE_NAME) \
 		--build-arg BASE_IMAGE=$(shell cat hail-ubuntu-image)
 	echo $(IMAGE_NAME) > $@
+
+crac-image: hail-ubuntu-image docker/Dockerfile.crac $(shell git ls-files hail)
+	$(MAKE) -C hail shadowJar
+	./docker-build.sh . docker/Dockerfile.crac $(IMAGE_NAME) \
+		--build-arg BASE_IMAGE=$(shell cat hail-ubuntu-image)
+	echo $(IMAGE_NAME) > $@
+
+checkpoint-image: crac-image docker/Dockerfile.checkpoint
+	mkdir -p crac-files
+	docker run --rm \
+		--cap-add=CHECKPOINT_RESTORE --cap-add=SYS_PTRACE \
+		-v $$PWD/crac-files:/opt/crac-files \
+		$(shell cat crac-image) \
+		/bin/bash -c 'java -XX:CRaCCheckpointTo=/opt/crac-files \
+			--add-opens=java.base/java.lang=ALL-UNNAMED \
+			--add-opens=java.base/java.lang.invoke=ALL-UNNAMED \
+			--add-opens=java.base/java.lang.reflect=ALL-UNNAMED \
+			--add-opens=java.base/java.io=ALL-UNNAMED \
+			--add-opens=java.base/java.net=ALL-UNNAMED \
+			--add-opens=java.base/java.nio=ALL-UNNAMED \
+			--add-opens=java.base/java.util=ALL-UNNAMED \
+			--add-opens=java.base/java.util.concurrent=ALL-UNNAMED \
+			--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED \
+			--add-opens=java.base/sun.nio.ch=ALL-UNNAMED \
+			--add-opens=java.base/sun.nio.cs=ALL-UNNAMED \
+			--add-opens=java.base/sun.security.action=ALL-UNNAMED \
+			--add-opens=java.base/sun.util.calendar=ALL-UNNAMED \
+			--add-opens=java.security.jgss/sun.security.krb5=ALL-UNNAMED \
+			-cp hail.jar:$$SPARK_HOME/jars/* is.hail.backend.service.Main' || true
+	./docker-build.sh . docker/Dockerfile.checkpoint $(IMAGE_NAME) \
+		--build-arg BASE_IMAGE=$(shell cat crac-image)
+	rm -r crac-files
+	echo $(IMAGE_NAME) > $@
+
+crac-restore: checkpoint-image
+	# https://github.com/docker/for-mac/issues/6949#issuecomment-1747052677
+	# Docker bug with virtioFS breaks CRIU inside the container
+	docker run --rm -it \
+		-e HAIL_QOB_KIND=driver \
+		--cap-add=CHECKPOINT_RESTORE \
+		$(shell cat checkpoint-image) \
+		java -XX:CRaCRestoreFrom=/opt/crac-files
 
 hail-0.1-docs-5a6778710097.tar.gz:
 	gcloud storage cp gs://hail-common/builds/0.1/docs/$@ .

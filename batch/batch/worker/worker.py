@@ -1124,6 +1124,7 @@ class Container:
             'CAP_SYS_CHROOT',
             'CAP_KILL',
             'CAP_AUDIT_WRITE',
+            'CAP_CHECKPOINT_RESTORE',
         ]
 
         nvidia_runtime_hook = []

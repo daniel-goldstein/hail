@@ -206,11 +206,14 @@ class ServiceBackend(
           resources.merge(JObject("storage" -> JString(backendContext.storageRequirement)))
       }
 
-      val command = Array(
-        "/bin/bash",
-        "-c",
-        "java -cp hail.jar:$SPARK_HOME/jars/* is.hail.backend.service.Worker",
-      )
+      val command = sys.env.get("HAIL_QOB_WARM_JVM") match {
+        case Some(_) => Array("java", "-XX:CRaCRestoreFrom=/opt/crac-files")
+        case None => Array(
+            "/bin/bash",
+            "-c",
+            "java -cp hail.jar:$SPARK_HOME/jars/* is.hail.backend.service.Worker",
+          )
+      }
 
       JObject(
         "always_run" -> JBool(false),

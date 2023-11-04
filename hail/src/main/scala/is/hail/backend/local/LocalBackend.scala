@@ -68,6 +68,22 @@ object LocalBackend {
       // effect.
       // https://github.com/hail-is/hail/pull/12133#issuecomment-1241322443
       hadoop.fs.FileSystem.closeAll()
+      HailContext.shutdownLogging()
+    }
+  }
+
+  def warmUp(): Unit = {
+    val forceCountIR =
+      """(Let __rng_state (RNGStateLiteral) (TableToValueApply "{\"name\": \"ForceCountTable\"}" (TableRange 10 None)))"""
+    val mtTypeIR =
+      """(MatrixRead DropRowColUIDs False False "{\"name\": \"MatrixVCFReader\", \"files\": [\"gs://hail-1kg/1kg_coreexome.vcf.bgz\"], \"callFields\": [\"PGT\"], \"entryFloatTypeName\": \"Float64\", \"headerFile\": null, \"nPartitions\": null, \"blockSizeInMB\": null, \"minPartitions\": null, \"rg\": \"GRCh37\", \"contigRecoding\": {}, \"arrayElementsRequired\": true, \"skipInvalidLoci\": false, \"gzAsBGZ\": false, \"forceGZ\": false, \"filterAndReplace\": {\"filterPattern\": null, \"findPattern\": null, \"replacePattern\": null}, \"sampleIDs\": null, \"partitionsTypeStr\": null, \"partitionsJSON\": null}")"""
+    val backend =
+      LocalBackend("/tmp/hail", "", "", "hail.log", true, true, skipLoggingConfiguration = true)
+    HailContext(backend)
+    (1 to 5).foreach { i =>
+      HailContext.backend.execute(forceCountIR, true) { (ctx, res, timings) =>
+      }
+      HailContext.backend.matrixTableType(mtTypeIR)
     }
   }
 }
@@ -108,7 +124,10 @@ class LocalBackend(
 
   val availableFlags: java.util.ArrayList[String] = flags.available
 
-  val fs: FS = new HadoopFS(new SerializableHadoopConfiguration(hadoopConf))
+  val fs: FS = new RouterFS(Array(
+    new GoogleStorageFS(Some(RequesterPaysConfiguration("hail-vdc"))),
+    new HadoopFS(new SerializableHadoopConfiguration(hadoopConf)),
+  ))
 
   def withExecuteContext[T](timer: ExecutionTimer): (ExecuteContext => T) => T =
     ExecuteContext.scoped(

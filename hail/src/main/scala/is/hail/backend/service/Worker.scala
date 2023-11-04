@@ -142,8 +142,8 @@ object Worker {
     timer.end("readInputs")
     timer.start("executeFunction")
 
-    HailContext(
-      new ServiceBackend(
+    if (HailContext.isInitialized) {
+      HailContext.get.backend = new ServiceBackend(
         null,
         null,
         new HailClassLoader(getClass().getClassLoader()),
@@ -154,7 +154,21 @@ object Worker {
         null,
         null,
       )
-    )
+    } else {
+      HailContext(
+        new ServiceBackend(
+          null,
+          null,
+          new HailClassLoader(getClass().getClassLoader()),
+          null,
+          None,
+          null,
+          null,
+          null,
+          null,
+        )
+      )
+    }
 
     val result = using(new ServiceTaskContext(i)) { htc =>
       try

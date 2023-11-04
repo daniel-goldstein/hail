@@ -1,0 +1,18 @@
+ARG BASE_IMAGE
+FROM $BASE_IMAGE
+
+RUN hail-apt-get-install \
+    curl \
+    liblapack3
+
+RUN mkdir -p /opt && \
+    cd /opt && \
+    curl --max-time 60 --location "https://cdn.azul.com/zulu/bin/zulu17.44.17-ca-crac-jdk17.0.8-linux_x64.tar.gz" \
+    | tar -xzf -
+ENV JAVA_HOME /opt/zulu17.44.17-ca-crac-jdk17.0.8-linux_x64
+ENV PATH $JAVA_HOME/bin:$PATH
+
+RUN hail-pip-install pyspark==3.3.2
+ENV SPARK_HOME /usr/local/lib/python3.9/dist-packages/pyspark
+
+COPY hail/build/libs/hail-all-spark.jar hail.jar
