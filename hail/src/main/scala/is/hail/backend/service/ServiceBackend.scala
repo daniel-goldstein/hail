@@ -53,18 +53,21 @@ object ServiceBackend {
   private val log = Logger.getLogger(getClass.getName())
 
   def apply(
-    jarLocation: String,
+    image: String,
     name: String,
     theHailClassLoader: HailClassLoader,
     batchClient: BatchClient,
     batchId: Option[Long],
-    scratchDir: String = sys.env.get("HAIL_WORKER_SCRATCH_DIR").getOrElse(""),
     rpcConfig: ServiceBackendRPCPayload,
   ): ServiceBackend = {
+    HailContext.configureStderrLogging()
 
+    log.info("Starting ServiceBackend.apply")
     val flags = HailFeatureFlags.fromMap(rpcConfig.flags)
+    log.info("Made flags")
     val shouldProfile = flags.get("profile") != null
-    val fs = FS.cloudSpecificFS(s"$scratchDir/secrets/gsa-key/key.json", Some(flags))
+    val fs = FS.cloudSpecificFS(Some(flags))
+    log.info("Made FS")
 
     val backendContext = new ServiceBackendContext(
       rpcConfig.billing_project,
@@ -77,9 +80,10 @@ object ServiceBackend {
       shouldProfile,
       ExecutionCache.fromFlags(flags, fs, rpcConfig.remote_tmpdir),
     )
+    log.info("Made backend context")
 
     val backend = new ServiceBackend(
-      jarLocation,
+      image,
       name,
       new HailClassLoader(getClass().getClassLoader()),
       batchClient,
@@ -88,7 +92,6 @@ object ServiceBackend {
       rpcConfig.tmp_dir,
       fs,
       backendContext,
-      scratchDir,
     )
     backend.addDefaultReferences()
 
@@ -102,12 +105,13 @@ object ServiceBackend {
       backend.addSequence(rg, seq.fasta, seq.index)
     }
 
+    log.info("Finish apply")
     backend
   }
 }
 
 class ServiceBackend(
-  val jarLocation: String,
+  val image: String,
   var name: String,
   val theHailClassLoader: HailClassLoader,
   val batchClient: BatchClient,
@@ -116,7 +120,6 @@ class ServiceBackend(
   val tmpdir: String,
   val fs: FS,
   val serviceBackendContext: ServiceBackendContext,
-  val scratchDir: String = sys.env.get("HAIL_WORKER_SCRATCH_DIR").getOrElse(""),
 ) extends Backend with BackendWithNoCodeCache {
   import ServiceBackend.log
 
@@ -202,24 +205,30 @@ class ServiceBackend(
         resources =
           resources.merge(JObject("storage" -> JString(backendContext.storageRequirement)))
       }
+
+      val command = Array(
+        "/bin/bash",
+        "-c",
+        "java -cp hail.jar:$SPARK_HOME/jars/* is.hail.backend.service.Worker",
+      )
+
       JObject(
         "always_run" -> JBool(false),
         "job_id" -> JInt(i + 1),
         "in_update_parent_ids" -> JArray(List()),
         "process" -> JObject(
-          "jar_spec" -> JObject(
-            "type" -> JString("jar_url"),
-            "value" -> JString(jarLocation),
-          ),
-          "command" -> JArray(List(
-            JString(Main.WORKER),
-            JString(root),
-            JString(s"$i"),
-            JString(s"$n"),
-          )),
-          "type" -> JString("jvm"),
-          "profile" -> JBool(backendContext.profile),
+          "command" -> JArray(command.map(JString(_)).toList),
+          "type" -> JString("docker"),
+          // "profile" -> JBool(backendContext.profile),
+          "image" -> JString(image),
         ),
+        "env" -> JArray(List(
+          JObject("name" -> JString("HAIL_CLOUD"), "value" -> JString(System.getenv("HAIL_CLOUD"))),
+          JObject("name" -> JString("HAIL_QOB_KIND"), "value" -> JString(Main.WORKER)),
+          JObject("name" -> JString("ROOT"), "value" -> JString(root)),
+          JObject("name" -> JString("I"), "value" -> JString(s"$i")),
+          JObject("name" -> JString("N"), "value" -> JString(s"$n")),
+        )),
         "attributes" -> JObject(
           "name" -> JString(s"${name}_stage${stageCount}_${stageIdentifier}_job$i")
         ),
@@ -444,49 +453,39 @@ object ServiceBackendAPI {
   private[this] val log = Logger.getLogger(getClass.getName())
 
   def main(argv: Array[String]): Unit = {
-    assert(argv.length == 7, argv.toFastSeq)
+    val name = System.getenv("NAME")
+    val image = System.getenv("HAIL_QOB_IMAGE")
+    // val inputURL = System.getenv("INPUT_URL")
 
-    val scratchDir = argv(0)
-    // val logFile = argv(1)
-    val jarLocation = argv(2)
-    val kind = argv(3)
-    assert(kind == Main.DRIVER)
-    val name = argv(4)
-    val inputURL = argv(5)
-    val outputURL = argv(6)
+    // sys.env.get("HAIL_SSL_CONFIG_DIR").foreach(tls.setSSLConfigFromDir(_))
+    val batchClient = new BatchClient()
 
-    val fs = FS.cloudSpecificFS(s"$scratchDir/secrets/gsa-key/key.json", None)
-    val deployConfig = DeployConfig.fromConfigFile(
-      s"$scratchDir/secrets/deploy-config/deploy-config.json"
-    )
-    DeployConfig.set(deployConfig)
-    sys.env.get("HAIL_SSL_CONFIG_DIR").foreach(tls.setSSLConfigFromDir(_))
-
-    val batchClient = new BatchClient(s"$scratchDir/secrets/gsa-key/key.json")
-    log.info("BatchClient allocated.")
-
-    val batchId =
-      BatchConfig.fromConfigFile(s"$scratchDir/batch-config/batch-config.json").map(_.batchId)
-    log.info("BatchConfig parsed.")
+    val batchId = sys.env.get("HAIL_BATCH_ID").map(_.toLong)
+    log.info("Retrieved HAIL_BATCH_ID")
 
     implicit val formats: Formats = DefaultFormats
-    val input = using(fs.openNoCompression(inputURL))(JsonMethods.parse(_))
+    val input = sys.env.get("INPUT_URL") match {
+      case Some(inputURL) =>
+        val fs = FS.cloudSpecificFS(None)
+        using(fs.openNoCompression(inputURL))(JsonMethods.parse(_))
+      case None => JsonMethods.parse(System.in)
+    }
+    log.info("Read input")
     val rpcConfig = (input \ "config").extract[ServiceBackendRPCPayload]
+    log.info("Extracted RPC config")
 
-    // FIXME: when can the classloader be shared? (optimizer benefits!)
     val backend = ServiceBackend(
-      jarLocation,
+      image,
       name,
       new HailClassLoader(getClass().getClassLoader()),
       batchClient,
       batchId,
-      scratchDir,
       rpcConfig,
     )
     log.info("ServiceBackend allocated.")
     if (HailContext.isInitialized) {
       HailContext.get.backend = backend
-      log.info("Default references added to already initialized HailContexet.")
+      log.info("Default references added to already initialized HailContext.")
     } else {
       HailContext(backend, 50, 3)
       log.info("HailContexet initialized.")
@@ -494,7 +493,9 @@ object ServiceBackendAPI {
 
     val action = (input \ "action").extract[Int]
     val payload = (input \ "payload")
-    new ServiceBackendAPI(backend, fs, outputURL).executeOneCommand(action, payload)
+    new ServiceBackendAPI(backend).executeOneCommand(action, payload)
+
+    HailContext.stop()
   }
 }
 
@@ -566,9 +567,7 @@ case class SerializedIRFunction(
 )
 
 class ServiceBackendAPI(
-  private[this] val backend: ServiceBackend,
-  private[this] val fs: FS,
-  private[this] val outputURL: String,
+  private[this] val backend: ServiceBackend
 ) extends Thread {
   private[this] val LOAD_REFERENCES_FROM_DATASET = 1
   private[this] val VALUE_TYPE = 2
@@ -657,26 +656,30 @@ class ServiceBackendAPI(
       IRFunctionRegistry.clearUserFunctions()
   }
 
+  private def writeOutput(write: HailSocketAPIOutputStream => Unit): Unit = {
+    val os = sys.env.get("OUTPUT_URL") match {
+      case Some(outputURL) => backend.fs.createNoCompression(outputURL)
+      case None => System.out
+    }
+    retryTransientErrors {
+      using(os)(output => write(new HailSocketAPIOutputStream(output)))
+    }
+  }
+
   def executeOneCommand(action: Int, payload: JValue): Unit = {
     try {
       val result = doAction(action, payload)
-      retryTransientErrors {
-        using(fs.createNoCompression(outputURL)) { outputStream =>
-          val output = new HailSocketAPIOutputStream(outputStream)
-          output.writeBool(true)
-          output.writeBytes(result)
-        }
+      writeOutput { output =>
+        output.writeBool(true)
+        output.writeBytes(result)
       }
     } catch {
       case exc: HailWorkerException =>
-        retryTransientErrors {
-          using(fs.createNoCompression(outputURL)) { outputStream =>
-            val output = new HailSocketAPIOutputStream(outputStream)
-            output.writeBool(false)
-            output.writeString(exc.shortMessage)
-            output.writeString(exc.expandedMessage)
-            output.writeInt(exc.errorId)
-          }
+        writeOutput { output =>
+          output.writeBool(false)
+          output.writeString(exc.shortMessage)
+          output.writeString(exc.expandedMessage)
+          output.writeInt(exc.errorId)
         }
         log.error(
           "A worker failed. The exception was written for Python but we will also throw an exception to fail this driver job."
@@ -684,14 +687,11 @@ class ServiceBackendAPI(
         throw exc
       case t: Throwable =>
         val (shortMessage, expandedMessage, errorId) = handleForPython(t)
-        retryTransientErrors {
-          using(fs.createNoCompression(outputURL)) { outputStream =>
-            val output = new HailSocketAPIOutputStream(outputStream)
-            output.writeBool(false)
-            output.writeString(shortMessage)
-            output.writeString(expandedMessage)
-            output.writeInt(errorId)
-          }
+        writeOutput { output =>
+          output.writeBool(false)
+          output.writeString(shortMessage)
+          output.writeString(expandedMessage)
+          output.writeInt(errorId)
         }
         log.error(
           "An exception occurred in the driver. The exception was written for Python but we will re-throw to fail this driver job."

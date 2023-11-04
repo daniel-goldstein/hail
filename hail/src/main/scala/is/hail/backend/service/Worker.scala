@@ -17,21 +17,13 @@ import java.nio.charset._
 import java.util
 import java.util.{concurrent => javaConcurrent}
 
-import org.apache.log4j.Logger
-
 class ServiceTaskContext(val partitionId: Int) extends HailTaskContext {
   override def stageId(): Int = 0
 
   override def attemptNumber(): Int = 0
 }
 
-object WorkerTimer {
-  private val log = Logger.getLogger(getClass.getName())
-}
-
 class WorkerTimer() {
-  import WorkerTimer._
-
   var startTimes: mutable.Map[String, Long] = mutable.Map()
 
   def start(label: String): Unit =
@@ -84,7 +76,6 @@ class ExplicitClassLoaderInputStream(is: InputStream, cl: ClassLoader)
 }
 
 object Worker {
-  private[this] val log = Logger.getLogger(getClass.getName())
   private[this] val myRevision = HAIL_REVISION
 
   implicit private[this] val ec = ExecutionContext.fromExecutorService(
@@ -98,34 +89,22 @@ object Worker {
   }
 
   def main(argv: Array[String]): Unit = {
+    HailContext.configureStderrLogging()
     val theHailClassLoader = new HailClassLoader(getClass().getClassLoader())
-
-    if (argv.length != 7) {
-      throw new IllegalArgumentException(s"expected seven arguments, not: ${argv.length}")
-    }
-    val scratchDir = argv(0)
-    // val logFile = argv(1)
-    // var jarLocation = argv(2)
-    val kind = argv(3)
-    assert(kind == Main.WORKER)
-    val root = argv(4)
-    val i = argv(5).toInt
-    val n = argv(6).toInt
+    val root = System.getenv("ROOT")
+    val i = System.getenv("I").toInt
+    val n = System.getenv("N").toLong
     val timer = new WorkerTimer()
 
-    val deployConfig = DeployConfig.fromConfigFile(
-      s"$scratchDir/secrets/deploy-config/deploy-config.json"
-    )
-    DeployConfig.set(deployConfig)
     sys.env.get("HAIL_SSL_CONFIG_DIR").foreach(tls.setSSLConfigFromDir(_))
 
     log.info(s"is.hail.backend.service.Worker $myRevision")
-    log.info(s"running job $i/$n at root $root with scratch directory '$scratchDir'")
+    log.info(s"running job $i/$n at root $root")
 
     timer.start(s"Job $i/$n")
 
     timer.start("readInputs")
-    val fs = FS.cloudSpecificFS(s"$scratchDir/secrets/gsa-key/key.json", None)
+    val fs = FS.cloudSpecificFS(None)
 
     def open(x: String): SeekableDataInputStream =
       fs.openNoCompression(x)
@@ -163,8 +142,8 @@ object Worker {
     timer.end("readInputs")
     timer.start("executeFunction")
 
-    if (HailContext.isInitialized) {
-      HailContext.get.backend = new ServiceBackend(
+    HailContext(
+      new ServiceBackend(
         null,
         null,
         new HailClassLoader(getClass().getClassLoader()),
@@ -175,22 +154,7 @@ object Worker {
         null,
         null,
       )
-    } else {
-      HailContext(
-        // FIXME: workers should not have backends, but some things do need hail contexts
-        new ServiceBackend(
-          null,
-          null,
-          new HailClassLoader(getClass().getClassLoader()),
-          null,
-          None,
-          null,
-          null,
-          null,
-          null,
-        )
-      )
-    }
+    )
 
     val result = using(new ServiceTaskContext(i)) { htc =>
       try
@@ -230,5 +194,8 @@ object Worker {
       log.info("throwing the exception so that this Worker job is marked as failed.")
       throw throwableWhileExecutingUserCode
     }
+
+    HailContext.stop()
+    ec.shutdownNow()
   }
 }

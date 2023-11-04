@@ -1,16 +1,16 @@
 package is.hail.services
 
-import is.hail.shadedazure.com.azure.core.credential.TokenRequestContext
-import is.hail.shadedazure.com.azure.identity.{
-  ClientSecretCredential, ClientSecretCredentialBuilder,
-}
-import is.hail.utils._
+import java.io.{FileInputStream, InputStream}
 
 import scala.collection.JavaConverters._
 
-import java.io.{FileInputStream, InputStream}
+import is.hail.utils._
+import is.hail.shadedazure.com.azure.identity.{
+  ClientSecretCredentialBuilder, DefaultAzureCredentialBuilder,
+}
+import is.hail.shadedazure.com.azure.core.credential.{TokenRequestContext, TokenCredential}
 
-import com.google.auth.oauth2.ServiceAccountCredentials
+import com.google.auth.oauth2.{GoogleCredentials, ServiceAccountCredentials}
 import org.apache.commons.io.IOUtils
 import org.apache.http.{HttpEntity, HttpEntityEnclosingRequest}
 import org.apache.http.client.config.RequestConfig
@@ -25,11 +25,15 @@ abstract class CloudCredentials {
   def accessToken(): String
 }
 
-class GoogleCloudCredentials(gsaKeyPath: String) extends CloudCredentials {
-  private[this] val credentials = using(new FileInputStream(gsaKeyPath)) { is =>
-    ServiceAccountCredentials
-      .fromStream(is)
-      .createScoped("openid", "email", "profile")
+class GoogleCloudCredentials() extends CloudCredentials {
+  private[this] val credentials = sys.env.get("GOOGLE_APPLICATION_CREDENTIALS") match {
+    case Some(gsaKeyPath) =>
+      using(new FileInputStream(gsaKeyPath)) { is =>
+        ServiceAccountCredentials
+          .fromStream(is)
+          .createScoped("openid", "email", "profile")
+      }
+    case None => GoogleCredentials.getApplicationDefault()
   }
 
   override def accessToken(): String = {
@@ -38,20 +42,25 @@ class GoogleCloudCredentials(gsaKeyPath: String) extends CloudCredentials {
   }
 }
 
-class AzureCloudCredentials(credentialsPath: String) extends CloudCredentials {
-  private[this] val credentials: ClientSecretCredential =
-    using(new FileInputStream(credentialsPath)) { is =>
-      implicit val formats: Formats = defaultJSONFormats
-      val kvs = JsonMethods.parse(is)
-      val appId = (kvs \ "appId").extract[String]
-      val password = (kvs \ "password").extract[String]
-      val tenant = (kvs \ "tenant").extract[String]
+class AzureCloudCredentials() extends CloudCredentials {
+  private[this] val credentials: TokenCredential =
+    sys.env.get("AZURE_APPLICATION_CREDENTIALS") match {
+      case Some(credentialsPath) =>
+        using(new FileInputStream(credentialsPath)) { is =>
+          implicit val formats: Formats = defaultJSONFormats
+          val kvs = JsonMethods.parse(is)
+          val appId = (kvs \ "appId").extract[String]
+          val password = (kvs \ "password").extract[String]
+          val tenant = (kvs \ "tenant").extract[String]
 
-      new ClientSecretCredentialBuilder()
-        .clientId(appId)
-        .clientSecret(password)
-        .tenantId(tenant)
-        .build()
+          new ClientSecretCredentialBuilder()
+            .clientId(appId)
+            .clientSecret(password)
+            .tenantId(tenant)
+            .build()
+        }
+
+      case None => new DefaultAzureCredentialBuilder().build()
     }
 
   override def accessToken(): String = {
@@ -100,10 +109,10 @@ object Requester {
     }
   }
 
-  def fromCredentialsFile(credentialsPath: String) = {
+  def fromCloudCredentials() = {
     val credentials = sys.env.get("HAIL_CLOUD") match {
-      case Some("gcp") => new GoogleCloudCredentials(credentialsPath)
-      case Some("azure") => new AzureCloudCredentials(credentialsPath)
+      case Some("gcp") => new GoogleCloudCredentials()
+      case Some("azure") => new AzureCloudCredentials()
       case Some(cloud) =>
         throw new IllegalArgumentException(s"Bad cloud: $cloud")
       case None =>

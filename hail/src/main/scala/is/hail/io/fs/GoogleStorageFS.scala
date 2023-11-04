@@ -6,10 +6,6 @@ import is.hail.utils._
 
 import scala.jdk.CollectionConverters._
 
-import java.io.{ByteArrayInputStream, FileNotFoundException, IOException}
-import java.nio.ByteBuffer
-import java.nio.file.Paths
-
 import com.google.api.client.googleapis.json.GoogleJsonResponseException
 import com.google.auth.oauth2.ServiceAccountCredentials
 import com.google.cloud.{ReadChannel, WriteChannel}
@@ -19,6 +15,13 @@ import com.google.cloud.storage.Storage.{
   BlobGetOption, BlobListOption, BlobSourceOption, BlobWriteOption,
 }
 import org.apache.log4j.Logger
+
+import java.io.{FileNotFoundException, FileInputStream, IOException}
+import java.nio.ByteBuffer
+import java.nio.file.Paths
+import scala.jdk.CollectionConverters.{
+  asJavaIterableConverter, asScalaIteratorConverter, iterableAsScalaIterableConverter,
+}
 
 case class GoogleStorageFSURL(bucket: String, path: String) extends FSURL {
   def addPathComponent(c: String): GoogleStorageFSURL =
@@ -109,8 +112,7 @@ case class RequesterPaysConfiguration(
 ) extends Serializable
 
 class GoogleStorageFS(
-  private[this] val serviceAccountKey: Option[String] = None,
-  private[this] var requesterPaysConfiguration: Option[RequesterPaysConfiguration] = None,
+  private[this] var requesterPaysConfiguration: Option[RequesterPaysConfiguration] = None
 ) extends FS {
   type URL = GoogleStorageFSURL
 
@@ -186,26 +188,29 @@ class GoogleStorageFS(
   }
 
   private lazy val storage: Storage = {
+
     val transportOptions = HttpTransportOptions.newBuilder()
       .setConnectTimeout(5000)
       .setReadTimeout(5000)
       .build()
-    serviceAccountKey match {
+    sys.env.get("GOOGLE_APPLICATION_CREDENTIALS") match {
       case None =>
         log.info("Initializing google storage client from latent credentials")
         StorageOptions.newBuilder()
           .setTransportOptions(transportOptions)
           .build()
           .getService
-      case Some(keyData) =>
+      case Some(keyPath) =>
         log.info("Initializing google storage client from service account key")
-        StorageOptions.newBuilder()
-          .setCredentials(
-            ServiceAccountCredentials.fromStream(new ByteArrayInputStream(keyData.getBytes))
-          )
-          .setTransportOptions(transportOptions)
-          .build()
-          .getService
+        using(new FileInputStream(keyPath)) { is =>
+          val storage = StorageOptions.newBuilder()
+            .setCredentials(ServiceAccountCredentials.fromStream(is))
+            .setTransportOptions(transportOptions)
+            .build()
+            .getService
+          log.info("Finished initializing google storage client from service account key")
+          storage
+        }
     }
   }
 
@@ -530,4 +535,7 @@ class GoogleStorageFS(
       throw new IllegalArgumentException(s"Invalid path, expected gs://bucket/path $filename")
     filename
   }
+
+  def close(): Unit =
+    storage.close()
 }

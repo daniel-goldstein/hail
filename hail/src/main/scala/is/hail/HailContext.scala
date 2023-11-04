@@ -43,6 +43,23 @@ object HailContext {
 
   def sparkBackend(op: String): SparkBackend = get.sparkBackend(op)
 
+  def configureStderrLogging(): Unit = {
+    org.apache.log4j.helpers.LogLog.setInternalDebugging(true)
+    org.apache.log4j.helpers.LogLog.setQuietMode(false)
+    val logProps = new Properties()
+    logProps.put("log4j.rootLogger", "INFO, HailConsoleAppender, HailSocketAppender")
+    logProps.put("log4j.appender.HailConsoleAppender", "org.apache.log4j.ConsoleAppender")
+    logProps.put("log4j.appender.HailConsoleAppender.target", "System.err")
+    logProps.put("log4j.appender.HailConsoleAppender.layout", "org.apache.log4j.PatternLayout")
+    logProps.put(
+      "log4j.appender.HailConsoleAppender.layout.ConversionPattern",
+      HailContext.logFormat,
+    )
+
+    LogManager.resetConfiguration()
+    PropertyConfigurator.configure(logProps)
+  }
+
   def configureLogging(logFile: String, quiet: Boolean, append: Boolean): Unit = {
     org.apache.log4j.helpers.LogLog.setInternalDebugging(true)
     org.apache.log4j.helpers.LogLog.setQuietMode(false)
@@ -71,6 +88,9 @@ object HailContext {
     LogManager.resetConfiguration()
     PropertyConfigurator.configure(logProps)
   }
+
+  def shutdownLogging(): Unit =
+    LogManager.shutdown()
 
   def checkJavaVersion(): Unit = {
     val javaVersion = raw"(\d+)\.(\d+)\.(\d+).*".r
@@ -112,7 +132,7 @@ object HailContext {
   def apply(backend: Backend, branchingFactor: Int = 50, optimizerIterations: Int = 3)
     : HailContext = synchronized {
     require(theContext == null)
-    checkJavaVersion()
+    // checkJavaVersion()
 
     {
       import breeze.linalg._
@@ -130,7 +150,7 @@ object HailContext {
 
     theContext = new HailContext(backend, branchingFactor, optimizerIterations)
 
-    info(s"Running Hail version ${theContext.version}")
+    // info(s"Running Hail version ${theContext.version}")
 
     theContext
   }
@@ -138,6 +158,7 @@ object HailContext {
   def stop(): Unit = synchronized {
     IRFunctionRegistry.clearUserFunctions()
     backend.stop()
+    shutdownLogging()
 
     theContext = null
   }

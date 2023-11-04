@@ -14,11 +14,8 @@ import com.google.cloud.storage.StorageException
 import javax.net.ssl.SSLException
 import org.apache.http.{ConnectionClosedException, NoHttpResponseException}
 import org.apache.http.conn.HttpHostConnectException
-import org.apache.log4j.{LogManager, Logger}
 
 package object services {
-  private lazy val log: Logger = LogManager.getLogger("is.hail.services")
-
   val RETRYABLE_HTTP_STATUS_CODES: Set[Int] = {
     val s = Set(408, 429, 500, 502, 503, 504)
     if (System.getenv("HAIL_DONT_RETRY_500") == "1")

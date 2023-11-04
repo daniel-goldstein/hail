@@ -1,0 +1,12 @@
+ARG BASE_IMAGE
+FROM $BASE_IMAGE
+
+RUN hail-apt-get-install \
+    curl \
+    liblapack3 \
+    openjdk-8-jre-headless
+
+RUN hail-pip-install pyspark==3.3.2
+ENV SPARK_HOME /usr/local/lib/python3.9/dist-packages/pyspark
+
+COPY hail/out/assembly.dest/out.jar hail.jar

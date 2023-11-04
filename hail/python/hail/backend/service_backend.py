@@ -1,6 +1,7 @@
 from typing import Dict, Optional, Awaitable, Mapping, Any, List, Union, Tuple, TypeVar, Set
 import abc
 import asyncio
+import os
 from dataclasses import dataclass
 import math
 import struct
@@ -177,7 +178,7 @@ class ServiceBackend(Backend):
     WORKER = "worker"
     DRIVER = "driver"
 
-    # is.hail.backend.service.ServiceBackendSocketAPI2 protocol
+    # is.hail.backend.service.ServiceBackendAPI protocol
     LOAD_REFERENCES_FROM_DATASET = 1
     VALUE_TYPE = 2
     TABLE_TYPE = 3
@@ -385,15 +386,17 @@ class ServiceBackend(Backend):
     ) -> Tuple[bytes, str]:
         timings = Timings()
         async with TemporaryDirectory(ensure_exists=False) as iodir:
+            infile_data = orjson.dumps(
+                {
+                    'config': service_backend_config,
+                    'action': action.value,
+                    'payload': payload,
+                },
+                option=orjson.OPT_INDENT_2,
+            )
             with timings.step("write input"):
                 async with await self._async_fs.create(iodir + '/in') as infile:
-                    await infile.write(
-                        orjson.dumps({
-                            'config': service_backend_config,
-                            'action': action.value,
-                            'payload': payload,
-                        })
-                    )
+                    await infile.write(infile_data)
 
             with timings.step("submit batch"):
                 resources: Dict[str, Union[str, bool]] = {'preemptible': False}
@@ -410,19 +413,34 @@ class ServiceBackend(Backend):
                 if service_backend_config.storage != '0Gi':
                     resources['storage'] = service_backend_config.storage
 
-                j = self._batch.create_jvm_job(
-                    jar_spec=self.jar_spec.to_dict(),
-                    argv=[
-                        ServiceBackend.DRIVER,
-                        name,
-                        iodir + '/in',
-                        iodir + '/out',
-                    ],
+                image = os.environ['HAIL_QOB_IMAGE']
+                env = {
+                    'HAIL_QOB_KIND': ServiceBackend.DRIVER,
+                    'NAME': name,
+                    # 'INPUT_URL': iodir + '/in',
+                    'OUTPUT_URL': iodir + '/out',
+                    'HAIL_CLOUD': 'gcp',
+                    'HAIL_QOB_IMAGE': image,
+                }
+                command = [
+                    '/bin/bash',
+                    '-c',
+                    f"""
+java -cp hail.jar:$SPARK_HOME/jars/* is.hail.backend.service.ServiceBackendAPI <<'EOF'
+{infile_data.decode('utf-8')}
+EOF
+""",
+                ]
+
+                j = self._batch.create_job(
+                    image=image,
+                    command=command,
+                    env=env,
                     resources=resources,
                     attributes={'name': name + '_driver'},
                     regions=self.regions,
                     cloudfuse=[(c.bucket, c.mount_path, c.read_only) for c in service_backend_config.cloudfuse_configs],
-                    profile=self.flags['profile'] is not None,
+                    # profile=self.flags['profile'] is not None,
                 )
                 await self._batch.submit(disable_progress_bar=True)
                 self._batch_was_submitted = True
