@@ -30,8 +30,7 @@ class BatchClient(
   requester: Requester,
 ) {
 
-  def this(credentialsPath: String) =
-    this(DeployConfig.get, Requester.fromCredentialsFile(credentialsPath))
+  def this() = this(DeployConfig.get, Requester.fromCloudCredentials())
 
   import BatchClient._
   import requester.request
