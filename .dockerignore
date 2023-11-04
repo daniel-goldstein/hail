@@ -15,6 +15,7 @@ hail/.ensime_cache.d/
 hail/.ensime_cache/
 hail/build/
 !hail/build/deploy/dist/*.whl
+!hail/build/libs/hail-all-spark.jar
 hail/hail.iml
 hail/hail.log
 hail/out/
