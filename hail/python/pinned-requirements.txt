@@ -209,7 +209,7 @@ portalocker==2.8.2
     # via
     #   -c hail/hail/python/hailtop/pinned-requirements.txt
     #   msal-extensions
-protobuf==3.20.2
+protobuf==4.25.1
     # via
     #   -c hail/hail/python/hailtop/pinned-requirements.txt
     #   -r hail/hail/python/hailtop/requirements.txt
