@@ -192,15 +192,10 @@ async def async_copy_paste_login(copy_paste_token: str, namespace: Optional[str]
 
 
 async def async_logout():
-    deploy_config = get_deploy_config()
-
     # Logout any legacy auth tokens that might still exist
-    auth_ns = deploy_config.default_namespace()
-    tokens = get_tokens()
-    if auth_ns in tokens:
-        await logout_deprecated_token_credentials(deploy_config, tokens[auth_ns])
-        del tokens[auth_ns]
-        tokens.write()
+    legacy_tokens_file = Tokens.get_tokens_file()
+    if os.path.exists(legacy_tokens_file):
+        os.remove(legacy_tokens_file)
 
     # Logout newer OAuth2-based credentials
     identity_spec = load_identity_spec()
