@@ -26,7 +26,7 @@
 </ul>
 
 {% if not batch['complete'] and batch['state'] != 'Cancelled' %}
-<form action="{{ base_path }}/batches/{{ batch['id'] }}/cancel" method="post">
+<form action="{{ batch['id'] }}/cancel" method="post">
   <input type="hidden" name="_csrf" value="{{ csrf_token }}"/>
   {% if q is not none %}
   <input type="hidden" name="q" value="{{ q }}"/>
@@ -83,7 +83,9 @@
         {% for job in batch['jobs'] %}
         <tr>
           <td class="numeric-cell">
-            <a class="fill-td" href="{{ base_path }}/batches/{{ job['batch_id'] }}/jobs/{{ job['job_id'] }}">{{ job['job_id'] }}</a>
+            <a class="fill-td" href="{{ batch['id'] }}/jobs/{{ job['job_id'] }}">
+              {{ job['job_id'] }}
+            </a>
           </td>
           <td>
             {% if 'name' in job and job['name'] is not none %}
@@ -112,7 +114,7 @@
     </table>
   </div>
   {% if last_job_id is not none %}
-  <form method="GET" action="{{ base_path }}/batches/{{ batch['id'] }}">
+  <form method="GET">
     {% if q is not none %}
     <input type="hidden" name="q" value="{{ q }}" />
     {% endif %}

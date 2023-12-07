@@ -20,7 +20,7 @@
       <td>{{ row['accrued_cost'] }}</td>
       {% if is_developer %}
       <td>
-        <form action="{{ base_path }}/billing_limits/{{ row['billing_project'] }}/edit" method="POST">
+        <form action="billing_limits/{{ row['billing_project'] }}/edit" method="POST">
           <input type="hidden" name="_csrf" value="{{ csrf_token }}">
           <input type="text" required name="limit" value="{{ row['limit'] }}">
           <button>
@@ -55,7 +55,7 @@
       <td>{{ row['accrued_cost'] }}</td>
       {% if is_developer %}
       <td>
-        <form action="{{ base_path }}/billing_limits/{{ row['billing_project'] }}/edit" method="POST">
+        <form action="billing_limits/{{ row['billing_project'] }}/edit" method="POST">
           <input type="hidden" name="_csrf" value="{{ csrf_token }}">
           <input type="text" required name="limit" value="{{ row['limit'] }}">
           <button>

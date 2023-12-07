@@ -17,7 +17,7 @@
           {{ billing_project['billing_project'] }}
         </td>
         <td rowspan="{{ billing_project.size + 2 }}">
-          <form action="{{ base_path }}/billing_projects/{{ billing_project['billing_project'] }}/close" method="POST">
+          <form action="billing_projects/{{ billing_project['billing_project'] }}/close" method="POST">
             <input type="hidden" name="_csrf" value="{{ csrf_token }}">
             <button class="dangerous">Close</button>
           </form>
@@ -27,7 +27,7 @@
       <tr>
         <td>{{ user }}</td>
         <td>
-          <form action="{{ base_path }}/billing_projects/{{ billing_project['billing_project'] }}/users/{{ user }}/remove" method="POST">
+          <form action="billing_projects/{{ billing_project['billing_project'] }}/users/{{ user }}/remove" method="POST">
             <input type="hidden" name="_csrf" value="{{ csrf_token }}">
             <button class="dangerous">
               Remove
@@ -37,7 +37,7 @@
       </tr>
       {% endfor %}
       <tr>
-        <form action="{{ base_path }}/billing_projects/{{ billing_project['billing_project'] }}/users/add" method="POST">
+        <form action="{{ billing_project['billing_project'] }}/users/add" method="POST">
           <input type="hidden" name="_csrf" value="{{ csrf_token }}">
           <td><input type="text" name="user" spellcheck="false" autocorrect="off"></td>
           <td>
@@ -48,7 +48,7 @@
     </tbody>
     {% endfor %}
     <tbody>
-      <form action="{{ base_path }}/billing_projects/create" method="POST">
+      <form action="create" method="POST">
         <input type="hidden" name="_csrf" value="{{ csrf_token }}">
         <tr>
           <td><input type="text" name="billing_project" spellcheck="false" autocorrect="off"></td>
@@ -76,7 +76,7 @@
     <tr>
       <td>{{ billing_project.billing_project }}</td>
       <td>
-        <form action="{{ base_path }}/billing_projects/{{ billing_project.billing_project }}/reopen" method="POST">
+        <form action="{{ billing_project.billing_project }}/reopen" method="POST">
           <input type="hidden" name="_csrf" value="{{ csrf_token }}">
           <button>Reopen</button>
         </form>
