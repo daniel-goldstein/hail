@@ -70,6 +70,10 @@ object LocalBackend {
       hadoop.fs.FileSystem.closeAll()
     }
   }
+
+  def main(argv: Array[String]): Unit = {
+    System.out.println("Hello world")
+  }
 }
 
 class LocalBackend(

@@ -11,6 +11,8 @@ plugins {
   id 'com.github.johnrengelman.shadow' version '8.1.1'
   id "de.undercouch.download" version "5.4.0"
   id 'eclipse'
+  id "war"
+  id "org.teavm" version "0.9.0"
 }
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
@@ -353,4 +355,16 @@ task shadowTestJar(type: ShadowJar) {
 
 task printClasspath(type: Exec) {
     commandLine = ['echo', "${sourceSets.main.runtimeClasspath.asPath}"]
+}
+
+teavm {
+    js {
+        addedToWebApp = true
+    }
+    wasm {
+        addedToWebApp = true
+    }
+    all {
+        mainClass = "is.hail.backend.local.LocalBackend"
+    }
 }
