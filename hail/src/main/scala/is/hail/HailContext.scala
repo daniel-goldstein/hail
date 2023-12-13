@@ -109,7 +109,7 @@ object HailContext {
     branchingFactor: Int = 50,
     optimizerIterations: Int = 3): HailContext = synchronized {
     require(theContext == null)
-    checkJavaVersion()
+    // checkJavaVersion()
 
     {
       import breeze.linalg._

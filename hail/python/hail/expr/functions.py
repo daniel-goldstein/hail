@@ -194,6 +194,20 @@ def _error_from_cdf_python(cdf, failure_prob, all_quantiles=False):
         return compute_single_error(s, failure_prob)
 
 
+def _build_explain_graph(tir: ir.TableIR):
+    if isinstance(tir, ir.TableRead):
+        return f"Read from {tir.reader.render()}"
+    elif isinstance(tir, ir.TableJoin):
+        return {
+            'left': _build_explain_graph(tir.left),
+            'right': _build_explain_graph(tir.right),
+        }
+    return [_build_explain_graph(c) for c in tir.children]
+
+def explain(e):
+    print("Explain: ", _build_explain_graph(e._tir))
+
+
 @typecheck(t=hail_type)
 def missing(t: Union[HailType, str]):
     """Creates an expression representing a missing value of a specified type.
