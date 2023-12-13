@@ -54,7 +54,7 @@ FAST_PYTHON_JAR := python/hail/backend/hail.jar
 FAST_PYTHON_JAR_EXTRA_CLASSPATH := python/hail/backend/extra_classpath
 WHEEL := build/deploy/dist/hail-$(HAIL_PIP_VERSION)-py3-none-any.whl
 
-GRADLE_ARGS += -Dscala.version=$(SCALA_VERSION) -Dspark.version=$(SPARK_VERSION) -Delasticsearch.major-version=$(ELASTIC_MAJOR_VERSION) -Dorg.gradle.jvmargs=-Xmx4g
+GRADLE_ARGS += -Dscala.version=$(SCALA_VERSION) -Dspark.version=$(SPARK_VERSION) -Delasticsearch.major-version=$(ELASTIC_MAJOR_VERSION) -Dorg.gradle.jvmargs=-Xmx12g
 
 TEST_STORAGE_URI = $(shell kubectl get secret global-config --template={{.data.test_storage_uri}} | base64 --decode)
 GCP_PROJECT = $(shell kubectl get secret global-config --template={{.data.gcp_project}} | base64 --decode)
@@ -94,7 +94,7 @@ shadowTestJar: $(SHADOW_TEST_JAR)
 
 .PHONY: wasm
 wasm: $(SCALA_BUILD_INFO) $(JAR_SOURCES)
-	./gradlew war $(GRADLE_ARGS)
+	./gradlew generateWasm $(GRADLE_ARGS)
 
 ifdef HAIL_COMPILE_NATIVES
 $(SHADOW_TEST_JAR): native-lib-prebuilt

@@ -72,7 +72,8 @@ object LocalBackend {
   }
 
   def main(argv: Array[String]): Unit = {
-    System.out.println("Hello world")
+    val backend = LocalBackend("/tmp/hail", "", "", "hail.log", true, true, skipLoggingConfiguration = true)
+    System.out.println(backend.tmpdir)
   }
 }
 
