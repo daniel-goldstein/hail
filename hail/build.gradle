@@ -35,7 +35,8 @@ sourceSets {
 jar {
   manifest {
     attributes(
-    'Main-Class': 'is.hail.backend.local.LocalBackend'
+    'Main-Class': 'is.hail.Foo',
+    'Created-By': '1.8.0_392 (Temurin)'
     )
   }
 }

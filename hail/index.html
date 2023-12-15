@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script src="https://cjrtnc.leaningtech.com/3.0rc2/cj3loader.js"></script>
+        <script type="module">
+            await cheerpjInit();
+            // let jarPath = "/app/src/main/java/is/hail/build"
+            let jarPath = "/app/build/libs/hail3/hail.jar"
+            let cj = await cheerpjRunLibrary(jarPath);
+            const HailContext = await cj.is.hail.HailContext;
+            console.log(await HailContext.tera())
+            console.log(await HailContext.logFormat())
+            let Foo = await cj.is.hail.Foo;
+            let foo = await new Foo();
+            await foo.hello();
+            // document.cj = cj
+        </script>
+    </head>
+    <body>
+        <p>Hello!</p>
+    </body>
+</html>
+<!-- <html lang="en"> -->
+<!--   <head> -->
+<!--     <meta charset="utf-8" /> -->
+<!--     <title>CheerpJ test</title> -->
+<!--     <script src="https://cjrtnc.leaningtech.com/3.0rc2/cj3loader.js"></script> -->
+<!--   </head> -->
+<!--   <body> -->
+<!--     <script> -->
+<!--       (async function () { -->
+<!--         await cheerpjInit(); -->
+<!--         cheerpjCreateDisplay(800, 600); -->
+<!--         await cheerpjRunJar("/app/TextDemo.jar"); -->
+<!--       })(); -->
+<!--     </script> -->
+<!--   </body> -->
+<!-- </html> -->

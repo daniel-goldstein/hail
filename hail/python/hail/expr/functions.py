@@ -1,4 +1,5 @@
 import operator
+import orjson
 import builtins
 import functools
 from typing import Union, Optional, Any, Callable, Iterable, TypeVar
@@ -205,7 +206,10 @@ def _build_explain_graph(tir: ir.TableIR):
     return [_build_explain_graph(c) for c in tir.children]
 
 def explain(e):
-    print("Explain: ", _build_explain_graph(e._tir))
+    print(
+        "Explain:\n",
+        orjson.dumps(_build_explain_graph(e._tir), option=orjson.OPT_INDENT_2).decode('utf-8'),
+    )
 
 
 @typecheck(t=hail_type)
