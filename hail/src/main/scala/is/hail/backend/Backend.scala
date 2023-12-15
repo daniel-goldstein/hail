@@ -98,7 +98,7 @@ abstract class Backend {
     references = ReferenceGenome.builtinReferences()
   }
 
-  def addReference(rg: ReferenceGenome) {
+  def addReference(rg: ReferenceGenome): Unit = {
     references.get(rg.name) match {
       case Some(rg2) =>
         if (rg != rg2) {
@@ -235,7 +235,7 @@ abstract class Backend {
 }
 
 trait BackendWithCodeCache {
-  private[this] val codeCache: Cache[CodeCacheKey, CompiledFunction[_]] = new Cache(50)
+  private[this] val codeCache: Cache[CodeCacheKey, CompiledFunction[_]] = null
   def lookupOrCompileCachedFunction[T](k: CodeCacheKey)(f: => CompiledFunction[T]): CompiledFunction[T] = {
     codeCache.get(k) match {
       case Some(v) => v.asInstanceOf[CompiledFunction[T]]
