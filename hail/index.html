@@ -6,24 +6,17 @@
             await cheerpjInit();
             let cj = await cheerpjRunLibrary("/app/build/libs/hail-all-spark.jar");
 
-            const HailContext = await cj.is.hail.HailContext;
-            console.log(await HailContext.tera())
-            console.log(await HailContext.logFormat())
+            // Static methods work fine
+            const LocalBackend = await cj.is.hail.backend.local.LocalBackend;
+            await LocalBackend.hello("world");
+
+            // Instantiating basic classes is also not a problem.
             let I32 = await cj.is.hail.expr.ir.I32;
             let five = await new I32(5);
             console.log(await five.x());
 
-            let LocalBackend = await cj.is.hail.backend.local.LocalBackend;
+            // But this blows up
             let backend = await LocalBackend.apply("/files/tmp");
-            // console.log(backend)
-            // await LocalBackend.main([]);
-
-            let IRParser = await cj.is.hail.expr.ir.IRParser;
-            // let parsed = await IRParser.parse_value_ir(null, "(I32 5)");
-
-            let LocalTaskContext = await cj.is.hail.backend.local.LocalTaskContext;
-            let ctx = await new LocalTaskContext(0, 0);
-            console.log(await ctx.attemptNumber());
         </script>
     </head>
     <body>

@@ -41,7 +41,6 @@ object LocalBackend {
   def apply(tmpdir: String): LocalBackend = synchronized {
     require(theLocalBackend == null)
     theLocalBackend = new LocalBackend(tmpdir)
-    // theLocalBackend.addDefaultReferences()
     theLocalBackend
   }
 
@@ -56,9 +55,8 @@ object LocalBackend {
     }
   }
 
-  def main(argv: Array[String]): Unit = {
-    val backend = LocalBackend.apply("/files/tmp")
-    System.out.println(backend)
+  def hello(name: String): Unit = {
+    System.out.println(s"Hello $name")
   }
 }
 
