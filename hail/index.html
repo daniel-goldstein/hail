@@ -4,11 +4,12 @@
         <script src="https://cjrtnc.leaningtech.com/3.0rc2/cj3loader.js"></script>
         <script type="module">
             await cheerpjInit();
-            let cj = await cheerpjRunLibrary("/app/build/libs/hail-all-spark.jar");
+
+            let cj = await cheerpjRunLibrary(`/app/build/libs/hail-all-spark.jar`);
 
             // Static methods work fine
             const LocalBackend = await cj.is.hail.backend.local.LocalBackend;
-            await LocalBackend.hello("world");
+            // await LocalBackend.hello("world");
 
             // Instantiating basic classes is also not a problem.
             let I32 = await cj.is.hail.expr.ir.I32;
@@ -16,7 +17,17 @@
             console.log(await five.x());
 
             // But this blows up
-            let backend = await LocalBackend.apply("/files/tmp");
+            let backend = await new LocalBackend("/files/tmp");
+            // console.log(await backend.tmpdir());
+
+            let Foo = await cj.is.hail.Foo;
+            let foo = await new Foo(5);
+            console.log(await foo.b());
+            // console.log("printed")
+
+            // const HailFeatureFlags = await cj.is.hail.HailFeatureFlags$;
+            // let flags = await HailFeatureFlags.MODULE$.defaults();
+            // console.log(flags);
         </script>
     </head>
     <body>

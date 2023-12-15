@@ -4,6 +4,7 @@ import is.hail.backend.ExecutionCache
 import is.hail.utils._
 import org.json4s.JsonAST.{JArray, JObject, JString}
 
+import scala.collection.immutable.Map
 import scala.collection.mutable
 
 object HailFeatureFlags {

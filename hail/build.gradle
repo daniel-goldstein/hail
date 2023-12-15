@@ -32,15 +32,6 @@ sourceSets {
     }
 }
 
-jar {
-  manifest {
-    attributes(
-    'Main-Class': 'is.hail.Foo',
-    'Created-By': '1.8.0_392 (Temurin)'
-    )
-  }
-}
-
 compileJava {
     options.compilerArgs << "-Xlint:all" << "-Werror" << "-XDenableSunApiLintControl" << "-XDignore.symbol.file"
 }
@@ -111,9 +102,9 @@ configurations {
 
     hailJar.extendsFrom implementation
     hailJar {
-        // exclude group: 'org.scala-lang', module: 'scala-library'
-        // exclude group: 'org.scala-lang', module: 'scala-reflect'
-        // exclude group: 'org.apache.spark'
+        exclude group: 'org.scala-lang', module: 'scala-library'
+        exclude group: 'org.scala-lang', module: 'scala-reflect'
+        exclude group: 'org.apache.spark'
     }
 
     testImplementation.extendsFrom shadow
@@ -122,32 +113,32 @@ configurations {
 dependencies {
     scalaCompilerPlugins 'com.olegpy:better-monadic-for_2.12:0.3.1'
     justSpark('org.apache.spark:spark-mllib_' + scalaMajorVersion + ':' + sparkVersion) {
-        // exclude group: 'org.scalanlp'
+        exclude group: 'org.scalanlp'
     }
 
-    implementation 'org.scala-lang:scala-library:' + scalaVersion
-    implementation 'org.scala-lang:scala-reflect:' + scalaVersion
+    shadow 'org.scala-lang:scala-library:' + scalaVersion
+    shadow 'org.scala-lang:scala-reflect:' + scalaVersion
 
-    implementation('org.apache.spark:spark-core_' + scalaMajorVersion + ':' + sparkVersion) {
-        // exclude module: 'hadoop-client'
+    shadow('org.apache.spark:spark-core_' + scalaMajorVersion + ':' + sparkVersion) {
+        exclude module: 'hadoop-client'
     }
-    implementation('org.apache.hadoop:hadoop-client:3.3.4') {
-        // exclude module: 'servlet-api'
-        // exclude module: 'asm'
+    shadow('org.apache.hadoop:hadoop-client:3.3.4') {
+        exclude module: 'servlet-api'
+        exclude module: 'asm'
     }
-    implementation 'org.apache.spark:spark-sql_' + scalaMajorVersion + ':' + sparkVersion
-    implementation 'org.apache.spark:spark-mllib_' + scalaMajorVersion + ':' + sparkVersion
+    shadow 'org.apache.spark:spark-sql_' + scalaMajorVersion + ':' + sparkVersion
+    shadow 'org.apache.spark:spark-mllib_' + scalaMajorVersion + ':' + sparkVersion
 
     implementation('org.json4s:json4s-jackson_' + scalaMajorVersion + ':3.7.0-M11') {
-        // exclude group: 'com.fasterxml.jackson.core'
+        exclude group: 'com.fasterxml.jackson.core'
     }
 
     implementation 'org.lz4:lz4-java:1.8.0'
 
     // Breeze 1.0 has a known bug (https://github.com/scalanlp/breeze/issues/772)
-    implementation 'org.scalanlp:breeze-natives_' + scalaMajorVersion + ':' + breezeVersion
+    shadow 'org.scalanlp:breeze-natives_' + scalaMajorVersion + ':' + breezeVersion
     implementation('org.scalanlp:breeze-natives_' + scalaMajorVersion + ':' + breezeVersion) {
-        // exclude module: 'commons-math3'
+        exclude module: 'commons-math3'
     }
     implementation 'org.scalanlp:breeze_' + scalaMajorVersion + ':' + breezeVersion
 
@@ -178,7 +169,7 @@ dependencies {
     }
 
     implementation(group: 'com.google.cloud', name: 'google-cloud-storage', version: '2.30.1') {
-        // exclude group: 'com.fasterxml.jackson.core'
+        exclude group: 'com.fasterxml.jackson.core'
     }
 
     implementation 'org.apache.httpcomponents:httpcore:4.4.14'
@@ -198,11 +189,11 @@ dependencies {
     testImplementation 'org.testng:testng:6.8.21'
     testImplementation 'org.scalatest:scalatest_' + scalaMajorVersion + ':3.0.5'
 
-    implementation group: 'org.apache.commons', name: 'commons-math3', version: '3.6.1'
+    shadow group: 'org.apache.commons', name: 'commons-math3', version: '3.6.1'
     implementation group: 'commons-codec', name: 'commons-codec', version: '1.15'
     implementation group: 'org.apache.commons', name: 'commons-lang3', version: '3.12.0'
     implementation(group: 'org.apache.avro', name: 'avro', version: '1.11.2') {
-        // exclude group: 'com.fasterxml.jackson.core'
+        exclude group: 'com.fasterxml.jackson.core'
     }
 
     implementation 'commons-io:commons-io:2.11.0'
@@ -343,9 +334,9 @@ tasks.withType(ShadowJar) {
     // Breeze 1.0 is broken, it is never ok to use Breeze 1.0 or earlier.
     relocate 'breeze', 'is.hail.relocated.breeze'
 
-    // exclude 'META-INF/*.RSA'
-    // exclude 'META-INF/*.SF'
-    // exclude 'META-INF/*.DSA'
+    exclude 'META-INF/*.RSA'
+    exclude 'META-INF/*.SF'
+    exclude 'META-INF/*.DSA'
 }
 
 shadowJar {
