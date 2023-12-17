@@ -2,6 +2,7 @@
 <html>
     <head>
         <script src="https://cjrtnc.leaningtech.com/3.0rc2/cj3loader.js"></script>
+        <script src="https://cdn.jsdelivr.net/pyodide/dev/full/pyodide.js"></script>
         <script type="module">
             await cheerpjInit();
 
@@ -16,6 +17,18 @@
             // But this blows up
             let backend = await new LocalBackend("/files/tmp");
             console.log(await backend.hello("from javascript"));
+
+            globalThis.backend = backend;
+
+            let pyodide = await loadPyodide();
+            await pyodide.loadPackage("micropip");
+            const micropip = pyodide.pyimport("micropip");
+            await micropip.install('/build/deploy/dist/hail-0.2.126-py3-none-any.whl');
+
+            await pyodide.runPythonAsync(`
+                from js import backend
+                print(await backend.hello("from python"))
+            `);
         </script>
     </head>
     <body>
