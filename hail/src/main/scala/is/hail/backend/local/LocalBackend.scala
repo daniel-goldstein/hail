@@ -66,6 +66,8 @@ class LocalBackend(val tmpdir: String) {
   // private[this] val flags = HailFeatureFlags.fromMap(Map())
   private[this] val theHailClassLoader = new HailClassLoader(getClass().getClassLoader())
 
+  def hello(name: String): String = s"Hello $name"
+
 //   val persistedIR: mutable.Map[Int, BaseIR] = mutable.Map()
 
 //   protected[this] def addJavaIR(ir: BaseIR): Int = {
