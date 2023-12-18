@@ -24,11 +24,9 @@ function writeMessage(channel, message) {
   Atomics.notify(meta, 1);
 }
 
-function readMessage(
-  channel
-) {
-  const checkTimeout = 100;
-  const totalTimeout = NUMBER.POSITIVE_INFINITY;
+function readMessage(channel) {
+  let checkTimeout = 100;
+  const totalTimeout = Number.POSITIVE_INFINITY;
   const startTime = performance.now();
   let check;
 
@@ -60,8 +58,6 @@ function readMessage(
 
     if (result !== null) {
       return result;
-    } else if (checkInterrupt?.()) {
-      return null;
     }
   }
 }
