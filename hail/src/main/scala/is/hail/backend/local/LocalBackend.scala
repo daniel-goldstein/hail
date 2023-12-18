@@ -63,7 +63,7 @@ object LocalBackend {
 }
 
 class LocalBackend(val tmpdir: String) {
-  // private[this] val flags = HailFeatureFlags.fromMap(Map())
+  private[this] val flags = HailFeatureFlags.fromMap(Map())
   private[this] val theHailClassLoader = new HailClassLoader(getClass().getClassLoader())
 
   def hello(name: String): String = s"Hello $name"
