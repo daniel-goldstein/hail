@@ -70,18 +70,20 @@ abstract class BaseIR {
   }
 
   def mapChildrenWithEnv(env: BindingEnv[Type])(f: (BaseIR, BindingEnv[Type]) => BaseIR): BaseIR = {
-    val newChildren = childrenSeq.toArray
-    var res = this
-    for (i <- newChildren.indices) {
-      val childEnv = ChildBindings(res, i, env)
-      val child = newChildren(i)
-      val newChild = f(child, childEnv)
-      if (!(newChild eq child)) {
-        newChildren(i) = newChild
-        res = res.copy(newChildren)
-      }
-    }
-    res
+    // val newChildren = childrenSeq.toArray
+    // var i = 0
+    // var res = this
+    // while (i < newChildren.length) {
+    //   val childEnv = ChildBindings(res, i, env)
+    //   val child = newChildren(i)
+    //   val newChild = f(child, childEnv)
+    //   if (!(newChild eq child)) {
+    //     newChildren(i) = newChild
+    //     res = res.copy(newChildren)
+    //   }
+    //   i += 1
+    // }
+    this
   }
 
   def forEachChildWithEnvStackSafe(env: BindingEnv[Type])(f: (BaseIR, Int, BindingEnv[Type]) => StackFrame[Unit]): StackFrame[Unit] = {

@@ -17,11 +17,14 @@
             // But this blows up
             try {
                 let backend = await new LocalBackend("/files/tmp");
-                console.log(await backend.executeLiteral("(I32 5)"));
+                // console.log(await backend.executeLiteral("(I32 5)"));
+                console.log(await (await backend.parse_value_ir("(I32 5)")).x())
             } catch (e) {
                 console.log(await e.printStackTrace())
                 throw e
             }
+
+            console.log("done")
 
             // globalThis.backend = backend;
 

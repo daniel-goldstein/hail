@@ -257,6 +257,10 @@ class LocalBackend(
   }
   def pyRemoveSequence(name: String) = references(name).removeSequence()
 
+  def parse_value_ir(s: String): IR = {
+    parse_value_ir(s, new java.util.HashMap[String, String]())
+  }
+
   def parse_value_ir(s: String, refMap: java.util.Map[String, String]): IR = {
     ExecutionTimer.logTime("LocalBackend.parse_value_ir") { timer =>
       withExecuteContext(timer) { ctx =>
