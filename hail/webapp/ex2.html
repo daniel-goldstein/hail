@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script src="https://cdn.jsdelivr.net/pyodide/dev/full/pyodide.js"></script>
+        <script src="sync-message.js"></script>
+        <script type="module">
+            const worker = new Worker("worker.js");
+            const channel = makeChannel();
+
+            let pyodide = await loadPyodide();
+            await pyodide.runPythonAsync(`
+                # from js import backend
+                # print(await backend.hello("from python"))
+                print("hello world")
+            `);
+        </script>
+    </head>
+    <body>
+        <p>Hello!</p>
+    </body>
+</html>
