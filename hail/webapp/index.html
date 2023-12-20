@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <script src="https://cjrtnc.leaningtech.com/3_20231218_322/cj3loader.js"></script>
+        <script src="https://cjrtnc.leaningtech.com/3_20231220_323/cj3loader.js"></script>
         <script src="https://cdn.jsdelivr.net/pyodide/dev/full/pyodide.js"></script>
         <script type="module">
             await cheerpjInit();
@@ -14,29 +14,23 @@
             let five = await new I32(5);
             console.log(await five.x());
 
-            // But this blows up
-            try {
-                let backend = await new LocalBackend("/files/tmp");
-                // console.log(await backend.executeLiteral("(I32 5)"));
-                console.log(await (await backend.parse_value_ir("(I32 5)")).x())
-            } catch (e) {
-                console.log(await e.printStackTrace())
-                throw e
-            }
-
+            let backend = await new LocalBackend("/files/tmp");
+            let five2 = await backend.parse_value_ir("(I32 5)")
+            let res = await backend.executeLiteral("(I32 5)")
             console.log("done")
 
-            // globalThis.backend = backend;
+            globalThis.backend = backend;
 
-            // let pyodide = await loadPyodide();
+            let pyodide = await loadPyodide();
+
             // await pyodide.loadPackage("micropip");
             // const micropip = pyodide.pyimport("micropip");
             // await micropip.install('/build/deploy/dist/hail-0.2.126-py3-none-any.whl');
 
-            // await pyodide.runPythonAsync(`
-            //     from js import backend
-            //     print(await backend.hello("from python"))
-            // `);
+            await pyodide.runPythonAsync(`
+                from js import backend
+                print(await backend.hello("from python"))
+            `);
         </script>
     </head>
     <body>
