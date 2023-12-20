@@ -1,17 +1,16 @@
-importScripts('https://cjrtnc.leaningtech.com/3.0rc2/cj3loader.js')
 importScripts('sync-message.js')
 
-var w = new CheerpJWorker();
+async function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms))
+}
 
 onmessage = async (e) => {
-    await w.cheerpjInit()
-
     const writeChannel = e.data[0];
     const readChannel = e.data[1];
     let i = 0;
-    while (i < 100) {
+    while (true) {
         let message = readMessage(readChannel)
+        await sleep(2000)
         writeMessage(writeChannel, `Executed ${JSON.stringify(message)}`)
-        i += 1;
     }
 }

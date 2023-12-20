@@ -6,30 +6,17 @@
         <script type="module">
             await cheerpjInit();
 
-            let cj = await cheerpjRunLibrary(`/app/build/libs/hail-all-spark.jar`);
+            let cj = await cheerpjRunLibrary('/app/build/libs/hail-all-spark.jar');
             const LocalBackend = await cj.is.hail.backend.local.LocalBackend;
-
-            // Instantiating basic classes is also not a problem.
-            let I32 = await cj.is.hail.expr.ir.I32;
-            let five = await new I32(5);
-            console.log(await five.x());
-
-            let backend = await new LocalBackend("/files/tmp");
-            let five2 = await backend.parse_value_ir("(I32 5)")
-            let res = await backend.executeLiteral("(I32 5)")
-            console.log("done")
-
-            globalThis.backend = backend;
+            globalThis.backend = await new LocalBackend("/files/tmp");
 
             let pyodide = await loadPyodide();
 
-            // await pyodide.loadPackage("micropip");
-            // const micropip = pyodide.pyimport("micropip");
-            // await micropip.install('/build/deploy/dist/hail-0.2.126-py3-none-any.whl');
-
             await pyodide.runPythonAsync(`
                 from js import backend
-                print(await backend.hello("from python"))
+                print(await backend.getFlag("rng_nonce"))
+                five = await backend.parse_value_ir("(I32 5)")
+                print(await five.toString())
             `);
         </script>
     </head>
