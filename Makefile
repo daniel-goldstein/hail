@@ -178,7 +178,7 @@ qob-image: hail-ubuntu-image docker/Dockerfile.qob $(shell git ls-files hail)
 	echo $(IMAGE_NAME) > $@
 
 crac-image: hail-ubuntu-image docker/Dockerfile.crac $(shell git ls-files hail)
-	$(MAKE) -C hail shadowJar
+	$(MAKE) -C hail shadowJar HAIL_RELEASE_MODE=1
 	./docker-build.sh . docker/Dockerfile.crac $(IMAGE_NAME) \
 		--build-arg BASE_IMAGE=$(shell cat hail-ubuntu-image)
 	echo $(IMAGE_NAME) > $@

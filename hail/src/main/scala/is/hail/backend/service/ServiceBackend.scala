@@ -60,7 +60,7 @@ object ServiceBackend {
     batchId: Option[Long],
     rpcConfig: ServiceBackendRPCPayload,
   ): ServiceBackend = {
-    HailContext.configureStderrLogging()
+    // HailContext.configureStderrLogging()
 
     log.info("Starting ServiceBackend.apply")
     val flags = HailFeatureFlags.fromMap(rpcConfig.flags)

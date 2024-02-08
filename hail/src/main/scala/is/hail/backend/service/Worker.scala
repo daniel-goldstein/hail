@@ -89,7 +89,7 @@ object Worker {
   }
 
   def main(argv: Array[String]): Unit = {
-    HailContext.configureStderrLogging()
+    // HailContext.configureStderrLogging()
     val theHailClassLoader = new HailClassLoader(getClass().getClassLoader())
     val root = System.getenv("ROOT")
     val i = System.getenv("I").toInt

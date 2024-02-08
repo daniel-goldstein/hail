@@ -15,4 +15,4 @@ ENV PATH $JAVA_HOME/bin:$PATH
 RUN hail-pip-install pyspark==3.3.2
 ENV SPARK_HOME /usr/local/lib/python3.9/dist-packages/pyspark
 
-COPY hail/build/libs/hail-all-spark.jar hail.jar
+COPY hail/out/assembly.dest/out.jar hail.jar
