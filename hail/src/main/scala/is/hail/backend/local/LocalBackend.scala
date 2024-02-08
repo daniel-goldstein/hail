@@ -76,7 +76,7 @@ object LocalBackend {
     val forceCountIR =
       """(Let __rng_state (RNGStateLiteral) (TableToValueApply "{\"name\": \"ForceCountTable\"}" (TableRange 10 None)))"""
     val mtTypeIR =
-      """(MatrixRead DropRowColUIDs False False "{\"name\": \"MatrixVCFReader\", \"files\": [\"gs://hail-1kg/1kg_coreexome.vcf.bgz\"], \"callFields\": [\"PGT\"], \"entryFloatTypeName\": \"Float64\", \"headerFile\": null, \"nPartitions\": null, \"blockSizeInMB\": null, \"minPartitions\": null, \"rg\": \"GRCh37\", \"contigRecoding\": {}, \"arrayElementsRequired\": true, \"skipInvalidLoci\": false, \"gzAsBGZ\": false, \"forceGZ\": false, \"filterAndReplace\": {\"filterPattern\": null, \"findPattern\": null, \"replacePattern\": null}, \"sampleIDs\": null, \"partitionsTypeStr\": null, \"partitionsJSON\": null}")"""
+      """(MatrixRead DropRowColUIDs False False "{\"name\": \"MatrixVCFReader\", \"files\": [\"gs://hail-tutorial/1kg.vcf.bgz\"], \"callFields\": [\"PGT\"], \"entryFloatTypeName\": \"Float64\", \"headerFile\": null, \"nPartitions\": null, \"blockSizeInMB\": null, \"minPartitions\": null, \"rg\": \"GRCh37\", \"contigRecoding\": {}, \"arrayElementsRequired\": true, \"skipInvalidLoci\": false, \"gzAsBGZ\": false, \"forceGZ\": false, \"filterAndReplace\": {\"filterPattern\": null, \"findPattern\": null, \"replacePattern\": null}, \"sampleIDs\": null, \"partitionsTypeStr\": null, \"partitionsJSON\": null}")"""
     val backend =
       LocalBackend("/tmp/hail", "", "", "hail.log", true, true, skipLoggingConfiguration = true)
     HailContext(backend)
