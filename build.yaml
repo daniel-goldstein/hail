@@ -3936,6 +3936,7 @@ steps:
       valueFrom: ci_utils_image.image
     scopes:
       - deploy
+      - dev
     script: |
       gcloud artifacts repositories set-cleanup-policies hail \
         --project={{ global.gcp_project }} \
