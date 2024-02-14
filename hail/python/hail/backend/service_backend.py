@@ -32,6 +32,14 @@ from hailtop.hail_event_loop import hail_event_loop
 from hailtop.utils import Timings, am_i_interactive, async_to_blocking, retry_transient_errors
 from hailtop.utils.rich_progress_bar import BatchProgressBar
 
+from .backend import (
+    Backend,
+    fatal_error_from_java_error_triplet,
+    ActionTag,
+    ActionPayload,
+    ExecutePayload,
+    resource_filename,
+)
 from ..builtin_references import BUILTIN_REFERENCES
 from ..utils import ANY_REGION
 from .backend import ActionPayload, ActionTag, Backend, ExecutePayload, fatal_error_from_java_error_triplet
@@ -421,28 +429,37 @@ class ServiceBackend(Backend):
                     'HAIL_CLOUD': 'gcp',
                     'HAIL_QOB_IMAGE': image,
                 }
-                command = [
-                    '/bin/bash',
-                    '-c',
-                    f"""
+
+                if os.environ['HAIL_QOB_LOCAL']:
+                    jar_location = resource_filename('hail-all-spark.jar')
+                    script = f"""
+java -cp "{jar_location}:{find_spark_home()}/jars/*" is.hail.backend.service.ServiceBackendAPI <<'EOF'
+{infile_data.decode('utf-8')}
+EOF
+"""
+                    os.environ.update(env)  # Rude
+                    await check_shell(script)
+                else:
+                    script = f"""
 java -cp hail.jar:$SPARK_HOME/jars/* is.hail.backend.service.ServiceBackendAPI <<'EOF'
 {infile_data.decode('utf-8')}
 EOF
-""",
-                ]
-
-                j = self._batch.create_job(
-                    image=image,
-                    command=command,
-                    env=env,
-                    resources=resources,
-                    attributes={'name': name + '_driver'},
-                    regions=self.regions,
-                    cloudfuse=[(c.bucket, c.mount_path, c.read_only) for c in service_backend_config.cloudfuse_configs],
-                    # profile=self.flags['profile'] is not None,
-                )
-                await self._batch.submit(disable_progress_bar=True)
-                self._batch_was_submitted = True
+"""
+                    command = ['/bin/bash', '-c', script]
+                    j = self._batch.create_job(
+                        image=image,
+                        command=command,
+                        env=env,
+                        resources=resources,
+                        attributes={'name': name + '_driver'},
+                        regions=self.regions,
+                        cloudfuse=[
+                            (c.bucket, c.mount_path, c.read_only) for c in service_backend_config.cloudfuse_configs
+                        ],
+                        # profile=self.flags['profile'] is not None,
+                    )
+                    await self._batch.submit(disable_progress_bar=True)
+                    self._batch_was_submitted = True
 
             with timings.step("wait driver"):
                 try:

@@ -456,8 +456,6 @@ object ServiceBackendAPI {
     val name = System.getenv("NAME")
     val image = System.getenv("HAIL_QOB_IMAGE")
     // val inputURL = System.getenv("INPUT_URL")
-
-    // sys.env.get("HAIL_SSL_CONFIG_DIR").foreach(tls.setSSLConfigFromDir(_))
     val batchClient = new BatchClient()
 
     val batchId = sys.env.get("HAIL_BATCH_ID").map(_.toLong)
