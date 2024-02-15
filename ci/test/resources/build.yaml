@@ -326,7 +326,8 @@ steps:
       - hello_database
   - kind: runImage
     name: test_identity_impersonation
-    image: ci_utils_image.image
+    image:
+      valueFrom: ci_utils_image.image
     script: |
       set -ex
       user=$(hailctl auth user | jq -fr '.username')
