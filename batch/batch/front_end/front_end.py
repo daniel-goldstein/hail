@@ -936,9 +936,20 @@ WHERE batch_updates.batch_id = %s AND batch_updates.update_id = %s AND user = %s
 
         spec['secrets'] = secrets
 
+        identity = spec.get('identity')
+        if identity is not None:
+            # Only CI can impersonate other users and *only* the robot users it needs for the CI pipeline
+            permitted_identities = {'test', 'test-dev', 'auth', 'batch'}
+            test_identities = {f'testns-{id}' for id in permitted_identities}
+            if user != 'ci' or identity not in set(permitted_identities).union(test_identities):
+                raise web.HTTPBadRequest(reason='unauthorized use of identity field')
+            credentials_secret_name = f'{identity}-gsa-key'
+        else:
+            credentials_secret_name = userdata['hail_credentials_secret_name']
+
         secrets.append({
             'namespace': DEFAULT_NAMESPACE,
-            'name': userdata['hail_credentials_secret_name'],
+            'name': credentials_secret_name,
             'mount_path': '/gsa-key',
             'mount_in_copy': True,
         })
