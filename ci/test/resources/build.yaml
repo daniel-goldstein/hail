@@ -336,6 +336,9 @@ steps:
           exit 1
       fi
     identity: test
+    dependsOn:
+      - ci_utils_image
+      - default_ns
   - kind: runImage
     name: test_connect_to_hello
     numSplits: 2
