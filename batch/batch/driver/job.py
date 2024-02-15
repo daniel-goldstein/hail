@@ -353,8 +353,6 @@ async def job_config(app, record, attempt_id):
 
     job_spec['attempt_id'] = attempt_id
 
-    userdata = json.loads(record['userdata'])
-
     secrets = job_spec.get('secrets', [])
     k8s_secrets = await asyncio.gather(*[
         k8s_cache.read_secret(secret['name'], secret['namespace']) for secret in secrets
@@ -362,11 +360,8 @@ async def job_config(app, record, attempt_id):
 
     gsa_key = None
 
-    # backwards compatibility
-    gsa_key_secret_name = userdata.get('hail_credentials_secret_name') or userdata['gsa_key_secret_name']
-
     for secret, k8s_secret in zip(secrets, k8s_secrets):
-        if secret['name'] == gsa_key_secret_name:
+        if secret['name'].endswith('-gsa-key'):
             gsa_key = k8s_secret.data
         secret['data'] = k8s_secret.data
 
