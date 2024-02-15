@@ -330,7 +330,7 @@ steps:
       valueFrom: ci_utils_image.image
     script: |
       set -ex
-      user=$(hailctl auth user | jq -fr '.username')
+      user=$(hailctl auth user | jq -jr '.username')
       echo "Acting as user $user"
       if [ $user != 'test' ]; then
           exit 1
