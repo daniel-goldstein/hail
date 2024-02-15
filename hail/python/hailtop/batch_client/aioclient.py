@@ -534,6 +534,7 @@ class Batch:
         requester_pays_project: Optional[str] = None,
         mount_tokens: bool = False,
         network: Optional[str] = None,
+        identity: Optional[str] = None,
         unconfined: bool = False,
         user_code: Optional[str] = None,
         regions: Optional[List[str]] = None,
@@ -616,6 +617,8 @@ class Batch:
             job_spec['mount_tokens'] = mount_tokens
         if network:
             job_spec['network'] = network
+        if identity:
+            job_spec['identity'] = identity
         if unconfined:
             job_spec['unconfined'] = unconfined
         if user_code:

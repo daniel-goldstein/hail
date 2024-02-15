@@ -514,6 +514,7 @@ class RunImageStep(Step):
         timeout,
         num_splits,
         network,
+        identity,
     ):  # pylint: disable=unused-argument
         super().__init__(params)
         self.image = expand_value_from(image, self.input_config(params.code, params.scope))
@@ -536,6 +537,7 @@ class RunImageStep(Step):
         self.jobs = []
         self.num_splits = num_splits
         self.network = network
+        self.identity = identity
 
     def wrapped_job(self):
         return self.jobs
@@ -557,6 +559,7 @@ class RunImageStep(Step):
             json.get('timeout', 3600),
             json.get('numSplits', 1),
             json.get('network', 'public'),
+            json.get('identity'),
         )
 
     def config(self, scope):  # pylint: disable=unused-argument
@@ -621,6 +624,7 @@ class RunImageStep(Step):
             always_run=self.always_run,
             timeout=self.timeout,
             network=self.network,
+            identity=self.identity,
             env=env,
             regions=[REGION],
         )
