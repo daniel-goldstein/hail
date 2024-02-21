@@ -15,6 +15,10 @@ RUN hail-apt-get-install xz-utils libncurses5 git && \
     tar -vx -C /opt -f mysql-8.0.26-linux-glibc2.17-x86_64-minimal-rebuild.tar.xz && \
     ln -s /opt/mysql-8.0.26-linux-glibc2.17-x86_64-minimal-rebuild/bin/* /usr/bin/
 
+RUN curl --remote-name https://releases.hashicorp.com/terraform/1.7.3/terraform_1.7.3_linux_amd64.zip && \
+    unzip terraform_1.7.3_linux_amd64.zip && \
+    install -o root -g root -m 0755 terraform /usr/local/bin/terraform
+
 COPY hail/python/hailtop/pinned-requirements.txt hailtop-requirements.txt
 COPY gear/pinned-requirements.txt gear-requirements.txt
 RUN hail-pip-install \

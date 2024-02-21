@@ -3945,3 +3945,22 @@ steps:
     dependsOn:
       - test_gcp_ar_cleanup_policies
       - ci_utils_image
+  - kind: runImage
+    name: test_gcp_broad_terraform_up_to_date
+    resources:
+      memory: standard
+      cpu: '0.25'
+    image:
+      valueFrom: ci_utils_image.image
+    script: |
+      cd /io/repo/infra/gcp-broad
+      terraform init -backend-config=hail-is/backend.hcl -var-file=hail-is/global.tfvars
+      terraform plan -var-file=hail-is/global.tfvars -detailed-exitcode
+    inputs:
+      - from: /repo/infra/gcp-broad
+        to: /io/repo/infra/gcp-broad
+    clouds:
+      - gcp
+    dependsOn:
+      - test_gcp_ar_cleanup_policies
+      - ci_utils_image
