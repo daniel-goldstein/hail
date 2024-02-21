@@ -3957,8 +3957,8 @@ steps:
       terraform init -backend-config=hail-is/backend.hcl -var-file=hail-is/global.tfvars
       terraform plan -var-file=hail-is/global.tfvars -detailed-exitcode
     inputs:
-      - from: /repo/infra/gcp-broad
-        to: /io/repo/infra/gcp-broad
+      - from: /repo/infra
+        to: /io/repo/infra
     clouds:
       - gcp
     dependsOn:
