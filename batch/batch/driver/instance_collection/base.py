@@ -299,8 +299,8 @@ class InstanceCollection:
 
     def generate_machine_name(self) -> str:
         while True:
-            # 36 ** 5 = ~60M
-            suffix = secret_alnum_string(5, case='lower')
+            # 36 ** 6 = ~2.2B
+            suffix = secret_alnum_string(6, case='lower')
             machine_name = f'{self.machine_name_prefix}{suffix}'
             if machine_name not in self.name_instance:
                 break
