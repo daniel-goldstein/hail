@@ -60,7 +60,7 @@ frozenlist==1.4.1
     #   aiosignal
 google-api-core==2.17.1
     # via google-api-python-client
-google-api-python-client==2.119.0
+google-api-python-client==2.120.0
     # via google-cloud-profiler
 google-auth==2.28.1
     # via
@@ -74,7 +74,7 @@ google-auth-httplib2==0.2.0
     # via
     #   google-api-python-client
     #   google-cloud-profiler
-google-cloud-profiler==4.1.0
+google-cloud-profiler==3.1.0
     # via -r hail/gear/requirements.txt
 googleapis-common-protos==1.62.0
     # via google-api-core
@@ -110,10 +110,12 @@ prometheus-client==0.20.0
     #   -c hail/gear/../hail/python/dev/pinned-requirements.txt
     #   -r hail/gear/requirements.txt
     #   prometheus-async
-protobuf==4.25.3
+protobuf==3.20.2
     # via
+    #   -r hail/gear/requirements.txt
     #   google-api-core
     #   google-cloud-profiler
+    #   googleapis-common-protos
 pyasn1==0.5.1
     # via
     #   -c hail/gear/../hail/python/hailtop/pinned-requirements.txt
@@ -131,7 +133,7 @@ pymysql==1.1.0
     #   aiomysql
 pyparsing==3.1.1
     # via httplib2
-python-dateutil==2.8.2
+python-dateutil==2.9.0.post0
     # via
     #   -c hail/gear/../hail/python/dev/pinned-requirements.txt
     #   -c hail/gear/../hail/python/hailtop/pinned-requirements.txt
