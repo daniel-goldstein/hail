@@ -9,7 +9,13 @@
       <th colspan="1">Namespace</th>
       <th colspan="1">Creation Time</th>
       <th colspan="1">Expiration Time</th>
-      <th colspan="2">Services</th>
+      <th colspan="3">Services</th>
+    </tr>
+    <tr>
+      <th colspan="3"></th>
+      <th>Name</th>
+      <th>Rate Limit</th>
+      <th></th>
     </tr>
   </thead>
   {% for ns in namespaces %}
@@ -33,6 +39,15 @@
     <tr>
       <td>
         {{ service }}
+      </td>
+      <td>
+        <form action="{{ base_path }}/namespaces/{{ ns['namespace'] }}/services/{{ service }}/edit" method="POST">
+          <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+          <input type="text" required name="rate_limit" value="{{ ns['services'][service] }}">
+          <button>
+            Update
+          </button>
+        </form>
       </td>
     </tr>
     {% endfor %}
