@@ -438,7 +438,7 @@ async def job_config(app, record):
     userdata = json.loads(record['userdata'])
 
     gsa_key = None
-    secrets = job_spec.get('secrets', [])
+    secrets = job_spec.get('secrets') or []
     k8s_secrets = await asyncio.gather(*[
         k8s_cache.read_secret(secret['name'], secret['namespace']) for secret in secrets
     ])
