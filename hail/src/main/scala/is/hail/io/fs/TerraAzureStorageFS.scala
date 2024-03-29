@@ -26,7 +26,7 @@ class TerraAzureStorageFS extends AzureStorageFS() {
   import TerraAzureStorageFS.{log, TEN_MINUTES_IN_MS}
 
   private[this] val httpClient = HttpClients.custom().build()
-  private[this] val sasTokenCache = mutable.Map[String, (URL, Long)]()
+  private[this] val sasTokenCache = mutable.Map[(String, String), (URL, Long)]()
 
   private[this] val workspaceManagerUrl = sys.env("WORKSPACE_MANAGER_URL")
   private[this] val workspaceId = sys.env("WORKSPACE_ID")
@@ -42,13 +42,15 @@ class TerraAzureStorageFS extends AzureStorageFS() {
       super.getServiceClient(url)
     }
 
-  def getTerraSasToken(url: URL): URL = {
-    sasTokenCache.get(url.base) match {
+  // TODO we really only need to lock on the cache key value
+  def getTerraSasToken(url: URL): URL = synchronized {
+    val sasTokenCacheKey = (url.account, url.container)
+    sasTokenCache.get(sasTokenCacheKey) match {
       case Some((sasTokenUrl, expiration))
           if expiration > System.currentTimeMillis + TEN_MINUTES_IN_MS => sasTokenUrl
       case None =>
         val (sasTokenUrl, expiration) = createTerraSasToken(url)
-        sasTokenCache += (url.base -> (sasTokenUrl -> expiration))
+        sasTokenCache += (sasTokenCacheKey -> (sasTokenUrl -> expiration))
         sasTokenUrl
     }
   }
