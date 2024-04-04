@@ -271,7 +271,8 @@ async def stream_batch_status(request: web.Request) -> web.StreamResponse:
     await ws.prepare(request)
     notifier.subscription.clients.add(ws)
     try:
-        async for msg in ws:
+        # this websocket is only used for communicating driver->frontend
+        async for _ in ws:
             pass
     finally:
         notifier.subscription.clients.remove(ws)

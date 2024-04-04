@@ -3455,7 +3455,8 @@ SELECT instance_id, n_tokens, frozen FROM globals;
     app['batch_status_pubsub'] = batch_status_pubsub
 
     async def receive_notifications_from_driver(app):
-        batch_driver_ws = await app[CommonAiohttpAppKeys.CLIENT_SESSION].ws_connect(
+        batch_driver_ws = await retry_transient_errors(
+            app[CommonAiohttpAppKeys.CLIENT_SESSION].ws_connect,
             deploy_config.url('batch-driver', '/wss/v1alpha/batches'),
             headers=await app['hail_credentials'].auth_headers(),
         )
