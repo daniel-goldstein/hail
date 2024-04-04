@@ -3449,6 +3449,7 @@ SELECT instance_id, n_tokens, frozen FROM globals;
     app['task_manager'].ensure_future(periodically_call(5, _refresh, app))
 
     async def get_batch(batch_id: int):
+        log.exception(f'updating batch {batch_id}')
         return await _get_batch(app, batch_id)
 
     batch_status_pubsub = WebSocketPubSub(get_batch, guaranteed_update_interval_sec=5)

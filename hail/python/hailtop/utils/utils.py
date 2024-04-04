@@ -1187,6 +1187,7 @@ class PubSub(Generic[T, U]):
 
     def update(self, key: T):
         if sub := self._subscriptions.get(key):
+            log.exception(f'Received update for {key}')
             sub.state_changed.set()
 
 
