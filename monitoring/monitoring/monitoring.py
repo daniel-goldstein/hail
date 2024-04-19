@@ -200,7 +200,7 @@ CASE
   WHEN service.id = "6F81-5844-456A" THEN "unknown"
   ELSE NULL
 END AS source
-FROM `broad-ctsa.hail_billing.gcp_billing_export_v1_0055E5_9CA197_B9B894`
+FROM `{PROJECT}.hail_billing.gcp_billing_export_v1_0055E5_9CA197_B9B894`
 WHERE DATE(_PARTITIONTIME) >= "{start_str}" AND DATE(_PARTITIONTIME) <= "{end_str}" AND project.name = "{PROJECT}" AND invoice.month = "{invoice_month}"
 GROUP BY service_id, service_description, sku_id, sku_description, source;
 """
@@ -349,7 +349,7 @@ async def on_startup(app):
 
     aiogoogle_credentials = aiogoogle.GoogleCredentials.from_file('/billing-monitoring-gsa-key/key.json')
 
-    app[AppKeys.BQ_CLIENT] = aiogoogle.GoogleBigQueryClient('broad-ctsa', credentials=aiogoogle_credentials)
+    app[AppKeys.BQ_CLIENT] = aiogoogle.GoogleBigQueryClient(PROJECT, credentials=aiogoogle_credentials)
 
     compute_client = aiogoogle.GoogleComputeClient(PROJECT, credentials=aiogoogle_credentials)
     app[AppKeys.COMPUTE_CLIENT] = compute_client
