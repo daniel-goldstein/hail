@@ -1,28 +1,27 @@
 {% extends "layout.html" %}
 {% block title %}Batch User Resources{% endblock %}
 {% block content %}
-
-<h1>User Resources</h1>
-<table class="data-table" id="user_resources">
-    <thead>
+<h1 class="text-2xl font-light">User Resources</h1>
+<table class='overflow-hidden table-fixed text-center w-full'>
+  <thead class='h-12 text-sky-900'>
     <tr>
-        <th>Name</th>
-        <th>Ready Jobs</th>
-        <th>Ready Cores</th>
-        <th>Running Jobs</th>
-        <th>Running Cores</th>
+      <th class='text-center'>Name</th>
+      <th class='text-center'>Ready Jobs</th>
+      <th class='text-center'>Ready Cores</th>
+      <th class='text-center'>Running Jobs</th>
+      <th class='text-center'>Running Cores</th>
     </tr>
-    </thead>
-    <tbody>
+  </thead>
+  <tbody>
     {% for user in user_resources %}
-    <tr>
-        <td>{{ user['user'] }}</td>
-        <td class="numeric-cell">{{ user['n_ready_jobs'] }}</td>
-        <td class="numeric-cell">{{ user['ready_cores_mcpu'] / 1000 }}</td>
-        <td class="numeric-cell">{{ user['n_running_jobs'] }}</td>
-        <td class="numeric-cell">{{ user['running_cores_mcpu'] / 1000 }}</td>
+    <tr class='h-16 border-y bg-white'>
+      <td>{{ user['user'] }}</td>
+      <td>{{ user['n_ready_jobs'] }}</td>
+      <td>{{ user['ready_cores_mcpu'] / 1000 }}</td>
+      <td>{{ user['n_running_jobs'] }}</td>
+      <td>{{ user['running_cores_mcpu'] / 1000 }}</td>
     </tr>
     {% endfor %}
-    </tbody>
+  </tbody>
 </table>
 {% endblock %}

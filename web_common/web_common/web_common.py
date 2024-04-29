@@ -16,6 +16,18 @@ deploy_config = get_deploy_config()
 WEB_COMMON_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 
+TAILWIND_PAGES = {
+    'batch': [
+        'batches.html',
+        'batch.html',
+        'job.html',
+        'billing_projects.html',
+        'billing_limits.html',
+        'billing.html',
+    ],
+}
+
+
 def sass_compile(module_name):
     module = importlib.import_module(module_name)
     module_filename = module.__file__
@@ -93,6 +105,7 @@ async def render_template(
     session = await aiohttp_session.get_session(request)
     context = base_context(session, userdata, service)
     context.update(page_context)
+    context['use_tailwind'] = service in TAILWIND_PAGES and file in TAILWIND_PAGES[service]
     context['csrf_token'] = csrf_token
 
     response = aiohttp_jinja2.render_template(file, request, context)

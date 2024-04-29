@@ -6,7 +6,6 @@
     }
     #{{ component_name }}-inner {
       height: 15rem;
-      width: 65vw;
       display: flex;
       align-items: center;
     }
@@ -16,7 +15,6 @@
       border-radius: 3px;
       font-size: 1rem;
       resize: none;
-      width: 450px;
       white-space: pre;
       height: 10rem;
     }
@@ -48,14 +46,14 @@
     <div id="{{ component_name }}" class="flex-col-align-left">
       <form id="{{ component_name }}-form" method="GET" action="{{ endpoint }}">
         <div id="{{ component_name }}-inner">
-          <div>
-            <textarea id="{{ component_name }}-input-box" spellcheck="false" autocorrect="off" autofocus name="q">{% if q %}{{ q }}{% endif %}</textarea>
+          <div class='w-2/3 lg:w-1/2'>
+            <textarea id="{{ component_name }}-input-box" class='w-full' spellcheck="false" autocorrect="off" autofocus name="q">{% if q %}{{ q }}{% endif %}</textarea>
           </div>
           <div id="{{ component_name }}-buttons">
             <a href="https://hail.is/docs/batch/advanced_search_help.html" target="_blank">
 	      <span class="material-symbols-outlined">help</span>
             </a>
-            <button id="{{ component_name }}-submit" type="submit">
+            <button id="{{ component_name }}-submit" class='border border-slate-500 rounded-md p-1' type="submit">
               Search
             </button>
           </div>
